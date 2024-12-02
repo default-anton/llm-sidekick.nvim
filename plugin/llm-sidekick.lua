@@ -138,13 +138,15 @@ local function fold_editor_context(bufnr)
     end
   end
   if start_line and end_line and end_line > start_line then
-    vim.api.nvim_set_option_value('foldmethod', 'manual', {})
-    -- Delete any existing fold in the region
-    pcall(function()
-      vim.cmd(string.format("%dnormal zd", start_line))
-    end)
     vim.api.nvim_command(string.format("%d,%dfold", start_line, end_line))
   end
+end
+
+local function fold_stuff(buf)
+  vim.api.nvim_set_option_value('foldmethod', 'manual', { scope = 'local', win = 0 })
+  vim.cmd([[normal! zE]])
+  vim.cmd([[1,/^USER:/-1fold]])
+  fold_editor_context(buf)
 end
 
 local function render_snippet(relative_path, content, code)
@@ -289,9 +291,7 @@ local ask_command = function(cmd_opts)
     local lines = vim.split(prompt, "[\r]?\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.api.nvim_buf_call(buf, function()
-      -- Create a fold from line 1 to the line just before the first occurrence of "^USER:".
-      vim.cmd('1,/^USER:/-1fold')
-      fold_editor_context(buf)
+      fold_stuff(buf)
     end)
     -- Set cursor to the end of the buffer
     vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
@@ -406,7 +406,7 @@ vim.api.nvim_create_user_command("Add", function(opts)
     local fragment_lines = vim.split(snippet, "\n")
     vim.api.nvim_buf_set_lines(ask_buf, insert_point, insert_point, false, fragment_lines)
     vim.api.nvim_buf_call(ask_buf, function()
-      fold_editor_context(ask_buf)
+      fold_stuff(ask_buf)
     end)
   end)
 end, {
