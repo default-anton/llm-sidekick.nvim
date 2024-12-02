@@ -1,0 +1,74 @@
+*llm-sidekick.txt*  Fast and hackable code companion for Neovim
+
+==============================================================================
+INTRODUCTION                                              *llm-sidekick*
+
+llm-sidekick.nvim is a fast and hackable code companion for Neovim that stays
+out of your way.
+
+==============================================================================
+INSTALLATION                                             *llm-sidekick-installation*
+
+Using lazy.nvim:
+>
+    {
+        'default-anton/llm-sidekick.nvim',
+        dependencies = {
+            'nvim-lua/plenary.nvim',
+        }
+    }
+<
+
+==============================================================================
+CONFIGURATION                                            *llm-sidekick-config*
+
+Configure the plugin by calling the setup function:
+>
+    require('llm-sidekick').setup({
+        -- Model configuration
+        smart_model = "claude-3-5-sonnet-latest",  -- Model for balanced performance
+        fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
+        reasoning_model = "o1-mini",               -- Model for complex reasoning
+    })
+<
+
+==============================================================================
+COMMANDS                                                 *llm-sidekick-commands*
+
+                                                        *:Ask*
+:Ask [args]         Opens a new buffer to ask a question to the LLM. Accepts an
+                    optional range to include the selected code. Arguments can be:
+                    - Model type: smart (default), fast (quick responses),
+                      reasoning (complex problems)
+                    - Opening mode: tab (t), vsplit (v), split (s)
+                    - file (f): include entire current file
+
+                                                        *:Code*
+:Code [args]        Similar to :Ask but includes additional context for code
+                    modifications. Accepts the same arguments as :Ask:
+                    - Model type: smart (default), fast (quick responses),
+                      reasoning (complex problems)
+                    - Opening mode: tab (t), vsplit (v), split (s)
+                    - file (f): include entire current file
+
+                                                        *:Add*
+:Add [file|url]     Adds content to the last Ask buffer. Can add content from:
+                    - Current buffer (entire or selected range)
+                    - Specified file path
+                    - URL to documentation or other web content
+                    Must be used after an :Ask or :Code command.
+
+                                                        *:Apply*
+:Apply [all]        Applies file modifications from the LLM response. Only
+                    available in buffers created by :Ask or :Code commands.
+                    Without arguments, applies changes from the modification
+                    block at cursor position. With "all" argument, applies all
+                    changes from the current assistant response.
+
+==============================================================================
+LICENSE                                                  *llm-sidekick-license*
+
+Apache License, Version 2.0
+Copyright (c) 2024 Anton Kuzmenko
+
+ vim:tw=78:ts=8:ft=help:norl:
