@@ -333,7 +333,16 @@ vim.api.nvim_create_user_command("Code", ask_command({ include_modifications = t
 })
 
 local function get_content(opts, callback)
-  local content, relative_path, filetype
+  local function add_file(file_path)
+    if vim.fn.filereadable(file_path) == 0 then
+      return
+    end
+
+    local content = table.concat(vim.fn.readfile(file_path), "\n")
+    local relative_path = vim.fn.fnamemodify(file_path, ":.")
+    local filetype = vim.filetype.match({ filename = file_path })
+    callback(content, relative_path, filetype)
+  end
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(opts.args)
@@ -343,16 +352,32 @@ local function get_content(opts, callback)
       end)
       return
     end
-    if vim.fn.filereadable(file_path) == 0 then
-      error("File not found or not readable: " .. file_path)
+    if vim.fn.isdirectory(file_path) == 1 then
+      local function add_files_recursively(dir)
+        local handle = vim.loop.fs_scandir(dir)
+        if not handle then return end
+
+        while true do
+          local name, type = vim.loop.fs_scandir_next(handle)
+          if not name then break end
+
+          local full_path = vim.fn.fnameescape(dir .. '/' .. name)
+          if type == 'file' then
+            add_file(full_path)
+          elseif type == 'directory' then
+            add_files_recursively(dir .. '/' .. name)
+          end
+        end
+      end
+
+      add_files_recursively(file_path)
+    else
+      add_file(file_path)
     end
-    content = table.concat(vim.fn.readfile(file_path), "\n")
-    relative_path = vim.fn.fnamemodify(file_path, ":.")
-    filetype = vim.filetype.match({ filename = file_path })
   else
     local current_buf = vim.api.nvim_get_current_buf()
-    filetype = vim.api.nvim_get_option_value("filetype", { buf = current_buf })
-    relative_path = vim.fn.expand("%:.")
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = current_buf })
+    local relative_path = vim.fn.expand("%:.")
     local start_line, end_line
     if opts.range == 2 then
       start_line = opts.line1 - 1
@@ -365,10 +390,10 @@ local function get_content(opts, callback)
     if #lines == 0 then
       error("No content to add. The buffer or selection is empty.")
     end
-    content = table.concat(lines, "\n")
-  end
+    local content = table.concat(lines, "\n")
 
-  callback(content, relative_path, filetype)
+    callback(content, relative_path, filetype)
+  end
 end
 
 vim.api.nvim_create_user_command("Add", function(opts)

@@ -55,6 +55,7 @@ COMMANDS                                                 *llm-sidekick-commands*
 :Add [file|url]     Adds content to the last Ask buffer. Can add content from:
                     - Current buffer (entire or selected range)
                     - Specified file path
+                    - Directory path (recursively includes all files)
                     - URL to documentation or other web content
                     Must be used after an :Ask or :Code command.
 
