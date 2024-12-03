@@ -1,4 +1,7 @@
 # LLM Sidekick
+- [ ] Add dirs
+- [ ] Adding files and dirs should replace files in editor context
+- [ ] Adding files should rerender the system prompt w/ all filetypes in the editor context
 - [ ] Set default open mode: edit, split, vsplit, tab
 - [ ] Better Amazon Bedrock support
 - [ ] `README.md`
