@@ -158,11 +158,7 @@ local function render_snippet(relative_path, content, code)
 end
 
 local function render_editor_context(snippets)
-  return string.format([[
-<editor_context>
-%s
-</editor_context>
-]], snippets)
+  return "<editor_context>\n" .. snippets .. "\n</editor_context>"
 end
 
 local function is_file_prompt(bufnr)
