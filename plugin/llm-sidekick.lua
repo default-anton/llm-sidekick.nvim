@@ -293,9 +293,11 @@ local ask_command = function(cmd_opts)
     -- Enter insert mode at the end of the line
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('A', true, false, true), 'n', false)
 
-    vim.schedule(function()
-      bedrock.start_web_server()
-    end)
+    if vim.startswith(model, "anthropic.") then
+      vim.schedule(function()
+        bedrock.start_web_server()
+      end)
+    end
   end
 end
 
