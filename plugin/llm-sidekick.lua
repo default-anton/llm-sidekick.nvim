@@ -54,8 +54,7 @@ vim.api.nvim_create_autocmd("DirChanged", {
 
 local function set_last_ask_buffer()
   local current_buf = vim.api.nvim_get_current_buf()
-  local is_ask_buffer = pcall(vim.api.nvim_buf_get_var, current_buf, "is_llm_sidekick_ask_buffer")
-  if is_ask_buffer then
+  if vim.b[current_buf].is_llm_sidekick_ask_buffer then
     vim.g.llm_sidekick_last_ask_buffer = current_buf
   end
 end
@@ -271,7 +270,7 @@ local ask_command = function(cmd_opts)
     end
 
     local buf = vim.api.nvim_create_buf(true, false)
-    vim.api.nvim_buf_set_var(buf, "is_llm_sidekick_ask_buffer", true)
+    vim.b[buf].is_llm_sidekick_ask_buffer = true
     vim.g.llm_sidekick_last_ask_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if cmd_opts.include_modifications then
