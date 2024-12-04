@@ -1,4 +1,5 @@
 local message_types = require "llm-sidekick.message_types"
+local fs = require "llm-sidekick.fs"
 
 local M = {}
 
@@ -271,6 +272,13 @@ function M.ask(prompt_bufnr)
       end
     end
   end)
+end
+
+---Read the entire contents of a file
+---@param path string The path to the file to read
+---@return string content The file contents or an empty string if file cannot be opened
+function M.read_file(path)
+  return fs.read_file(path) or ""
 end
 
 return M

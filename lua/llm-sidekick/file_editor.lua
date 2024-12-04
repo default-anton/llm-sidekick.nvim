@@ -1,4 +1,5 @@
 local function apply_file_operation(file_path, search, replace)
+  local fs = require("llm-sidekick.fs")
   local trimmed_search = vim.trim(search)
   local trimmed_replace = vim.trim(replace)
 
@@ -40,7 +41,10 @@ local function apply_file_operation(file_path, search, replace)
     end
   else
     -- Modify existing file
-    local content = table.concat(vim.fn.readfile(file_path), "\n")
+    local content = fs.read_file(file_path)
+    if not content then
+      error(string.format("Failed to read file '%s'", file_path))
+    end
     -- Find the exact string match
     local start_pos, end_pos = content:find(search, 1, true)
     if not start_pos then

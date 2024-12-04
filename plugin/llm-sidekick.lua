@@ -7,6 +7,7 @@ vim.g.llm_sidekick_last_ask_buffer = nil
 
 local M = {}
 
+local fs = require "llm-sidekick.fs"
 local bedrock = require "llm-sidekick.bedrock"
 local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
@@ -336,7 +337,10 @@ local function get_content(opts, callback)
       return
     end
 
-    local content = table.concat(vim.fn.readfile(file_path), "\n")
+    local content = fs.read_file(file_path)
+    if not content then
+      error(string.format("Failed to read file '%s'", file_path))
+    end
     local relative_path = vim.fn.fnamemodify(file_path, ":.")
     local filetype = vim.filetype.match({ filename = file_path })
     callback(content, relative_path, filetype)
