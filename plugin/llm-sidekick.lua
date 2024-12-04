@@ -195,7 +195,6 @@ local ask_command = function(cmd_opts)
   return function(opts)
     local filetype = vim.api.nvim_get_option_value("filetype", { buf = 0 })
     local language = get_filetype_config(filetype)
-
     local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
@@ -267,9 +266,11 @@ local ask_command = function(cmd_opts)
 
     local buf = vim.api.nvim_create_buf(true, false)
     vim.b[buf].is_llm_sidekick_ask_buffer = true
+    vim.b[buf].llm_sidekick_filetypes = vim.tbl_extend("force", vim.b[buf].llm_sidekick_filetypes or {}, { [filetype] = true })
+    vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
     vim.g.llm_sidekick_last_ask_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
-    if cmd_opts.include_modifications then
+    if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
     end
     open_buffer_in_mode(buf, open_mode)
@@ -393,6 +394,88 @@ local function get_content(opts, callback)
   end
 end
 
+local function replace_system_prompt(ask_buf)
+  local model = ""
+  local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
+  for _, line in ipairs(lines) do
+    local match = line:match("^MODEL:(.+)$")
+    if match then
+      model = vim.trim(match)
+      break
+    end
+  end
+
+  if model == "" then
+    error("No model specified in the buffer")
+  end
+
+  local guidelines = ""
+  local core_technologies = ""
+  for _, filetype in ipairs(vim.tbl_keys(vim.b[ask_buf].llm_sidekick_filetypes)) do
+    local language = get_filetype_config(filetype)
+    if vim.trim(language.guidelines or "") ~= "" then
+      guidelines = guidelines .. "\n\n" .. language.guidelines
+    end
+    if vim.trim(language.technologies or "") ~= "" then
+      core_technologies = core_technologies .. "\n\n" .. language.technologies
+    end
+  end
+
+  if vim.startswith(model, "o1") then
+    guidelines = guidelines:gsub("Claude", "You")
+  end
+
+  guidelines = vim.trim(guidelines)
+  core_technologies = vim.trim(core_technologies)
+
+  -- Find SYSTEM prompt
+  local system_start = nil
+  for i, line in ipairs(lines) do
+    if vim.startswith(line, "SYSTEM:") then
+      system_start = i
+      break
+    end
+  end
+  if not system_start then
+    return
+  end
+
+  -- Find USER prompt
+  local user_start = nil
+  for i, line in ipairs(lines) do
+    if vim.startswith(line, "USER:") then
+      user_start = i
+      break
+    end
+  end
+
+  local guidelines_start = nil
+  local guidelines_end = nil
+  local core_tech_start = nil
+  local core_tech_end = nil
+
+  for i = system_start, (user_start and user_start - 1 or #lines) do
+    local line = lines[i]
+    if line:match("^<guidelines>$") then
+      guidelines_start = i + 1
+    elseif line:match("^</guidelines>$") then
+      guidelines_end = i - 1
+    elseif line:match("^<core_technologies>$") then
+      core_tech_start = i + 1
+    elseif line:match("^</core_technologies>$") then
+      core_tech_end = i - 1
+    end
+  end
+
+  if guidelines_start and guidelines_end and guidelines_start < guidelines_end then
+    vim.api.nvim_buf_set_lines(ask_buf, guidelines_start - 1, guidelines_end, false, vim.split(guidelines, "\n"))
+  end
+
+  if core_tech_start and core_tech_end and core_tech_start < core_tech_end then
+    vim.api.nvim_buf_set_lines(ask_buf, core_tech_start - 1, core_tech_end, false, vim.split(core_technologies, "\n"))
+  end
+end
+
 vim.api.nvim_create_user_command("Add", function(opts)
   local ask_buf = vim.g.llm_sidekick_last_ask_buffer
   if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_ask_buffer then
@@ -401,6 +484,9 @@ vim.api.nvim_create_user_command("Add", function(opts)
   end
 
   get_content(opts, function(content, relative_path, filetype)
+    vim.b[ask_buf].llm_sidekick_filetypes = vim.tbl_extend("force", vim.b[ask_buf].llm_sidekick_filetypes or {},
+      { [filetype] = true })
+    replace_system_prompt(ask_buf)
     local language = get_filetype_config(filetype)
     local snippet = render_snippet(relative_path, content, language.code)
     -- Find the appropriate insertion point

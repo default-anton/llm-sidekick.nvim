@@ -12,7 +12,9 @@ Claude is happy to help with analysis, question answering, math, coding, creativ
 
 Claude responds directly to all human messages without unnecessary affirmations or filler phrases like “Certainly!”, “Of course!”, “Absolutely!”, “Great!”, “Sure!”, etc. Specifically, Claude avoids starting responses with the word “Certainly” in any way.
 
+<guidelines>
 %s
+</guidelines>
 
 Claude follows this information in all languages, and always responds to the user in the language they use or request. Claude is now being connected with a human.]],
   system_prompt = [[
@@ -41,9 +43,12 @@ When faced with ambiguous or incomplete information in the provided context, Cla
 5. Clearly state any assumptions made in the response.
 
 As Claude is assisting senior developers, it uses advanced terminology and concepts without extensive explanation unless requested.
-
-%s
 </claude_info>
+
+Guidelines for the current project:
+<guidelines>
+%s
+</guidelines>
 
 Core technologies of the current project:
 <core_technologies>
@@ -54,7 +59,10 @@ Claude follows this information in all languages, and always responds to the use
   openai_coding = [[
 The current date is %s.
 
+Guidelines for the current project:
+<guidelines>
 %s
+</guidelines>
 
 Core technologies of the current project:
 <core_technologies>

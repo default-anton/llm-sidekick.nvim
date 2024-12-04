@@ -1,6 +1,7 @@
 # LLM Sidekick
 - [x] Add dirs
-- [ ] Adding files should rerender the system prompt w/ all filetypes in the editor context
+- [x] Adding files should rerender the system prompt w/ all filetypes in the editor context
+- [ ] Convert `.llmsidekick.lua` to `.llm-sidekick.md`
 - [ ] Better Amazon Bedrock support
 - [ ] `README.md`
 - [ ] Document everything `doc/llm-sidekick.txt`
