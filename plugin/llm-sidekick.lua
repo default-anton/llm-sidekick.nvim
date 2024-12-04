@@ -421,14 +421,19 @@ vim.api.nvim_create_user_command("Add", function(opts)
       end
     end
 
+    local insert_start, insert_end = insert_point, insert_point
     -- If we didn't find a </editor_context> tag, create a new <editor_context> section
-    if insert_point == ask_buf_line_count then
-      snippet = "Here is what I'm working on:\n" .. render_editor_context(snippet)
-      insert_point = last_user_line
+    if insert_start == ask_buf_line_count then
+      snippet = "USER: Here is what I'm working on:\n" .. render_editor_context(snippet)
+      insert_start = last_user_line - 1
+      insert_end = last_user_line
+      local line = vim.api.nvim_buf_get_lines(ask_buf, last_user_line - 1, last_user_line, false)[1]
+      local _, end_idx = string.find(line, "USER:")
+      snippet = snippet .. "\n" .. vim.trim(line:sub(end_idx + 1))
     end
 
     local fragment_lines = vim.split(snippet, "\n")
-    vim.api.nvim_buf_set_lines(ask_buf, insert_point, insert_point, false, fragment_lines)
+    vim.api.nvim_buf_set_lines(ask_buf, insert_start, insert_end, false, fragment_lines)
     vim.api.nvim_buf_call(ask_buf, function()
       fold_stuff(ask_buf)
     end)
