@@ -396,7 +396,8 @@ local function get_content(opts, callback)
 end
 
 vim.api.nvim_create_user_command("Add", function(opts)
-  if not vim.g.llm_sidekick_last_ask_buffer or not vim.api.nvim_buf_is_valid(vim.g.llm_sidekick_last_ask_buffer) then
+  local ask_buf = vim.g.llm_sidekick_last_ask_buffer
+  if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_ask_buffer then
     vim.api.nvim_err_writeln("No valid Ask buffer found. Please run the Ask command first.")
     return
   end
@@ -405,7 +406,6 @@ vim.api.nvim_create_user_command("Add", function(opts)
     local language = get_filetype_config(filetype)
     local snippet = render_snippet(relative_path, content, language.code)
     -- Find the appropriate insertion point
-    local ask_buf = vim.g.llm_sidekick_last_ask_buffer
     local ask_buf_line_count = vim.api.nvim_buf_line_count(ask_buf)
     local insert_point = ask_buf_line_count
     local last_user_line = 1
