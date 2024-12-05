@@ -2,6 +2,7 @@
 - [x] Add dirs
 - [x] Adding files should rerender the system prompt w/ all filetypes in the editor context
 - [x] Simplify `.llmsidekick.lua`. Get rid of per-filetype config.
+- [x] `:Chat` command
 - [ ] Better Amazon Bedrock support
 - [ ] `README.md`
 - [ ] Document everything `doc/llm-sidekick.txt`
