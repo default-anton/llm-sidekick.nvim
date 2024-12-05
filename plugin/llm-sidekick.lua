@@ -11,7 +11,6 @@ local fs = require "llm-sidekick.fs"
 local bedrock = require "llm-sidekick.bedrock"
 local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
-local default_filetypes = require "llm-sidekick.filetypes"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local current_project_config = {}
@@ -28,23 +27,20 @@ local function load_project_config()
   local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
   if vim.fn.filereadable(project_config_path) == 1 then
     local ok, config = pcall(dofile, project_config_path)
-    if ok and type(config) == "table" then
-      current_project_config = config
-    else
-      vim.api.nvim_err_writeln("Invalid .llmsidekick.lua file. Expected a table.")
+    if not ok then
+      error("Failed to load project configuration: " .. project_config_path)
     end
+
+    vim.validate({ config = { config, "table" } })
+    vim.validate({
+      guidelines = { config.guidelines, "string", true },
+      technologies = { config.technologies, "string", true },
+    })
+    current_project_config = config
   end
 end
 
 load_project_config()
-
-local function get_filetype_config(ft)
-  if current_project_config and current_project_config.filetypes and current_project_config.filetypes[ft] then
-    return vim.tbl_deep_extend("force", default_filetypes[ft] or {}, current_project_config.filetypes[ft])
-  else
-    return default_filetypes[ft]
-  end
-end
 
 vim.api.nvim_create_augroup("LLMSidekickProjectConfig", { clear = true })
 vim.api.nvim_create_autocmd("DirChanged", {
@@ -149,13 +145,13 @@ local function fold_stuff(buf)
   fold_editor_context(buf)
 end
 
-local function render_snippet(relative_path, content, code)
+local function render_snippet(relative_path, content)
   return string.format([[
 %s
-```%s
+```
 %s
 ```
-]], relative_path, code, content)
+]], relative_path, content)
 end
 
 local function render_editor_context(snippets)
@@ -194,8 +190,6 @@ end
 
 local ask_command = function(cmd_opts)
   return function(opts)
-    local filetype = vim.api.nvim_get_option_value("filetype", { buf = 0 })
-    local language = get_filetype_config(filetype)
     local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
@@ -230,29 +224,36 @@ local ask_command = function(cmd_opts)
         prompt = prompt .. key:upper() .. ": " .. value .. "\n"
       end
 
-      local guidelines = cmd_opts.include_modifications and prompts.modifications or ""
-      if language.guidelines and vim.trim(language.guidelines) ~= "" then
-        guidelines = guidelines .. "\n\n" .. language.guidelines
-      end
+      local guidelines = vim.trim(current_project_config.guidelines or "")
       if vim.startswith(model, "o1") then
         guidelines = guidelines:gsub("Claude", "You")
       end
+      if guidelines == "" then
+        guidelines = "No guidelines provided."
+      end
 
-      if language.code == "" then
-        if not vim.startswith(model, "o1") then
-          prompt = prompt ..
-              "SYSTEM: " ..
-              string.format(vim.trim(prompts.generic_system_prompt), os.date("%B %d, %Y"), vim.trim(guidelines))
-        end
-      else
+      if cmd_opts.coding then
         local system_prompt = prompts.system_prompt
         if vim.startswith(model, "o1") then
           system_prompt = prompts.openai_coding
         end
-        prompt = prompt ..
-            "SYSTEM: " ..
-            string.format(vim.trim(system_prompt), os.date("%B %d, %Y"), vim.trim(guidelines),
-              vim.trim(language.technologies))
+        local args = {
+          os.date("%B %d, %Y"),
+          guidelines,
+          vim.trim(current_project_config.technologies or ""),
+        }
+        if not vim.startswith(model, "o1") then
+          table.insert(args, cmd_opts.include_modifications and vim.trim(prompts.modifications) or "")
+        end
+
+        prompt = prompt .. "SYSTEM: " .. string.format(vim.trim(system_prompt), unpack(args))
+      elseif not vim.startswith(model, "o1") then
+        local args = {
+          os.date("%B %d, %Y"),
+          vim.trim(guidelines),
+          cmd_opts.include_modifications and vim.trim(prompts.modifications) or "",
+        }
+        prompt = prompt .. "SYSTEM: " .. string.format(vim.trim(prompts.generic_system_prompt), unpack(args))
       end
 
       prompt = prompt .. "\nUSER: "
@@ -260,14 +261,13 @@ local ask_command = function(cmd_opts)
         local relative_path = vim.fn.expand("%")
         local context = table.concat(vim.api.nvim_buf_get_lines(0, range_start - 1, range_end, false), "\n")
         prompt = prompt .. "Here is what I'm working on:\n"
-        local snippet = render_snippet(relative_path, context, language.code)
+        local snippet = render_snippet(relative_path, context)
         prompt = prompt .. render_editor_context(snippet) .. "\n"
       end
     end
 
     local buf = vim.api.nvim_create_buf(true, false)
     vim.b[buf].is_llm_sidekick_ask_buffer = true
-    vim.b[buf].llm_sidekick_filetypes = vim.tbl_extend("force", vim.b[buf].llm_sidekick_filetypes or {}, { [filetype] = true })
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
     vim.g.llm_sidekick_last_ask_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
@@ -303,7 +303,7 @@ local ask_command = function(cmd_opts)
   end
 end
 
-vim.api.nvim_create_user_command("Ask", ask_command({ include_modifications = false }), {
+vim.api.nvim_create_user_command("Chat", ask_command({ coding = false, include_modifications = false }), {
   range = true,
   nargs = "*",
   complete = function(ArgLead, CmdLine, CursorPos)
@@ -317,7 +317,21 @@ vim.api.nvim_create_user_command("Ask", ask_command({ include_modifications = fa
   end,
 })
 
-vim.api.nvim_create_user_command("Code", ask_command({ include_modifications = true }), {
+vim.api.nvim_create_user_command("Ask", ask_command({ coding = true, include_modifications = false }), {
+  range = true,
+  nargs = "*",
+  complete = function(ArgLead, CmdLine, CursorPos)
+    local args = vim.split(CmdLine, "%s+")
+    local options = { "file" }
+    vim.list_extend(options, MODEL_TYPES)
+    vim.list_extend(options, OPEN_MODES)
+    return vim.tbl_filter(function(item)
+      return item:lower():match("^" .. ArgLead:lower()) and not vim.tbl_contains(args, item)
+    end, options)
+  end,
+})
+
+vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_modifications = true }), {
   range = true,
   nargs = "*",
   complete = function(ArgLead, CmdLine, CursorPos)
@@ -342,15 +356,14 @@ local function get_content(opts, callback)
       error(string.format("Failed to read file '%s'", file_path))
     end
     local relative_path = vim.fn.fnamemodify(file_path, ":.")
-    local filetype = vim.filetype.match({ filename = file_path })
-    callback(content, relative_path, filetype)
+    callback(content, relative_path)
   end
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(opts.args)
     if file_path:match("^https?://") then
       markdown.get_markdown(file_path, function(markdown_content)
-        callback(markdown_content, file_path, "markdown")
+        callback(markdown_content, file_path)
       end)
       return
     end
@@ -378,7 +391,6 @@ local function get_content(opts, callback)
     end
   else
     local current_buf = vim.api.nvim_get_current_buf()
-    local filetype = vim.api.nvim_get_option_value("filetype", { buf = current_buf })
     local relative_path = vim.fn.expand("%:.")
     local start_line, end_line
     if opts.range == 2 then
@@ -394,11 +406,12 @@ local function get_content(opts, callback)
     end
     local content = table.concat(lines, "\n")
 
-    callback(content, relative_path, filetype)
+    callback(content, relative_path)
   end
 end
 
-local function replace_system_prompt(ask_buf)
+-- TODO: Implement this
+local function replace_system_prompt(ask_buf, opts)
   local model = ""
   local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
   for _, line in ipairs(lines) do
@@ -412,25 +425,6 @@ local function replace_system_prompt(ask_buf)
   if model == "" then
     error("No model specified in the buffer")
   end
-
-  local guidelines = ""
-  local core_technologies = ""
-  for _, filetype in ipairs(vim.tbl_keys(vim.b[ask_buf].llm_sidekick_filetypes)) do
-    local language = get_filetype_config(filetype)
-    if vim.trim(language.guidelines or "") ~= "" then
-      guidelines = guidelines .. "\n\n" .. language.guidelines
-    end
-    if vim.trim(language.technologies or "") ~= "" then
-      core_technologies = core_technologies .. "\n\n" .. language.technologies
-    end
-  end
-
-  if vim.startswith(model, "o1") then
-    guidelines = guidelines:gsub("Claude", "You")
-  end
-
-  guidelines = vim.trim(guidelines)
-  core_technologies = vim.trim(core_technologies)
 
   -- Find SYSTEM prompt
   local system_start = nil
@@ -452,32 +446,6 @@ local function replace_system_prompt(ask_buf)
       break
     end
   end
-
-  local guidelines_start = nil
-  local guidelines_end = nil
-  local core_tech_start = nil
-  local core_tech_end = nil
-
-  for i = system_start, (user_start and user_start - 1 or #lines) do
-    local line = lines[i]
-    if line:match("^<guidelines>$") then
-      guidelines_start = i + 1
-    elseif line:match("^</guidelines>$") then
-      guidelines_end = i - 1
-    elseif line:match("^<core_technologies>$") then
-      core_tech_start = i + 1
-    elseif line:match("^</core_technologies>$") then
-      core_tech_end = i - 1
-    end
-  end
-
-  if guidelines_start and guidelines_end and guidelines_start < guidelines_end then
-    vim.api.nvim_buf_set_lines(ask_buf, guidelines_start - 1, guidelines_end, false, vim.split(guidelines, "\n"))
-  end
-
-  if core_tech_start and core_tech_end and core_tech_start < core_tech_end then
-    vim.api.nvim_buf_set_lines(ask_buf, core_tech_start - 1, core_tech_end, false, vim.split(core_technologies, "\n"))
-  end
 end
 
 vim.api.nvim_create_user_command("Add", function(opts)
@@ -487,12 +455,8 @@ vim.api.nvim_create_user_command("Add", function(opts)
     return
   end
 
-  get_content(opts, function(content, relative_path, filetype)
-    vim.b[ask_buf].llm_sidekick_filetypes = vim.tbl_extend("force", vim.b[ask_buf].llm_sidekick_filetypes or {},
-      { [filetype] = true })
-    replace_system_prompt(ask_buf)
-    local language = get_filetype_config(filetype)
-    local snippet = render_snippet(relative_path, content, language.code)
+  get_content(opts, function(content, relative_path)
+    local snippet = render_snippet(relative_path, content)
     -- Find the appropriate insertion point
     local ask_buf_line_count = vim.api.nvim_buf_line_count(ask_buf)
     local insert_point = ask_buf_line_count

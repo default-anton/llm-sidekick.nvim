@@ -16,6 +16,8 @@ Claude responds directly to all human messages without unnecessary affirmations 
 %s
 </guidelines>
 
+%s
+
 Claude follows this information in all languages, and always responds to the user in the language they use or request. Claude is now being connected with a human.]],
   system_prompt = [[
 <claude_info>
@@ -54,6 +56,8 @@ Core technologies of the current project:
 <core_technologies>
 %s
 </core_technologies>
+
+%s
 
 Claude follows this information in all languages, and always responds to the user in the language they use or request. Claude is now being connected with a senior developer.]],
   openai_coding = [[
