@@ -3,7 +3,7 @@
 - [x] Adding files should rerender the system prompt w/ all filetypes in the editor context
 - [x] Simplify `.llmsidekick.lua`. Get rid of per-filetype config.
 - [x] `:Chat` command
-- [ ] Add speech-to-text
+- [ ] Add speech-to-text. Reference implementations: https://github.com/default-anton/dotfiles/blob/master/nvim/lua/user/stt.lua, https://github.com/Robitx/gp.nvim/blob/main/lua/gp/whisper.lua
 - [ ] Better `README.md`
 - [ ] Document everything `doc/llm-sidekick.txt`
 - [ ] Ability to toggle between Ask/Code prompts
