@@ -35,8 +35,19 @@ Configure the plugin by calling the setup function:
 ==============================================================================
 COMMANDS                                                 *llm-sidekick-commands*
 
+                                                        *:Chat*
+:Chat [args]        Opens a new buffer for general conversation with the LLM.
+                    Perfect for brainstorming, creative writing, or any
+                    non-technical discussions. Arguments can be:
+                    - Model type: smart (default), fast (quick responses),
+                      reasoning (complex problems)
+                    - Opening mode: tab (t), vsplit (v), split (s)
+                    - file (f): include entire current file
+
                                                         *:Ask*
-:Ask [args]         Opens a new buffer to ask a question to the LLM. Accepts an
+:Ask [args]         Opens a new buffer to ask software engineering and
+                    development-related questions. Uses a prompt optimized for
+                    technical discussions and problem-solving. Accepts an
                     optional range to include the selected code. Arguments can be:
                     - Model type: smart (default), fast (quick responses),
                       reasoning (complex problems)
@@ -73,3 +84,4 @@ Apache License, Version 2.0
 Copyright (c) 2024 Anton Kuzmenko
 
  vim:tw=78:ts=8:ft=help:norl:
+
