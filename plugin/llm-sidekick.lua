@@ -13,6 +13,7 @@ local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
+local speech_to_text = require "llm-sidekick.speech_to_text"
 local current_project_config = {}
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
@@ -465,6 +466,85 @@ local function replace_system_prompt(ask_buf, opts)
   end
 end
 
+local function create_stt_window()
+  local width = 50
+  local height = 3
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  local win_opts = {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = (vim.o.lines - height) / 2,
+    col = (vim.o.columns - width) / 2,
+    style = "minimal",
+    border = "rounded"
+  }
+  local winnr = vim.api.nvim_open_win(bufnr, false, win_opts)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+    "Recording... Press Enter to stop or q to cancel",
+    "",
+    "🎤 Recording in progress"
+  })
+  return bufnr, winnr
+end
+
+vim.api.nvim_create_user_command("Stt", function()
+  local mode = vim.api.nvim_get_mode().mode
+  local orig_winnr = vim.api.nvim_get_current_win()
+  local orig_bufnr = vim.api.nvim_get_current_buf()
+  local orig_pos = vim.api.nvim_win_get_cursor(orig_winnr)
+
+  local bufnr, winnr = create_stt_window()
+  vim.api.nvim_set_current_win(winnr)
+
+  local job
+  local cancel = function()
+    vim.api.nvim_win_close(winnr, true)
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+    if job and not job.is_shutdown then
+      vim.loop.kill(job.pid, vim.loop.constants.SIGKILL)
+    end
+  end
+
+  -- Create buffer-local keymap for the floating window
+  local opts = { noremap = true, silent = true, buffer = bufnr }
+  vim.keymap.set({ "n", "i" }, "q", function()
+    cancel()
+  end, opts)
+
+  vim.keymap.set({ "n", "i" }, "<CR>", function()
+    if job and not job.is_shutdown then
+      vim.loop.kill(job.pid, vim.loop.constants.SIGINT)
+    end
+  end, opts)
+
+  -- Start recording
+  job = speech_to_text(function(lines)
+    if vim.tbl_isempty(lines) then
+      return
+    end
+
+    vim.schedule(function()
+      cancel()
+
+      if mode == "i" then
+        vim.api.nvim_buf_set_text(orig_bufnr, orig_pos[1] - 1, orig_pos[2], orig_pos[1] - 1, orig_pos[2], lines)
+        -- Calculate new cursor position: same line, column position + length of inserted text
+        local inserted_text = table.concat(lines)
+        vim.api.nvim_win_set_cursor(orig_winnr, { orig_pos[1], orig_pos[2] + #inserted_text })
+      else
+        local line = vim.api.nvim_buf_get_lines(orig_bufnr, orig_pos[1] - 1, orig_pos[1], true)[1]
+        local new_line = line:sub(1, orig_pos[2]) .. table.concat(lines, "\n") .. line:sub(orig_pos[2] + 1)
+        vim.api.nvim_buf_set_lines(orig_bufnr, orig_pos[1] - 1, orig_pos[1], true, { new_line })
+        -- Move cursor to the end of inserted text
+        local inserted_text = table.concat(lines)
+        vim.api.nvim_win_set_cursor(orig_winnr, { orig_pos[1], orig_pos[2] + #inserted_text })
+      end
+    end)
+  end)
+  job:start()
+end, {})
+
 vim.api.nvim_create_user_command("Add", function(opts)
   local ask_buf = vim.g.llm_sidekick_last_ask_buffer
   if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_ask_buffer then
@@ -521,3 +601,4 @@ end, {
 })
 
 return M
+
