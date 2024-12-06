@@ -116,32 +116,49 @@ local function set_llm_sidekick_options()
   vim.opt_local.signcolumn = "no"
 end
 
--- Function to fold the contents of the <editor_context> tag in a given buffer
+-- Function to fold all editor context tags in a given buffer
 local function fold_editor_context(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local start_line, end_line
+  local contexts = {}
+  local current_start = nil
+
+  -- Find all editor context pairs
   for i, line in ipairs(lines) do
     if line:match("^<editor_context>") then
-      start_line = i
-      for j = i + 1, #lines do
-        if lines[j]:match("^</editor_context>") then
-          end_line = j
-          break
-        end
+      current_start = i
+    elseif line:match("^</editor_context>") and current_start then
+      -- Only create fold if there's content between tags
+      if i > current_start then
+        table.insert(contexts, { start = current_start, ["end"] = i })
       end
-      break
+      current_start = nil
     end
   end
-  if start_line and end_line and end_line > start_line then
-    vim.api.nvim_command(string.format("%d,%dfold", start_line, end_line))
+
+  -- Create folds for all found contexts
+  for _, context in ipairs(contexts) do
+    vim.api.nvim_command(string.format("%d,%dfold", context.start, context["end"]))
   end
 end
 
 local function fold_stuff(buf)
-  vim.api.nvim_set_option_value('foldmethod', 'manual', { scope = 'local', win = 0 })
+  vim.wo.foldmethod = 'manual'
   vim.cmd([[normal! zE]])
-  vim.cmd([[1,/^USER:/-1fold]])
+
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local user_line
+  for i, line in ipairs(lines) do
+    if line:match("^USER:") then
+      user_line = i
+      break
+    end
+  end
+
+  if user_line and user_line > 1 then
+    vim.cmd(string.format("1,%dfold", user_line - 1))
+  end
+
   fold_editor_context(buf)
 end
 
@@ -460,15 +477,22 @@ vim.api.nvim_create_user_command("Add", function(opts)
     -- Find the appropriate insertion point
     local ask_buf_line_count = vim.api.nvim_buf_line_count(ask_buf)
     local insert_point = ask_buf_line_count
-    local last_user_line = 1
+    local last_user_line = ask_buf_line_count
 
-    for i = 1, ask_buf_line_count do
+    -- Find the last USER: line
+    for i = ask_buf_line_count, 1, -1 do
       local line = vim.api.nvim_buf_get_lines(ask_buf, i - 1, i, false)[1]
       if line:match("^USER:") then
         last_user_line = i
+        break
       end
-      if line:match("^<editor_context>") then
-        insert_point = i
+    end
+
+    -- Find the editor_context after the last user line
+    for i = last_user_line, ask_buf_line_count do
+      local line = vim.api.nvim_buf_get_lines(ask_buf, i - 1, i, false)[1]
+      if line:match("^</editor_context>") then
+        insert_point = i - 1
         break
       end
     end
