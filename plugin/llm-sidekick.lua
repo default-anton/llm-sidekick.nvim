@@ -29,7 +29,7 @@ local function load_project_config()
   if vim.fn.filereadable(project_config_path) == 1 then
     local ok, config = pcall(dofile, project_config_path)
     if not ok then
-      error("Failed to load project configuration: " .. project_config_path)
+      error("Failed to load project configuration: " .. vim.inspect(config))
     end
 
     vim.validate({ config = { config, "table" } })
