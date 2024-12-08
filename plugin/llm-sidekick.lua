@@ -499,12 +499,25 @@ vim.api.nvim_create_user_command("Stt", function()
 
   local job
   local cancel = function()
-    vim.api.nvim_win_close(winnr, true)
-    vim.api.nvim_buf_delete(bufnr, { force = true })
+    if vim.api.nvim_win_is_valid(winnr) then
+      vim.api.nvim_win_close(winnr, true)
+    end
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
     if job and not job.is_shutdown then
       vim.loop.kill(job.pid, vim.loop.constants.SIGKILL)
     end
   end
+
+  -- Create autocmd to handle window close
+  vim.api.nvim_create_autocmd("WinClosed", {
+    buffer = bufnr,
+    callback = function()
+      cancel()
+    end,
+    once = true,
+  })
 
   -- Create buffer-local keymap for the floating window
   local opts = { noremap = true, silent = true, buffer = bufnr }
@@ -601,4 +614,3 @@ end, {
 })
 
 return M
-
