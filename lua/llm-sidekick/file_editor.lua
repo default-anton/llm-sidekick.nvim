@@ -1,5 +1,4 @@
-local function apply_file_operation(file_path, search, replace)
-  local fs = require("llm-sidekick.fs")
+local function apply_file_operation(chat_bufnr, file_path, search, replace, block_lines)
   local trimmed_search = vim.trim(search)
   local trimmed_replace = vim.trim(replace)
 
@@ -80,6 +79,47 @@ local function apply_file_operation(file_path, search, replace)
       end
     end
   end
+
+  -- Find the block position in the buffer
+  local buf_lines = vim.api.nvim_buf_get_lines(chat_bufnr, 0, -1, false)
+  local block_start = nil
+  local block_end = nil
+
+  -- First line of block_lines should match exactly with a line in the buffer
+  local first_block_line = block_lines[1]
+  for i, line in ipairs(buf_lines) do
+    if line == first_block_line then
+      -- Found the start of our block
+      block_start = i
+      -- Check if subsequent lines match
+      local found_block = true
+      for j = 2, #block_lines do
+        if buf_lines[i + j - 1] ~= block_lines[j] then
+          found_block = false
+          break
+        end
+      end
+      if found_block then
+        block_end = i + #block_lines - 1
+        break
+      end
+    end
+  end
+
+  if not block_start or not block_end then
+    error("Could not find the modification block in the buffer")
+  end
+
+  -- Replace the modification block with changes_applied block
+  local changes_applied_lines = {
+    "@" .. file_path,
+    "<changes_applied>",
+  }
+  local replace_lines = vim.split(replace, "\n")
+  vim.list_extend(changes_applied_lines, replace_lines)
+  table.insert(changes_applied_lines, "</changes_applied>")
+
+  vim.api.nvim_buf_set_lines(chat_bufnr, block_start - 1, block_end, false, changes_applied_lines)
 end
 
 local function find_modification_block(cursor_line, lines)
@@ -244,7 +284,7 @@ local function create_apply_modifications_command(bufnr)
         vim.api.nvim_err_writeln("Invalid modification block format")
         return
       end
-      apply_file_operation(file_path, search, replace)
+      apply_file_operation(bufnr, file_path, search, replace, block_lines)
     end
   end, {
     desc = "Apply the changes to the file(s) based on modification block(s)",
