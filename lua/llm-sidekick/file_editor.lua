@@ -41,7 +41,7 @@ local function apply_file_operation(file_path, search, replace)
     end
   else
     -- Modify existing file
-    local content = fs.read_file(file_path)
+    local content = table.concat(vim.fn.readfile(file_path), "\n")
     if not content then
       error(string.format("Failed to read file '%s'", file_path))
     end
