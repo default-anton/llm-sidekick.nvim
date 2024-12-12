@@ -28,7 +28,7 @@ Configure the plugin by calling the setup function:
         -- Model configuration
         smart_model = "claude-3-5-sonnet-latest",  -- Model for balanced performance
         fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
-        reasoning_model = "o1-mini",               -- Model for complex reasoning
+        reasoning_model = "o1-preview",            -- Model for complex reasoning
     })
 <
 
@@ -55,7 +55,7 @@ COMMANDS                                                 *llm-sidekick-commands*
                     - file (f): include entire current file
 
                                                         *:Code*
-:Code [args]        Similar to :Ask but includes additional context for code
+:Code [args]        Similar to :Ask but includes additional context for file
                     modifications. Accepts the same arguments as :Ask:
                     - Model type: smart (default), fast (quick responses),
                       reasoning (complex problems)
@@ -72,10 +72,17 @@ COMMANDS                                                 *llm-sidekick-commands*
 
                                                         *:Apply*
 :Apply [all]        Applies file modifications from the LLM response. Only
-                    available in buffers created by :Ask or :Code commands.
+                    available in buffers created by the :Code command.
                     Without arguments, applies changes from the modification
                     block at cursor position. With "all" argument, applies all
                     changes from the current assistant response.
+
+                                                        *:Stt*
+:Stt                Starts speech-to-text recording at the current cursor
+                    position. Shows a floating window with recording status.
+                    Press Enter to stop recording and insert the transcribed
+                    text, or press q to cancel. Works in both normal and
+                    insert modes.
 
 ==============================================================================
 LICENSE                                                  *llm-sidekick-license*
