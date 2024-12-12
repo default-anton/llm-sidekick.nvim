@@ -1,4 +1,5 @@
 local Job = require('plenary.job')
+local curl = require('llm-sidekick.curl')
 
 local FILE_PATH = "/tmp/llm-sidekick-recording.mp3"
 local PROMPT =
@@ -22,9 +23,16 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 })
 
 local function record_voice(output_file)
+  if not os.getenv("GROQ_API_KEY") then
+    error("GROQ_API_KEY environment variable is not set")
+  end
+
   if vim.fn.executable("sox") == 0 then
     error("sox is not installed")
   end
+
+  -- Check if curl is installed
+  curl.get_curl_executable()
 
   local job = Job:new({
     command = 'sox',
@@ -50,7 +58,7 @@ end
 
 local function transcribe(callback)
   return Job:new({
-    command = "curl",
+    command = curl.get_curl_executable(),
     args = {
       "https://api.groq.com/openai/v1/audio/transcriptions",
       "-H", "Authorization: bearer " .. (os.getenv("GROQ_API_KEY") or ""),
@@ -79,7 +87,7 @@ end
 local function speech_to_text(callback)
   -- Cleanup any existing recording
   cleanup_recording()
-  
+
   local job = record_voice(FILE_PATH)
   job:after_success(function(_, _, signal)
     if signal == 0 then
