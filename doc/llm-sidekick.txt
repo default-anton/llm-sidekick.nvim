@@ -19,6 +19,33 @@ Using lazy.nvim:
     }
 <
 
+Required dependencies for Speech-to-Text functionality:
+
+1. System requirements:
+   - sox: Command-line audio recording tool
+   - curl: For API requests
+   - Working audio input device
+
+2. API requirements:
+   - Groq API key (set as GROQ_API_KEY environment variable)
+
+Installation example for common systems:
+
+Ubuntu/Debian:
+>
+    sudo apt-get install sox curl
+<
+
+macOS:
+>
+    brew install sox
+<
+
+Arch Linux:
+>
+    sudo pacman -S sox curl
+<
+
 ==============================================================================
 CONFIGURATION                                            *llm-sidekick-config*
 
