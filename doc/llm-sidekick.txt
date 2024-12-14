@@ -67,7 +67,7 @@ COMMANDS                                                 *llm-sidekick-commands*
                     Perfect for brainstorming, creative writing, or any
                     non-technical discussions. Arguments can be:
                     - Model type: smart (default), fast (quick responses),
-                      reasoning (complex problems)
+                      reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     - file (f): include entire current file
 
@@ -77,7 +77,7 @@ COMMANDS                                                 *llm-sidekick-commands*
                     technical discussions and problem-solving. Accepts an
                     optional range to include the selected code. Arguments can be:
                     - Model type: smart (default), fast (quick responses),
-                      reasoning (complex problems)
+                      reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     - file (f): include entire current file
 
@@ -85,7 +85,7 @@ COMMANDS                                                 *llm-sidekick-commands*
 :Code [args]        Similar to :Ask but includes additional context for file
                     modifications. Accepts the same arguments as :Ask:
                     - Model type: smart (default), fast (quick responses),
-                      reasoning (complex problems)
+                      reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     - file (f): include entire current file
 

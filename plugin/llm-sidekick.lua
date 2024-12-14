@@ -22,7 +22,7 @@ local MODE_SHORTCUTS = {
   v = "vsplit",
   s = "split"
 }
-local MODEL_TYPES = { "smart", "fast", "reasoning" }
+local MODEL_TYPES = { "smart", "fast", "reason" }
 
 local function load_project_config()
   local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
@@ -93,7 +93,7 @@ local function parse_ask_args(args)
       parsed.model = settings.get_smart_model()
     elseif arg == "fast" then
       parsed.model = settings.get_fast_model()
-    elseif arg == "reasoning" then
+    elseif arg == "reason" then
       parsed.model = settings.get_reasoning_model()
     elseif vim.tbl_contains(OPEN_MODES, arg) then
       parsed.open_mode = arg
