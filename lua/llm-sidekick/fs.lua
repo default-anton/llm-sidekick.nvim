@@ -4,11 +4,9 @@ local M = {}
 ---@param path string The path to the file to read
 ---@return string|nil content The file contents or nil if file cannot be opened
 function M.read_file(path)
-  local file = io.open(path, "r")
-  if not file then return nil end
-  local content = file:read("*all")
-  file:close()
-  return content
+  local ok, lines = pcall(vim.fn.readfile, path)
+  if not ok then return nil end
+  return table.concat(lines, "\n")
 end
 
 return M

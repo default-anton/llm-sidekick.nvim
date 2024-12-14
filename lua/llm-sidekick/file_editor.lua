@@ -1,3 +1,5 @@
+local fs = require "llm-sidekick.fs"
+
 local function apply_file_operation(chat_bufnr, file_path, search, replace, block_lines)
   local trimmed_search = vim.trim(search)
   local trimmed_replace = vim.trim(replace)
@@ -40,7 +42,7 @@ local function apply_file_operation(chat_bufnr, file_path, search, replace, bloc
     end
   else
     -- Modify existing file
-    local content = table.concat(vim.fn.readfile(file_path), "\n")
+    local content = fs.read_file(file_path)
     if not content then
       error(string.format("Failed to read file '%s'", file_path))
     end
