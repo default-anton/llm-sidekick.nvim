@@ -114,6 +114,11 @@ Important guidelines for using this format:
     - Break down the changes into multiple, smaller modifications.
     - Use separate @path/to/file blocks for each non-contiguous section.
 15. Before each file modification, write a brief plan inside <plan> tags. This plan should explain the approach for applying the changes and any considerations specific to that modification.
+16. When changes are successfully applied, the modification block transforms to use <changes_applied> tags instead of the search/replace format:
+    @path/to/file
+    <changes_applied>
+    [the content that was in the <replace> tag]
+    </changes_applied>
 
 Examples:
 
