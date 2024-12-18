@@ -72,6 +72,29 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
+## Supported Models
+
+### Anthropic Claude Models
+- `claude-3-5-sonnet-latest`
+- `claude-3-5-haiku-latest`
+
+### OpenAI Models
+- `gpt-4o`
+- `gpt-4o-2024-11-20`
+- `gpt-4o-2024-08-06`
+- `gpt-4o-2024-05-13`
+- `gpt-4o-mini`
+
+### O1 Models
+- `o1`
+- `o1-mini`
+- `o1-preview`
+
+### Ollama Models
+- `ollama-qwen2.5-coder:1.5b`
+
+Each model is configured with specific token limits and temperature settings optimized for different use cases.
+
 ## Usage
 
 ## Commands
