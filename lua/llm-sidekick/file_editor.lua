@@ -259,14 +259,14 @@ local function create_apply_modifications_command(bufnr)
     local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-    local block_start_candidates = { cursor_line }
+    local block_start_candidates = {}
     if is_all then
       local assistant_start_line = find_closest_assistant_start_line(cursor_line, lines)
       if assistant_start_line == -1 then
         vim.api.nvim_err_writeln("No assistant block found")
         return
       end
-      local assistant_end_line = find_assistant_end_line(assistant_start_line, lines)
+      local assistant_end_line = find_assistant_end_line(cursor_line, lines)
       block_start_candidates = find_candidate_modification_blocks(assistant_start_line, assistant_end_line, lines)
     end
 
