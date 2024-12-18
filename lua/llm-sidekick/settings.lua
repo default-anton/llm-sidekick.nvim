@@ -1,8 +1,8 @@
 local M = {}
 
 local defaults = {
-  smart_model = "anthropic.claude-3-5-sonnet-20241022-v2:0",
-  fast_model = "anthropic.claude-3-5-haiku-20241022-v1:0",
+  smart_model = "claude-3-5-sonnet-latest",
+  fast_model = "claude-3-5-haiku-latest",
   reasoning_model = "o1",
 }
 
