@@ -104,7 +104,7 @@ Opens a new buffer for code-related tasks. Handles file operations like creating
 - Arguments:
   - Model type: `smart` (default), `fast` (quick responses), `reason` (complex problems)
   - Opening mode: `t` (tab), `v` (vsplit), `s` (split)
-  - `f`: include entire current file
+  - `f` (file): include entire current file
   - Range: Visual selection to include specific code
 
 #### `:Ask [args]`
