@@ -271,8 +271,7 @@ local function create_apply_modifications_command(bufnr)
     end
 
     if vim.tbl_isempty(block_start_candidates) then
-      vim.api.nvim_err_writeln("No modification block found")
-      return
+      block_start_candidates = { cursor_line }
     end
 
     for _, block_start_candidate in ipairs(block_start_candidates) do
