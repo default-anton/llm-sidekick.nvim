@@ -6,12 +6,12 @@ The missing code companion for Neovim. Fast, hackable, and stays out of your way
 
 llm-sidekick.nvim turns your editor into a powerful code companion:
 
-`:Code` - Write, refactor, and modify multiple files
-`:Apply` - Apply suggested changes incrementally or all at once  
-`:Ask` - Technical discussions about code, debugging, and architecture
-`:Add` - Add files, code, or URLs (any web content) to your conversation
-`:Chat` - Have open-ended discussions for brainstorming and creative tasks
-`:Stt` - Use speech-to-text input instead of typing
+- `:Code` - Write, refactor, and modify multiple files
+- `:Apply` - Apply suggested changes incrementally or all at once
+- `:Ask` - Technical discussions about code, debugging, and architecture
+- `:Add` - Add files, code, or URLs (any web content) to your conversation
+- `:Chat` - Have open-ended discussions for brainstorming and creative tasks
+- `:Stt` - Use speech-to-text input instead of typing
 
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
 
@@ -122,5 +122,5 @@ See `:help llm-sidekick` for detailed documentation.
 
 ## License
 
-Apache License, Version 2.0  
+Apache License, Version 2.0
 Copyright (c) 2024 Anton Kuzmenko
