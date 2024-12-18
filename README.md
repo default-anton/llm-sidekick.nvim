@@ -144,7 +144,66 @@ Recommended keybinding for insert mode:
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
 ```
 
-See `:help llm-sidekick` for detailed documentation.
+## Project Configuration
+
+llm-sidekick.nvim can be configured per project to provide context-aware assistance.
+
+Create a `.llmsidekick.lua` file in your project root to define project-specific guidelines and technologies:
+
+````lua
+local lsk = require("llm-sidekick")
+
+local guidelines = string.format([[
+General information about the project:
+```markdown
+%s
+```
+
+Design documentation from ./DESIGN.md:
+```markdown
+%s
+```
+
+Tailwind CSS configuration file ./tailwind.config.js:
+```javascript
+%s
+```]],
+  lsk.read_file("APP.md"),
+  lsk.read_file("DESIGN.md"),
+  lsk.read_file("tailwind.config.js")
+)
+
+local technologies = [[
+Frontend:
+- Tailwind CSS
+  - @tailwindcss/container-queries
+  - @tailwindcss/forms
+  - @tailwindcss/typography
+- PostCSS
+  - autoprefixer
+- React (18.3)
+- Vite (vite_rails)
+- Inertia.js Rails
+  - inertia_rails-contrib
+- Heroicons (React)
+
+Backend:
+- Ruby on Rails (8.0)
+- sqlite3
+]]
+
+return {
+  guidelines = guidelines,
+  technologies = technologies,
+}
+````
+
+This configuration allows you to:
+- Provide project-specific context to the LLM
+- Include design documents and architectural decisions
+- Define technology stack and constraints
+- Load configuration from external files
+- Customize the LLM's behavior based on your project's needs
 
 ## License
 
