@@ -4,11 +4,16 @@ The missing code companion for Neovim. Fast, hackable, and stays out of your way
 
 ## Features
 
-- Chat with LLMs directly in Neovim
-- Smart context handling for code-related queries
-- Speech-to-text support
-- Apply code modifications suggested by LLMs
-- Multiple model support (Claude, OpenAI)
+llm-sidekick.nvim turns your editor into a powerful code companion:
+
+`:Code` - Write, refactor, and modify multiple files
+`:Apply` - Apply suggested changes incrementally or all at once  
+`:Ask` - Technical discussions about code, debugging, and architecture
+`:Add` - Add files, code, or URLs (any web content) to your conversation
+`:Chat` - Have open-ended discussions for brainstorming and creative tasks
+`:Stt` - Use speech-to-text input instead of typing
+
+The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
 
 ## Requirements
 
@@ -73,20 +78,21 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ### Core Commands
 
-#### `:Chat [args]`
-Opens a new buffer for general conversation with the LLM. Perfect for brainstorming, creative writing, or any non-technical discussions.
+#### `:Code [args]`
+Opens a new buffer for code-related tasks. Handles file operations like creating, modifying, or deleting files.
 - Arguments:
   - Model type: `smart` (default), `fast` (quick responses), `reason` (complex problems)
   - Opening mode: `t` (tab), `v` (vsplit), `s` (split)
   - `f`: include entire current file
+  - Range: Visual selection to include specific code
 
 #### `:Ask [args]`
-Opens a new buffer to ask software engineering and development-related questions. Uses a prompt optimized for technical discussions and problem-solving. Accepts an optional range to include the selected code.
-- Arguments: Same as `:Chat`
+Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.
+- Arguments: Same as `:Code`
 
-#### `:Code [args]`
-Similar to `:Ask` but includes additional context for file modifications.
-- Arguments: Same as `:Chat`
+#### `:Chat [args]`
+Opens a new buffer for general conversation with the LLM. Perfect for brainstorming, creative writing, or any non-technical discussions. Supports range selection for including text context.
+- Arguments: Same as `:Code`
 
 #### `:Add [file|url]`
 Adds content to the last chat with llm-sidekick. Can add content from:
@@ -99,9 +105,15 @@ Adds content to the last chat with llm-sidekick. Can add content from:
 Must be used after an `:Ask`, `:Code`, or `:Chat` command.
 
 #### `:Apply [all]`
-Applies file modifications from the LLM response. Only available in buffers created by the `:Code` command.
+Applies file modifications from the LLM response. Handles complex operations across multiple files, including:
+- Creating new files and directories
+- Modifying specific sections of existing files
+- Deleting files or code snippets
+- Applying changes to multiple files in a single operation
+
+Only available in buffers created by the `:Code` command.
 - Without arguments: applies changes from the modification block at cursor position
-- With `all`: applies all changes from the current assistant response
+- With `all`: applies all changes from the current assistant response, maintaining consistency across related modifications
 
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
