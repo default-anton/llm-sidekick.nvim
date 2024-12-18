@@ -118,6 +118,11 @@ Only available in buffers created by the `:Code` command.
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
 
+Recommended keybinding for insert mode:
+```lua
+vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
+```
+
 See `:help llm-sidekick` for detailed documentation.
 
 ## License
