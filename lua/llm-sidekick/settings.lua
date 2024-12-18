@@ -3,7 +3,7 @@ local M = {}
 local defaults = {
   smart_model = "anthropic.claude-3-5-sonnet-20241022-v2:0",
   fast_model = "anthropic.claude-3-5-haiku-20241022-v1:0",
-  reasoning_model = "o1-preview",
+  reasoning_model = "o1",
 }
 
 local settings = vim.deepcopy(defaults)

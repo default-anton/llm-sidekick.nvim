@@ -55,7 +55,7 @@ Configure the plugin by calling the setup function:
         -- Model configuration
         smart_model = "claude-3-5-sonnet-latest",  -- Model for balanced performance
         fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
-        reasoning_model = "o1-preview",            -- Model for complex reasoning
+        reasoning_model = "o1",                    -- Model for complex reasoning
     })
 <
 

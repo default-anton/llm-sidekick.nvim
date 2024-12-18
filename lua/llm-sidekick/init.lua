@@ -4,6 +4,10 @@ local fs = require "llm-sidekick.fs"
 local M = {}
 
 local MODELS = {
+  ["o1"] = {
+    max_tokens = 100000,
+    temperature = 0.0,
+  },
   ["claude-3-5-sonnet-latest"] = {
     max_tokens = 8192,
     temperature = 0.3,
@@ -234,7 +238,7 @@ function M.ask(prompt_bufnr)
   local client
   if vim.startswith(prompt.settings.model, "claude-") then
     client = require "llm-sidekick.anthropic".new()
-  elseif vim.startswith(prompt.settings.model, "o1-") or vim.startswith(prompt.settings.model, "gpt-") then
+  elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "gpt-") then
     client = require "llm-sidekick.openai".new()
   elseif vim.startswith(prompt.settings.model, "ollama-") then
     client = require "llm-sidekick.openai".new("http://localhost:11434/v1/chat/completions")
