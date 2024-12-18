@@ -15,25 +15,69 @@ Using lazy.nvim:
         'default-anton/llm-sidekick.nvim',
         dependencies = {
             'nvim-lua/plenary.nvim',
-        }
+        },
+        config = function()
+            require('llm-sidekick').setup({
+                smart_model = "claude-3-5-sonnet-latest",
+                fast_model = "claude-3-5-haiku-latest",
+                reasoning_model = "o1",
+            })
+        end,
     }
 <
 
-Required dependencies for Speech-to-Text functionality:
+System Requirements:
+1. curl: Required for API requests to language models
 
-1. System requirements:
-   - sox: Command-line audio recording tool
-   - curl: For API requests
-   - Working audio input device
-
-2. API requirements:
-   - Groq API key (set as GROQ_API_KEY environment variable)
-
-Installation example for common systems:
+Installation examples for curl:
 
 Ubuntu/Debian:
 >
-    sudo apt-get install sox curl
+    sudo apt-get install curl
+<
+
+macOS:
+>
+    brew install curl
+<
+
+Arch Linux:
+>
+    sudo pacman -S curl
+<
+
+API Requirements                                         *llm-sidekick-api-requirements*
+
+The following API keys are only required if you plan to use models from these
+specific providers:
+
+1. Anthropic API key (for Claude models):
+   Set one of these environment variables:
+   - LLM_SIDEKICK_ANTHROPIC_API_KEY
+   - ANTHROPIC_API_KEY
+
+2. OpenAI API key (for OpenAI models):
+   Set one of these environment variables:
+   - LLM_SIDEKICK_OPENAI_API_KEY
+   - OPENAI_API_KEY
+
+You only need to set up API keys for the providers whose models you intend to use.
+
+Speech-to-Text Requirements                              *llm-sidekick-stt-requirements*
+
+The following requirements are only needed if you plan to use the :Stt command
+for Speech-to-Text functionality. They are optional for the core plugin.
+
+1. System requirements:
+   - sox: Command-line audio recording tool
+   - Working audio input device
+   - Groq API key (set as GROQ_API_KEY environment variable) for Whisper model
+
+Installation examples for STT dependencies:
+
+Ubuntu/Debian:
+>
+    sudo apt-get install sox
 <
 
 macOS:
@@ -43,7 +87,7 @@ macOS:
 
 Arch Linux:
 >
-    sudo pacman -S sox curl
+    sudo pacman -S sox
 <
 
 ==============================================================================
@@ -53,7 +97,7 @@ Configure the plugin by calling the setup function:
 >
     require('llm-sidekick').setup({
         -- Model configuration
-        smart_model = "claude-3-5-sonnet-latest",  -- Model for balanced performance
+        smart_model = "claude-3-5-sonnet-latest",  -- Your go-to model
         fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
         reasoning_model = "o1",                    -- Model for complex reasoning
     })
