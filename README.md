@@ -84,8 +84,6 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `gpt-4o-2024-08-06`
 - `gpt-4o-2024-05-13`
 - `gpt-4o-mini`
-
-### O1 Models
 - `o1`
 - `o1-mini`
 - `o1-preview`
