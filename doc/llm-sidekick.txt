@@ -27,24 +27,25 @@ Using lazy.nvim:
 <
 
 System Requirements:
-1. curl: Required for API requests to language models
-2. jq: Required for JSON parsing in the plugin
+1. curl (for API requests)
+2. jq (for JSON parsing)
+3. stdbuf (for real-time output buffering)
 
 Installation examples for curl:
 
 Ubuntu/Debian:
 >
-    sudo apt-get install curl jq
+    sudo apt-get install curl jq coreutils
 <
 
 macOS:
 >
-    brew install curl jq
+    brew install curl jq coreutils
 <
 
 Arch Linux:
 >
-    sudo pacman -S curl jq
+    sudo pacman -S curl jq coreutils
 <
 
 API Requirements                                         *llm-sidekick-api-requirements*

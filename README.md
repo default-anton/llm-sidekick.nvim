@@ -20,9 +20,9 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 ### Core Requirements
 - Neovim >= 0.5.0
 - curl (for API requests)
-- jq
+- jq (for JSON parsing)
+- stdbuf (for real-time output buffering)
 - plenary.nvim
-- stdbuf
 
 #### Installing curl
 - Ubuntu/Debian: `sudo apt-get install curl jq coreutils`
