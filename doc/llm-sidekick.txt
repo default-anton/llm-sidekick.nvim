@@ -28,22 +28,23 @@ Using lazy.nvim:
 
 System Requirements:
 1. curl: Required for API requests to language models
+2. jq: Required for JSON parsing in the plugin
 
 Installation examples for curl:
 
 Ubuntu/Debian:
 >
-    sudo apt-get install curl
+    sudo apt-get install curl jq
 <
 
 macOS:
 >
-    brew install curl
+    brew install curl jq
 <
 
 Arch Linux:
 >
-    sudo pacman -S curl
+    sudo pacman -S curl jq
 <
 
 API Requirements                                         *llm-sidekick-api-requirements*
@@ -60,6 +61,11 @@ specific providers:
    Set one of these environment variables:
    - LLM_SIDEKICK_OPENAI_API_KEY
    - OPENAI_API_KEY
+
+3. Gemini API key (for Gemini models):
+   Set the following environment variable:
+   - LLM_SIDEKICK_GEMINI_API_KEY
+   - GEMINI_API_KEY
 
 You only need to set up API keys for the providers whose models you intend to use.
 

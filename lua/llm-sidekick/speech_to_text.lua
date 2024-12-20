@@ -1,5 +1,5 @@
 local Job = require('plenary.job')
-local curl = require('llm-sidekick.curl')
+local execs = require('llm-sidekick.executables')
 
 local FILE_PATH = "/tmp/llm-sidekick-recording.mp3"
 local PROMPT =
@@ -32,7 +32,7 @@ local function record_voice(output_file)
   end
 
   -- Check if curl is installed
-  curl.get_curl_executable()
+  execs.get_curl_executable()
 
   local job = Job:new({
     command = 'sox',
@@ -58,7 +58,7 @@ end
 
 local function transcribe(callback)
   return Job:new({
-    command = curl.get_curl_executable(),
+    command = execs.get_curl_executable(),
     args = {
       "https://api.groq.com/openai/v1/audio/transcriptions",
       "-H", "Authorization: bearer " .. (os.getenv("GROQ_API_KEY") or ""),

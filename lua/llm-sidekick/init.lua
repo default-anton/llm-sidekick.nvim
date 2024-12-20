@@ -60,6 +60,18 @@ local MODELS = {
     max_tokens = 16384,
     temperature = 0.5,
   },
+  ["gemini-exp-1206"] = {
+    max_tokens = 8192,
+    temperature = 1.0,
+  },
+  ["gemini-2.0-flash-exp"] = {
+    max_tokens = 8192,
+    temperature = 1.0,
+  },
+  ["gemini-2.0-flash-thinking-exp-1219"] = {
+    max_tokens = 8192,
+    temperature = 1.0,
+  },
   ["ollama-qwen2.5-coder:1.5b"] = {
     max_tokens = 8192,
     temperature = 0.2,
@@ -244,6 +256,8 @@ function M.ask(prompt_bufnr)
     client = require "llm-sidekick.openai".new("http://localhost:11434/v1/chat/completions")
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
     client = require "llm-sidekick.bedrock".new()
+  elseif vim.startswith(prompt.settings.model, "gemini") then
+    client = require "llm-sidekick.gemini".new()
   else
     error("Model not supported: " .. prompt.settings.model)
   end

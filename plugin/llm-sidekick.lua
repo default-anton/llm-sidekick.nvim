@@ -206,6 +206,18 @@ local function is_file_prompt(bufnr)
   return true
 end
 
+local function adapt_system_prompt_for(model, prompt)
+  if vim.startswith(model, "gemini") then
+    return prompt:gsub("Claude", "Gemini"):gsub("Anthropic", "Google DeepMind")
+  end
+
+  if vim.startswith(model, "o1") or vim.startswith(model, "gpt") then
+    return prompt:gsub("Claude", "GPT"):gsub("Anthropic", "OpenAI")
+  end
+
+  return prompt
+end
+
 local ask_command = function(cmd_opts)
   return function(opts)
     local parsed_args = parse_ask_args(opts.fargs)
@@ -243,9 +255,6 @@ local ask_command = function(cmd_opts)
       end
 
       local guidelines = vim.trim(current_project_config.guidelines or "")
-      if vim.startswith(model, "o1") then
-        guidelines = guidelines:gsub("Claude", "You")
-      end
       if guidelines == "" then
         guidelines = "No guidelines provided."
       end
@@ -264,14 +273,17 @@ local ask_command = function(cmd_opts)
           table.insert(args, cmd_opts.include_modifications and vim.trim(prompts.modifications) or "")
         end
 
-        prompt = prompt .. "SYSTEM: " .. string.format(vim.trim(system_prompt), unpack(args))
+        prompt = prompt ..
+            "SYSTEM: " .. adapt_system_prompt_for(model, string.format(vim.trim(system_prompt), unpack(args)))
       elseif not vim.startswith(model, "o1") then
         local args = {
           os.date("%B %d, %Y"),
           vim.trim(guidelines),
           cmd_opts.include_modifications and vim.trim(prompts.modifications) or "",
         }
-        prompt = prompt .. "SYSTEM: " .. string.format(vim.trim(prompts.generic_system_prompt), unpack(args))
+        prompt = prompt ..
+            "SYSTEM: " ..
+            adapt_system_prompt_for(model, string.format(vim.trim(prompts.generic_system_prompt), unpack(args)))
       end
 
       prompt = prompt .. "\nUSER: "

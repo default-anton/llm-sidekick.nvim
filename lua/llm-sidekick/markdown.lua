@@ -3,7 +3,7 @@ local Job = require("plenary.job")
 local function get_markdown(url, callback)
   callback = vim.schedule_wrap(callback)
 
-  local curl = require("llm-sidekick.curl").get_curl_executable()
+  local curl = require("llm-sidekick.executables").get_curl_executable()
   local output = {}
 
   Job:new({

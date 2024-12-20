@@ -46,4 +46,13 @@ function M.get_openai_api_key()
   return api_key
 end
 
+function M.get_gemini_api_key()
+  local api_key = vim.env.LLM_SIDEKICK_GEMINI_API_KEY or vim.env.GEMINI_API_KEY
+  if not api_key then
+    error("No API key found. Set LLM_SIDEKICK_GEMINI_API_KEY or GEMINI_API_KEY in your environment.")
+  end
+
+  return api_key
+end
+
 return M

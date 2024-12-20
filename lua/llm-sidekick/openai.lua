@@ -39,7 +39,7 @@ function openai:chat(messages, settings, callback)
     end
   end
 
-  local curl = require("llm-sidekick.curl").get_curl_executable()
+  local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {
     '-s',
     '--no-buffer',

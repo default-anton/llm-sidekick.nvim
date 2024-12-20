@@ -20,12 +20,14 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 ### Core Requirements
 - Neovim >= 0.5.0
 - curl (for API requests)
+- jq
 - plenary.nvim
+- stdbuf
 
 #### Installing curl
-- Ubuntu/Debian: `sudo apt-get install curl`
-- macOS: `brew install curl`
-- Arch Linux: `sudo pacman -S curl`
+- Ubuntu/Debian: `sudo apt-get install curl jq coreutils`
+- macOS: `brew install curl jq coreutils`
+- Arch Linux: `sudo pacman -S curl jq coreutils`
 
 ### API Requirements
 You only need to set up API keys for the providers whose models you intend to use:
@@ -39,6 +41,11 @@ Set one of these environment variables:
 Set one of these environment variables:
 - `LLM_SIDEKICK_OPENAI_API_KEY`
 - `OPENAI_API_KEY`
+
+#### Google Gemini Models
+Set one of these environment variables:
+- `LLM_SIDEKICK_GEMINI_API_KEY`
+- `GEMINI_API_KEY`
 
 ### Speech-to-Text Requirements (Optional)
 Required only if you plan to use the `:Stt` command:
@@ -87,6 +94,11 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `o1`
 - `o1-mini`
 - `o1-preview`
+
+### Google Gemini Models
+- Gemini Experimental 1206 `gemini-exp-1206`
+- Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
+- Gemini 2.0 Flash Thinking Experimental `gemini-2.0-flash-thinking-exp-1219`
 
 ### Ollama Models
 - `ollama-qwen2.5-coder:1.5b`

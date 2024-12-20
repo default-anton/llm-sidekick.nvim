@@ -89,7 +89,7 @@ function bedrock:chat(messages, settings, callback)
     end
   end
 
-  local curl = require("llm-sidekick.curl").get_curl_executable()
+  local curl = require("llm-sidekick.executables").get_curl_executable()
   local json_data = vim.json.encode(data)
   local args = {
     '-s',
