@@ -63,14 +63,17 @@ local MODELS = {
   ["gemini-exp-1206"] = {
     max_tokens = 8192,
     temperature = 1.0,
+    top_k = 64,
   },
   ["gemini-2.0-flash-exp"] = {
     max_tokens = 8192,
     temperature = 1.0,
+    top_k = 40,
   },
   ["gemini-2.0-flash-thinking-exp-1219"] = {
     max_tokens = 8192,
     temperature = 1.0,
+    top_k = 64,
   },
   ["ollama-qwen2.5-coder:1.5b"] = {
     max_tokens = 8192,
