@@ -114,31 +114,43 @@ Configure the plugin by calling the setup function:
 COMMANDS                                                 *llm-sidekick-commands*
 
                                                         *:Chat*
-:Chat [args]        Opens a new buffer for general conversation with the LLM.
+:Chat [args] [paths] Opens a new buffer for general conversation with the LLM.
                     Perfect for brainstorming, creative writing, or any
                     non-technical discussions. Arguments can be:
                     - Model type: smart (default), fast (quick responses),
                       reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
-                    - file (f): include entire current file
+                    File content can be included by passing paths to files or
+                    directories. Multiple file paths can be added. Example:
+                    `:Chat %` to include the current file, `:Chat file1.txt
+                    file2.lua` to include two specific files, or `:Chat %:h` to
+                    include all files in the current directory recursively.
 
                                                         *:Ask*
-:Ask [args]         Opens a new buffer to ask software engineering and
+:Ask [args] [paths]  Opens a new buffer to ask software engineering and
                     development-related questions. Uses a prompt optimized for
                     technical discussions and problem-solving. Accepts an
                     optional range to include the selected code. Arguments can be:
                     - Model type: smart (default), fast (quick responses),
                       reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
-                    - file (f): include entire current file
+                    File content can be included by passing paths to files or
+                    directories. Multiple file paths can be provided. Example:
+                    `:Ask %` to include the current file, `:Ask utils.py
+                    main.lua` to include two specific files, or `:Ask %:h` to
+                    include all files in the current directory recursively.
 
                                                         *:Code*
-:Code [args]        Similar to :Ask but includes additional context for file
+:Code [args] [paths] Similar to :Ask but includes additional context for file
                     modifications. Accepts the same arguments as :Ask:
                     - Model type: smart (default), fast (quick responses),
                       reason (complex problems)
                     - Opening mode: tab (t), vsplit (v), split (s)
-                    - file (f): include entire current file
+                    File content can be included by passing paths to files or
+                    directories. Multiple file paths are supported. Example:
+                    `:Code %` to include the current file, `:Code script.js
+                    data.json` to include two specific files, or `:Code %:h` to
+                    include all files in the current directory recursively.
 
                                                         *:Add*
 :Add [file|url]     Adds content to the last Ask buffer. Can add content from:

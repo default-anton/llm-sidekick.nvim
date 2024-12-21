@@ -86,7 +86,7 @@ local function parse_ask_args(args)
   local parsed = {
     model = settings.get_smart_model(),
     open_mode = "current",
-    append_current_file = false
+    file_paths = {}
   }
   for _, arg in ipairs(args) do
     if arg == "smart" then
@@ -99,8 +99,15 @@ local function parse_ask_args(args)
       parsed.open_mode = arg
     elseif MODE_SHORTCUTS[arg] ~= nil then
       parsed.open_mode = MODE_SHORTCUTS[arg]
-    elseif arg == "file" or arg == "f" then
-      parsed.append_current_file = true
+    elseif arg:sub(1, 1) == "%" then
+      local expanded_path = vim.fn.expand(arg)
+      if vim.fn.filereadable(expanded_path) == 1 or vim.fn.isdirectory(expanded_path) == 1 then
+        table.insert(parsed.file_paths, expanded_path)
+      else
+        error("Expanded path is not a readable file: " .. expanded_path)
+      end
+    elseif vim.fn.filereadable(arg) == 1 or vim.fn.isdirectory(arg) == 1 then
+      table.insert(parsed.file_paths, arg)
     else
       error("Invalid argument: " .. arg)
     end
@@ -218,23 +225,67 @@ local function adapt_system_prompt_for(model, prompt)
   return prompt
 end
 
+local function add_file_content_to_prompt(prompt, file_paths)
+  if vim.tbl_isempty(file_paths) then
+    return prompt
+  end
+
+  local snippets = {}
+
+  local function add_file(file_path)
+    if vim.fn.filereadable(file_path) == 0 then
+      return
+    end
+    local content = fs.read_file(file_path)
+    if not content then
+      error(string.format("Failed to read file '%s'", file_path))
+    end
+    local relative_path = vim.fn.fnamemodify(file_path, ":.")
+    table.insert(snippets, render_snippet(relative_path, content))
+  end
+
+  for _, file_path in ipairs(file_paths) do
+    if vim.fn.isdirectory(file_path) == 1 then
+      local function add_files_recursively(dir)
+        local handle = vim.loop.fs_scandir(dir)
+        if not handle then return end
+
+        while true do
+          local name, type = vim.loop.fs_scandir_next(handle)
+          if not name then break end
+
+          local full_path = vim.fn.fnameescape(dir .. '/' .. name)
+          if type == 'file' then
+            add_file(full_path)
+          elseif type == 'directory' then
+            add_files_recursively(dir .. '/' .. name)
+          end
+        end
+      end
+      add_files_recursively(file_path)
+    else
+      add_file(file_path)
+    end
+  end
+
+  if not vim.tbl_isempty(snippets) then
+    prompt = prompt .. "Here is what I'm working on:\n" .. render_editor_context(table.concat(snippets, "\n")) .. "\n"
+  end
+  return prompt
+end
+
 local ask_command = function(cmd_opts)
   return function(opts)
     local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
-    local append_current_file = parsed_args.append_current_file
+    local file_paths = parsed_args.file_paths
     local range_start = -1
     local range_end = -1
 
     if opts.range == 2 then
       range_start = opts.line1
       range_end = opts.line2
-    end
-
-    if append_current_file then
-      range_start = 1
-      range_end = vim.api.nvim_buf_line_count(0)
     end
 
     local model_settings = llm_sidekick.get_model_default_settings(model)
@@ -287,13 +338,15 @@ local ask_command = function(cmd_opts)
       end
 
       prompt = prompt .. "\nUSER: "
-      if range_start >= 0 and range_end >= 0 then
+      if opts.range == 2 then
         local relative_path = vim.fn.expand("%")
         local context = table.concat(vim.api.nvim_buf_get_lines(0, range_start - 1, range_end, false), "\n")
         prompt = prompt .. "Here is what I'm working on:\n"
         local snippet = render_snippet(relative_path, context)
         prompt = prompt .. render_editor_context(snippet) .. "\n"
       end
+
+      prompt = add_file_content_to_prompt(prompt, file_paths)
     end
 
     local buf = vim.api.nvim_create_buf(true, false)
@@ -338,11 +391,15 @@ vim.api.nvim_create_user_command("Chat", ask_command({ coding = false, include_m
   nargs = "*",
   complete = function(ArgLead, CmdLine, CursorPos)
     local args = vim.split(CmdLine, "%s+")
-    local options = { "file" }
+    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
+    local options = {}
+    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
+      options = file_completions
+    end
     vim.list_extend(options, MODEL_TYPES)
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
-      return item:lower():match("^" .. ArgLead:lower()) and not vim.tbl_contains(args, item)
+      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
     end, options)
   end,
 })
@@ -352,11 +409,15 @@ vim.api.nvim_create_user_command("Ask", ask_command({ coding = true, include_mod
   nargs = "*",
   complete = function(ArgLead, CmdLine, CursorPos)
     local args = vim.split(CmdLine, "%s+")
-    local options = { "file" }
+    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
+    local options = {}
+    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
+      options = file_completions
+    end
     vim.list_extend(options, MODEL_TYPES)
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
-      return item:lower():match("^" .. ArgLead:lower()) and not vim.tbl_contains(args, item)
+      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
     end, options)
   end,
 })
@@ -366,11 +427,15 @@ vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_mo
   nargs = "*",
   complete = function(ArgLead, CmdLine, CursorPos)
     local args = vim.split(CmdLine, "%s+")
-    local options = { "file" }
+    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
+    local options = {}
+    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
+      options = file_completions
+    end
     vim.list_extend(options, MODEL_TYPES)
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
-      return item:lower():match("^" .. ArgLead:lower()) and not vim.tbl_contains(args, item)
+      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
     end, options)
   end,
 })

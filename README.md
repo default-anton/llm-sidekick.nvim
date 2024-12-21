@@ -111,13 +111,16 @@ Each model is configured with specific token limits and temperature settings opt
 
 ### Core Commands
 
-#### `:Code [args]`
+#### `:Code [args] [paths]`
 Opens a new buffer for code-related tasks. Handles file operations like creating, modifying, or deleting files.
 - Arguments:
   - Model type: `smart` (default), `fast` (quick responses), `reason` (complex problems)
   - Opening mode: `t` (tab), `v` (vsplit), `s` (split)
-  - `f` (file): include entire current file
   - Range: Visual selection to include specific code
+  - File paths: Include content from specific files or directories. Examples:
+    - `%` (current file)
+    - `script.js data.json` (multiple files)
+    - `%:h` (all files in the current directory recursively)
 
 #### `:Ask [args]`
 Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.
