@@ -122,11 +122,11 @@ Opens a new buffer for code-related tasks. Handles file operations like creating
     - `script.js data.json` (multiple files)
     - `%:h` (all files in the current directory recursively)
 
-#### `:Ask [args]`
+#### `:Ask [args] [paths]`
 Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.
 - Arguments: Same as `:Code`
 
-#### `:Chat [args]`
+#### `:Chat [args] [paths]`
 Opens a new buffer for general conversation with the LLM. Perfect for brainstorming, creative writing, or any non-technical discussions. Supports range selection for including text context.
 - Arguments: Same as `:Code`
 
