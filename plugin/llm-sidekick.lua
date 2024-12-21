@@ -3,7 +3,7 @@ if vim.g.loaded_llm_sidekick == 1 then
 end
 
 vim.g.loaded_llm_sidekick = 1
-vim.g.llm_sidekick_last_ask_buffer = nil
+vim.g.llm_sidekick_last_chat_buffer = nil
 
 local M = {}
 
@@ -50,17 +50,17 @@ vim.api.nvim_create_autocmd("DirChanged", {
   desc = "Reload LLM Sidekick project configuration when changing directories",
 })
 
-local function set_last_ask_buffer()
+local function set_last_chat_buffer()
   local current_buf = vim.api.nvim_get_current_buf()
-  if vim.b[current_buf].is_llm_sidekick_ask_buffer then
-    vim.g.llm_sidekick_last_ask_buffer = current_buf
+  if vim.b[current_buf].is_llm_sidekick_chat then
+    vim.g.llm_sidekick_last_chat_buffer = current_buf
   end
 end
 
 vim.api.nvim_create_augroup("LLMSidekickLastAskBuffer", { clear = true })
 vim.api.nvim_create_autocmd({ "BufEnter", "FocusGained" }, {
   group = "LLMSidekickLastAskBuffer",
-  callback = set_last_ask_buffer,
+  callback = set_last_chat_buffer,
   desc = "Set last ask buffer when focused (only for Ask buffers)",
 })
 
@@ -183,7 +183,7 @@ local function render_editor_context(snippets)
   return "<editor_context>\n" .. snippets .. "\n</editor_context>"
 end
 
-local function is_file_prompt(bufnr)
+local function is_llm_sidekick_chat_file(bufnr)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, 3, false)
   if #lines < 3 then
     return false
@@ -297,8 +297,7 @@ local ask_command = function(cmd_opts)
     }
 
     local prompt = ""
-
-    if is_file_prompt(0) then
+    if is_llm_sidekick_chat_file(0) and not vim.b.is_llm_sidekick_chat then
       prompt = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
     else
       for key, value in pairs(settings) do
@@ -350,9 +349,9 @@ local ask_command = function(cmd_opts)
     end
 
     local buf = vim.api.nvim_create_buf(true, false)
-    vim.b[buf].is_llm_sidekick_ask_buffer = true
+    vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
-    vim.g.llm_sidekick_last_ask_buffer = buf
+    vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
@@ -636,8 +635,8 @@ vim.api.nvim_create_user_command("Stt", function()
 end, {})
 
 vim.api.nvim_create_user_command("Add", function(opts)
-  local ask_buf = vim.g.llm_sidekick_last_ask_buffer
-  if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_ask_buffer then
+  local ask_buf = vim.g.llm_sidekick_last_chat_buffer
+  if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_chat then
     vim.api.nvim_err_writeln("No valid Ask buffer found. Please run the Ask command first.")
     return
   end
