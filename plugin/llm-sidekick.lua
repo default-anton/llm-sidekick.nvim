@@ -22,7 +22,6 @@ local MODE_SHORTCUTS = {
   v = "vsplit",
   s = "split"
 }
-local MODEL_TYPES = { "smart", "fast", "reason" }
 
 local function load_project_config()
   local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
@@ -84,17 +83,13 @@ end
 local function parse_ask_args(args)
   local settings = require("llm-sidekick.settings")
   local parsed = {
-    model = settings.get_smart_model(),
+    model = settings.get_model(),
     open_mode = "current",
     file_paths = {}
   }
   for _, arg in ipairs(args) do
-    if arg == "smart" then
-      parsed.model = settings.get_smart_model()
-    elseif arg == "fast" then
-      parsed.model = settings.get_fast_model()
-    elseif arg == "reason" then
-      parsed.model = settings.get_reasoning_model()
+    if settings.has_model_for(arg) then
+      parsed.model = settings.get_model(arg)
     elseif vim.tbl_contains(OPEN_MODES, arg) then
       parsed.open_mode = arg
     elseif MODE_SHORTCUTS[arg] ~= nil then
@@ -395,7 +390,7 @@ vim.api.nvim_create_user_command("Chat", ask_command({ coding = false, include_m
     if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
       options = file_completions
     end
-    vim.list_extend(options, MODEL_TYPES)
+    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
       return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
@@ -413,7 +408,7 @@ vim.api.nvim_create_user_command("Ask", ask_command({ coding = true, include_mod
     if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
       options = file_completions
     end
-    vim.list_extend(options, MODEL_TYPES)
+    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
       return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
@@ -431,7 +426,7 @@ vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_mo
     if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
       options = file_completions
     end
-    vim.list_extend(options, MODEL_TYPES)
+    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
     vim.list_extend(options, OPEN_MODES)
     return vim.tbl_filter(function(item)
       return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)

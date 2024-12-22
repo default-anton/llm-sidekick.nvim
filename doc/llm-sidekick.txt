@@ -13,16 +13,7 @@ Using lazy.nvim:
 >
     {
         'default-anton/llm-sidekick.nvim',
-        dependencies = {
-            'nvim-lua/plenary.nvim',
-        },
-        config = function()
-            require('llm-sidekick').setup({
-                smart_model = "claude-3-5-sonnet-latest",
-                fast_model = "claude-3-5-haiku-latest",
-                reasoning_model = "o1",
-            })
-        end,
+        dependencies = { 'nvim-lua/plenary.nvim' },
     }
 <
 
@@ -103,10 +94,15 @@ CONFIGURATION                                            *llm-sidekick-config*
 Configure the plugin by calling the setup function:
 >
     require('llm-sidekick').setup({
-        -- Model configuration
-        smart_model = "claude-3-5-sonnet-latest",  -- Your go-to model
-        fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
-        reasoning_model = "o1",                    -- Model for complex reasoning
+      -- Model aliases configuration
+      aliases = {
+        claude = "claude-3-5-sonnet-latest",  -- Anthropic's Claude model
+        gpt = "gpt-4o-2024-11-20",            -- OpenAI's GPT-4 Turbo
+        o1 = "o1-preview",                    -- OpenAI preview model
+        mini = "o1-mini",                     -- OpenAI mini model
+        flash = "gemini-2.0-flash-exp",       -- Google's Gemini model
+      },
+      default = "claude",                     -- Default model alias to use
     })
 <
 
@@ -117,8 +113,8 @@ COMMANDS                                                 *llm-sidekick-commands*
 :Chat [args] [paths] Opens a new buffer for general conversation with the LLM.
                     Perfect for brainstorming, creative writing, or any
                     non-technical discussions. Arguments can be:
-                    - Model type: smart (default), fast (quick responses),
-                      reason (complex problems)
+                    - Model alias: any defined alias from configuration
+                      (e.g., claude, fast, o1, mini, flash)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     File content can be included by passing paths to files or
                     directories. Multiple file paths can be added. Example:
@@ -131,8 +127,8 @@ COMMANDS                                                 *llm-sidekick-commands*
                     development-related questions. Uses a prompt optimized for
                     technical discussions and problem-solving. Accepts an
                     optional range to include the selected code. Arguments can be:
-                    - Model type: smart (default), fast (quick responses),
-                      reason (complex problems)
+                    - Model alias: any defined alias from configuration
+                      (e.g., claude, fast, o1, mini, flash)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     File content can be included by passing paths to files or
                     directories. Multiple file paths can be provided. Example:
@@ -143,8 +139,8 @@ COMMANDS                                                 *llm-sidekick-commands*
                                                         *:Code*
 :Code [args] [paths] Similar to :Ask but includes additional context for file
                     modifications. Accepts the same arguments as :Ask:
-                    - Model type: smart (default), fast (quick responses),
-                      reason (complex problems)
+                    - Model alias: any defined alias from configuration
+                      (e.g., claude, fast, o1, mini, flash)
                     - Opening mode: tab (t), vsplit (v), split (s)
                     File content can be included by passing paths to files or
                     directories. Multiple file paths are supported. Example:

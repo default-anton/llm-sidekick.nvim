@@ -64,18 +64,23 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-    'default-anton/llm-sidekick.nvim',
-    dependencies = {
-        'nvim-lua/plenary.nvim',
-    },
-    config = function()
-        require('llm-sidekick').setup({
-            -- Model configuration
-            smart_model = "claude-3-5-sonnet-latest",  -- Your go-to model
-            fast_model = "claude-3-5-haiku-latest",    -- Model for quick responses
-            reasoning_model = "o1",                    -- Model for complex reasoning
-        })
-    end,
+  'default-anton/llm-sidekick.nvim',
+  dependencies = {
+    'nvim-lua/plenary.nvim',
+  },
+  config = function()
+    require('llm-sidekick').setup({
+      -- Model aliases configuration
+      aliases = {
+        claude = "claude-3-5-sonnet-latest",  -- Anthropic's Claude model
+        gpt = "gpt-4o-2024-11-20",            -- OpenAI's GPT-4 Turbo
+        o1 = "o1-preview",                    -- OpenAI preview model
+        mini = "o1-mini",                     -- OpenAI mini model
+        flash = "gemini-2.0-flash-exp",       -- Google's Gemini model
+      },
+      default = "claude",                     -- Default model alias to use
+    })
+  end,
 }
 ```
 
@@ -114,7 +119,7 @@ Each model is configured with specific token limits and temperature settings opt
 #### `:Code [args] [paths]`
 Opens a new buffer for code-related tasks. Handles file operations like creating, modifying, or deleting files.
 - Arguments:
-  - Model type: `smart` (default), `fast` (quick responses), `reason` (complex problems)
+  - Model alias: any defined alias from configuration (e.g., claude, fast, o1, mini, flash)
   - Opening mode: `t` (tab), `v` (vsplit), `s` (split)
   - Range: Visual selection to include specific code
   - File paths: Include content from specific files or directories. Examples:

@@ -1,32 +1,71 @@
 local M = {}
 
 local defaults = {
-  smart_model = "claude-3-5-sonnet-latest",
-  fast_model = "claude-3-5-haiku-latest",
-  reasoning_model = "o1",
+  aliases = {
+    sonnet = "claude-3-5-sonnet-latest",
+    gpt = "gpt-4o-2024-11-20",
+    o1 = "o1-preview",
+    mini = "o1-mini",
+    flash = "gemini-2.0-flash-exp",
+    think = "gemini-2.0-flash-thinking-exp-1219",
+  },
+  default = "claude",
 }
 
 local settings = vim.deepcopy(defaults)
 
 function M.setup(opts)
-  settings = vim.tbl_deep_extend("force", defaults, opts or {})
+  if opts == nil then
+    opts = settings
+  else
+    vim.validate({
+      aliases = { opts.aliases, "table", true },
+      default = { opts.default, "string" },
+    })
+
+    settings = opts
+  end
+
+  -- Validate that default alias exists
+  if not settings.aliases[settings.default] then
+    error(string.format("Default alias '%s' is not defined in aliases", settings.default))
+  end
+
+  -- Validate all models
   local models = vim.tbl_keys(require("llm-sidekick").get_models())
-  for key, model in pairs(settings) do
+  for alias, model in pairs(settings.aliases) do
     if not vim.tbl_contains(models, model) then
       vim.notify(
-        string.format("Invalid model '%s' for setting '%s'. Using default.", model, key),
+        string.format("Invalid model '%s' for alias '%s'", model, alias),
         vim.log.levels.WARN
       )
-      settings[key] = defaults[key]
     end
   end
 end
 
-function M.get_smart_model() return settings.smart_model end
+function M.has_model_for(alias)
+  return settings.aliases[alias] ~= nil
+end
 
-function M.get_fast_model() return settings.fast_model end
+function M.get_model(alias)
+  if not alias then
+    alias = settings.default
+  end
 
-function M.get_reasoning_model() return settings.reasoning_model end
+  local model = settings.aliases[alias]
+  if not model then
+    vim.notify(
+      string.format("Alias '%s' not found, using default", alias),
+      vim.log.levels.WARN
+    )
+    return settings.aliases[settings.default]
+  end
+  return model
+end
+
+function M.get_aliases()
+  return vim.tbl_keys(settings.aliases)
+end
 
 function M.get_anthropic_api_key()
   local api_key = vim.env.LLM_SIDEKICK_ANTHROPIC_API_KEY or vim.env.ANTHROPIC_API_KEY
