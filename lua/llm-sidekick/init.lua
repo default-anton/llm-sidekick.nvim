@@ -223,67 +223,10 @@ function M.parse_prompt(prompt)
   return options
 end
 
-local function get_last_user_message(options)
-  if not options or not options.messages then
-    return nil
-  end
-  for i = #options.messages, 1, -1 do
-    local message = options.messages[i]
-    if message.role == "user" then
-      local content = message.content
-      if type(content) == "string" then
-        -- Handle text-only messages
-        local _, end_pos = content:find("</editor_context>")
-        if end_pos then
-          return content:sub(end_pos + 1):gsub("^%s*", "")
-        else
-          return content
-        end
-      elseif type(content) == "table" then
-        -- Handle mixed content messages (with images and text)
-        for _, item in ipairs(content) do
-          if item.type == "text" then
-            local text = item.text
-            local _, end_pos = text:find("</editor_context>")
-            if end_pos then
-              return text:sub(end_pos + 1):gsub("^%s*", "")
-            else
-              return text
-            end
-          end
-        end
-      end
-    end
-  end
-  return nil
-end
-
-local function create_temporary_chat_file(sanitized_message)
-  local temp_dir = vim.fn.tempname()
-  vim.fn.mkdir(temp_dir, "p")
-  local file_name = temp_dir .. sanitized_message .. ".llmchat"
-  vim.api.nvim_buf_set_name(0, file_name)
-end
-
 function M.ask(prompt_bufnr)
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
-
-  local current_name = vim.api.nvim_buf_get_name(0)
-  if current_name == "" then
-    local last_user_message = get_last_user_message(prompt)
-    if last_user_message then
-      local trimmed_message = vim.trim(last_user_message)
-      local sanitized_message = trimmed_message:gsub('[^%w-]', '_')
-      local max_length = 50
-      if #sanitized_message > max_length then
-        sanitized_message = sanitized_message:sub(1, max_length) .. '...'
-      end
-
-      create_temporary_chat_file(sanitized_message)
-    end
-  end
 
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", current_line })
@@ -323,12 +266,9 @@ function M.ask(prompt_bufnr)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
-      success = pcall(function()
+      pcall(function()
         vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
       end)
-      if success then
-        vim.cmd('write')
-      end
     end
   end)
 end

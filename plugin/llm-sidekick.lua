@@ -343,7 +343,7 @@ local ask_command = function(cmd_opts)
       prompt = add_file_content_to_prompt(prompt, file_paths)
     end
 
-    local buf = vim.api.nvim_create_buf(true, false)
+    local buf = vim.api.nvim_create_buf(false, true)
     vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
     vim.g.llm_sidekick_last_chat_buffer = buf
