@@ -27,14 +27,29 @@ function gemini:chat(messages, settings, callback)
     if msg.role == "system" then
       return nil
     end
-    return {
-      role = msg.role == "assistant" and "model" or "user",
-      parts = {
-        {
-          text = msg.content
-        }
+    if type(msg.content) == "table" then
+      local parts = {}
+      for _, item in ipairs(msg.content) do
+        if item.type == "image" then
+          table.insert(parts, { inlineData = item.inlineData })
+        elseif item.type == "text" then
+          table.insert(parts, { text = item.text })
+        end
+      end
+      return {
+        role = msg.role == "assistant" and "model" or "user",
+        parts = parts,
       }
-    }
+    else
+      return {
+        role = msg.role == "assistant" and "model" or "user",
+        parts = {
+          {
+            text = msg.content,
+          },
+        },
+      }
+    end
   end, messages)
   contents = vim.tbl_filter(function(msg) return msg ~= nil end, contents)
 

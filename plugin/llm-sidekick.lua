@@ -559,6 +559,45 @@ local function create_stt_window()
   return bufnr, winnr
 end
 
+-- Function to paste image from clipboard
+local function paste_image()
+  -- Get the current buffer
+  local bufnr = vim.api.nvim_get_current_buf()
+  if not vim.b[bufnr].is_llm_sidekick_chat then
+    vim.notify("Can only paste images in LLM Sidekick chat buffers", vim.log.levels.ERROR)
+    return
+  end
+
+  local temp_dir = vim.fn.tempname()
+  vim.fn.mkdir(temp_dir, "p")
+
+  local timestamp = os.time()
+  local image_path = string.format("%s/image_%d.png", temp_dir, timestamp)
+
+  -- Try to paste image from clipboard
+  vim.fn.system({ "pngpaste", image_path })
+  if vim.v.shell_error ~= 0 then
+    vim.notify("No image found in clipboard", vim.log.levels.WARN)
+    return
+  end
+
+  -- Get cursor position
+  local pos = vim.api.nvim_win_get_cursor(0)
+  local line = vim.api.nvim_get_current_line()
+  local before = line:sub(1, pos[2])
+  local after = line:sub(pos[2] + 1)
+
+  -- Insert image tag at cursor position
+  local image_tag = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", image_path)
+  local new_line = before .. image_tag .. after
+  vim.api.nvim_set_current_line(new_line)
+
+  -- Move cursor after the inserted tag
+  vim.api.nvim_win_set_cursor(0, { pos[1], pos[2] + #image_tag })
+end
+
+vim.api.nvim_create_user_command("Paste", paste_image, {})
+
 vim.api.nvim_create_user_command("Stt", function()
   local mode = vim.api.nvim_get_mode().mode
   local orig_winnr = vim.api.nvim_get_current_win()

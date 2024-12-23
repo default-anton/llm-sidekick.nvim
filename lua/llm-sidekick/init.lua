@@ -155,30 +155,68 @@ function M.parse_prompt(prompt)
 
   if #options.messages > 0 and options.messages[#options.messages].role == "user" then
     local text = options.messages[#options.messages].content
-    if text:find("imgimgimg") then
-      local base64_image = vim.fn.system("pngpaste -b")
-      if vim.v.shell_error == 0 then
-        vim.notify("Image found in clipboard", vim.log.levels.INFO)
-        text = text:gsub("imgimgimg", "")
+    -- Check for llm_sidekick_image tags
+    for image_path in text:gmatch("<llm_sidekick_image>(.-)</llm_sidekick_image>") do
+      if not vim.fn.filereadable(image_path) == 1 then
+        goto continue
+      end
 
-        options.messages[#options.messages] = {
-          role = "user",
-          content = {
-            {
-              type = "image",
-              source = {
-                data = base64_image,
-                type = "base64",
-                media_type = "image/png",
-              },
-            },
-            { type = "text", text = text },
+      local function get_base64_command()
+        if vim.fn.has("mac") == 1 then
+          return { "base64", "-i", image_path }
+        else
+          return { "base64", "-w0", image_path }
+        end
+      end
+
+      local base64_image = vim.fn.system(get_base64_command())
+      if vim.v.shell_error ~= 0 then
+        vim.api.nvim_err_writeln("Failed to read image: " .. image_path)
+        goto continue
+      end
+
+      -- Remove any newlines that might be present in the base64 output
+      base64_image = base64_image:gsub("[\n\r]", "")
+      text = text:gsub("<llm_sidekick_image>" .. vim.pesc(image_path) .. "</llm_sidekick_image>", "")
+      local mime_type = vim.fn.systemlist({ "file", "--mime-type", "--brief", image_path })[1]
+
+      local image
+      if vim.startswith(options.settings.model, "claude") or vim.startswith(options.settings.model, "anthropic.claude") then
+        image = {
+          type = "image",
+          source = {
+            data = base64_image,
+            type = "base64",
+            media_type = mime_type,
+          },
+        }
+      elseif vim.startswith(options.settings.model, "gpt") then
+        image = {
+          type = "image_url",
+          image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
+        }
+      elseif vim.startswith(options.settings.model, "gemini") then
+        image = {
+          type = "image",
+          inlineData = {
+            data = base64_image,
+            mimeType = mime_type,
           },
         }
       else
-        vim.notify("No image found in clipboard", vim.log.levels.WARN)
-        options.messages[#options.messages].content = text:gsub("imgimgimg", "")
+        vim.api.nvim_err_writeln("Model not supported: " .. options.settings.model)
+        return options
       end
+
+      options.messages[#options.messages] = {
+        role = "user",
+        content = {
+          image,
+          { type = "text", text = text },
+        },
+      }
+
+      ::continue::
     end
   end
 
