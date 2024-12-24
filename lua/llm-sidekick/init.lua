@@ -4,10 +4,6 @@ local fs = require "llm-sidekick.fs"
 local M = {}
 
 local MODELS = {
-  ["o1"] = {
-    max_tokens = 100000,
-    temperature = 0.0,
-  },
   ["claude-3-5-sonnet-latest"] = {
     max_tokens = 8192,
     temperature = 0.3,
@@ -32,12 +28,16 @@ local MODELS = {
     max_tokens = 4096,
     temperature = 0.3,
   },
-  ["o1-preview"] = {
-    max_tokens = 32768,
+  ["o1"] = {
+    max_tokens = 100000,
     temperature = 0.0,
   },
   ["o1-mini"] = {
     max_tokens = 65536,
+    temperature = 0.0,
+  },
+  ["o1-preview"] = {
+    max_tokens = 32768,
     temperature = 0.0,
   },
   ["gpt-4o"] = {
