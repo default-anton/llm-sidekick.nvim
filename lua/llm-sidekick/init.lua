@@ -42,23 +42,23 @@ local MODELS = {
   },
   ["gpt-4o"] = {
     max_tokens = 16384,
-    temperature = 0.5,
+    temperature = 1.0,
   },
   ["gpt-4o-2024-11-20"] = {
     max_tokens = 16384,
-    temperature = 0.5,
+    temperature = 1.0,
   },
   ["gpt-4o-2024-08-06"] = {
     max_tokens = 16384,
-    temperature = 0.5,
+    temperature = 1.0,
   },
   ["gpt-4o-2024-05-13"] = {
     max_tokens = 4096,
-    temperature = 0.5,
+    temperature = 1.0,
   },
   ["gpt-4o-mini"] = {
     max_tokens = 16384,
-    temperature = 0.5,
+    temperature = 1.0,
   },
   ["gemini-exp-1206"] = {
     max_tokens = 8192,
