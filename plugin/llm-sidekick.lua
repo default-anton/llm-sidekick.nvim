@@ -434,25 +434,34 @@ vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_mo
   end,
 })
 
+local function is_image_file(file_path)
+  local extension = vim.fn.fnamemodify(file_path, ":e")
+  return vim.tbl_contains({ "png", "jpg", "jpeg", "gif" }, extension:lower())
+end
+
 local function get_content(opts, callback)
   local function add_file(file_path)
     if vim.fn.filereadable(file_path) == 0 then
       return
     end
 
-    local content = fs.read_file(file_path)
-    if not content then
-      error(string.format("Failed to read file '%s'", file_path))
+    if is_image_file(file_path) then
+      callback({ type = "image", path = file_path }, file_path)
+    else
+      local content = fs.read_file(file_path)
+      if not content then
+        error(string.format("Failed to read file '%s'", file_path))
+      end
+      local relative_path = vim.fn.fnamemodify(file_path, ":.")
+      callback({ type = "text", content = content }, relative_path)
     end
-    local relative_path = vim.fn.fnamemodify(file_path, ":.")
-    callback(content, relative_path)
   end
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(opts.args)
     if file_path:match("^https?://") then
       markdown.get_markdown(file_path, function(markdown_content)
-        callback(markdown_content, file_path)
+        callback({ type = "text", content = markdown_content }, file_path)
       end)
       return
     end
@@ -495,7 +504,7 @@ local function get_content(opts, callback)
     end
     local content = table.concat(lines, "\n")
 
-    callback(content, relative_path)
+    callback({ type = "text", content = content }, relative_path)
   end
 end
 
@@ -675,8 +684,13 @@ vim.api.nvim_create_user_command("Add", function(opts)
     return
   end
 
-  get_content(opts, function(content, relative_path)
-    local snippet = render_snippet(relative_path, content)
+  get_content(opts, function(content_data, relative_path)
+    local snippet
+    if content_data.type == "image" then
+      snippet = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", content_data.path)
+    else
+      snippet = render_snippet(relative_path, content_data.content)
+    end
     -- Find the appropriate insertion point
     local ask_buf_line_count = vim.api.nvim_buf_line_count(ask_buf)
     local insert_point = ask_buf_line_count
