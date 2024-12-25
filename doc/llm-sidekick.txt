@@ -21,6 +21,7 @@ System Requirements:
 1. curl (for API requests)
 2. jq (for JSON parsing)
 3. stdbuf (for real-time output buffering)
+4. uv (for AWS Bedrock models)
 
 Installation examples for curl:
 
@@ -58,6 +59,19 @@ specific providers:
    Set the following environment variable:
    - LLM_SIDEKICK_GEMINI_API_KEY
    - GEMINI_API_KEY
+
+4. AWS Bedrock authentication (for AWS models):
+   Set one from each pair:
+   - LLM_SIDEKICK_AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY_ID
+   - LLM_SIDEKICK_AWS_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY
+
+   Optional AWS configuration:
+   - LLM_SIDEKICK_AWS_REGION or AWS_REGION or AWS_DEFAULT_REGION
+     (defaults to 'us-east-1')
+   - LLM_SIDEKICK_ROLE_ARN or AWS_ROLE_ARN
+     (ARN of an IAM role to assume)
+   - LLM_SIDEKICK_ROLE_SESSION_NAME or AWS_ROLE_SESSION_NAME
+     (session name when assuming an IAM role)
 
 You only need to set up API keys for the providers whose models you intend to use.
 

@@ -32,6 +32,25 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 ### API Requirements
 You only need to set up API keys for the providers whose models you intend to use:
 
+#### AWS Bedrock Models
+AWS Bedrock requires several environment variables for authentication and configuration:
+
+**Required Authentication (set one from each pair):**
+- `LLM_SIDEKICK_AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID`
+  - Your AWS access key for authentication
+- `LLM_SIDEKICK_AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_ACCESS_KEY`
+  - Your AWS secret key for authentication
+
+**Optional Configuration:**
+- `LLM_SIDEKICK_AWS_REGION` or `AWS_REGION` or `AWS_DEFAULT_REGION`
+  - AWS region for Bedrock API (defaults to 'us-east-1')
+- `LLM_SIDEKICK_ROLE_ARN` or `AWS_ROLE_ARN`
+  - ARN of an IAM role to assume for AWS operations
+- `LLM_SIDEKICK_ROLE_SESSION_NAME` or `AWS_ROLE_SESSION_NAME`
+  - Session name when assuming an IAM role
+
+Additionally, AWS Bedrock models require the `uv` package. Follow the [installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
+
 #### Anthropic (Claude models)
 Set one of these environment variables:
 - `LLM_SIDEKICK_ANTHROPIC_API_KEY`
