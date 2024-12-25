@@ -18,26 +18,30 @@ formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-aws_region = os.getenv('LLM_SIDEKICK_AWS_REGION', 'us-east-1')
-aws_access_key_id = os.getenv('LLM_SIDEKICK_AWS_ACCESS_KEY_ID', None)
-aws_secret_access_key = os.getenv('LLM_SIDEKICK_AWS_SECRET_ACCESS_KEY', None)
-role_arn = os.getenv('LLM_SIDEKICK_ROLE_ARN', None)
-role_session_name = os.getenv('LLM_SIDEKICK_ROLE_SESSION_NAME', None)
-external_id = os.getenv('LLM_SIDEKICK_EXTERNAL_ID', None)
+aws_region = os.getenv('LLM_SIDEKICK_AWS_REGION') or os.getenv('AWS_REGION') or os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
+aws_access_key_id = os.getenv('LLM_SIDEKICK_AWS_ACCESS_KEY_ID') or os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('LLM_SIDEKICK_AWS_SECRET_ACCESS_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
+role_arn = os.getenv('LLM_SIDEKICK_ROLE_ARN') or os.getenv('AWS_ROLE_ARN')
+role_session_name = os.getenv('LLM_SIDEKICK_ROLE_SESSION_NAME') or os.getenv('AWS_ROLE_SESSION_NAME')
 
-if not aws_access_key_id or not aws_secret_access_key or not role_arn or not role_session_name or not external_id:
+if not aws_region or not aws_access_key_id or not aws_secret_access_key:
     raise ValueError('Missing required environment variables')
 
 app = Flask(__name__)
 CORS(app)
 
 class AssumedRoleCredentialsCache:
-    def __init__(self, region):
+    def __init__(self, region, role_arn=None, role_session_name=None):
         self._temp_file_path = os.path.join(tempfile.gettempdir(), f"llm_sidekick_assumed_role_{region}.json")
         logger.info(f"Temp file path: {self._temp_file_path}")
         self._region = region
+        self._role_arn = role_arn
+        self._role_session_name = role_session_name
 
     def get(self):
+        if not self._role_arn:
+            return None
+
         credentials = self._load_credentials()
         if credentials and self._are_credentials_valid(credentials):
             return credentials
@@ -49,9 +53,8 @@ class AssumedRoleCredentialsCache:
         )
         sts_client = session.client('sts')
         assumed_role = sts_client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=role_session_name,
-            ExternalId=external_id
+            RoleArn=self._role_arn,
+            RoleSessionName=self._role_session_name,
         )
         new_credentials = assumed_role['Credentials']
         expiration = new_credentials['Expiration'].replace(tzinfo=None)
@@ -101,16 +104,26 @@ def invoke_model():
 
     def generate():
         try:
-            credentials_cache = AssumedRoleCredentialsCache(region)
-            credentials = credentials_cache.get()
-            session = boto3.Session(
-                aws_access_key_id=credentials['AccessKeyId'],
-                aws_secret_access_key=credentials['SecretAccessKey'],
-                aws_session_token=credentials['SessionToken'],
-                region_name=region
-            )
+            if role_arn:
+                credentials_cache = AssumedRoleCredentialsCache(region, role_arn, role_session_name)
+                credentials = credentials_cache.get()
+                session = boto3.Session(
+                    aws_access_key_id=credentials['AccessKeyId'],
+                    aws_secret_access_key=credentials['SecretAccessKey'],
+                    aws_session_token=credentials['SessionToken'],
+                    region_name=region
+                )
+            else:
+                if not aws_access_key_id or not aws_secret_access_key:
+                    raise ValueError('Missing required environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY')
+                session = boto3.Session(
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    region_name=region
+                )
+
             retry_config = Config(
-                retries = {
+                retries={
                     'max_attempts': 2,
                     'mode': 'standard'
                 },
@@ -127,13 +140,13 @@ def invoke_model():
                 logger.info(f"Received chunk at {datetime.now()}")
                 yield f"data: {json.dumps(chunk)}\n\n"
         except ReadTimeoutError as e:
-           logger.error(f"Read timeout error: {e}")
-           yield f"data: {json.dumps({'error': 'Model response timed out'})}\n\n"
+            logger.error(f"Read timeout error: {e}")
+            yield f"data: {json.dumps({'error': 'Model response timed out'})}\n\n"
         except ClientError as e:
-           logger.error(f"AWS client error: {e}")
-           yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.error(f"AWS client error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
         except Exception as e:
-           logger.error(f"Unexpected error: {e}")
-           yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.error(f"Unexpected error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return Response(stream_with_context(generate()), content_type='text/event-stream')
