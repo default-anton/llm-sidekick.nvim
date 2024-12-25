@@ -23,6 +23,7 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 - jq (for JSON parsing)
 - stdbuf (for real-time output buffering)
 - plenary.nvim
+- uv (for AWS Bedrock integration)
 
 #### Installing curl
 - Ubuntu/Debian: `sudo apt-get install curl jq coreutils`
