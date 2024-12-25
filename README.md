@@ -20,15 +20,13 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 ### Core Requirements
 - Neovim >= 0.5.0
 - curl (for API requests)
-- jq (for JSON parsing)
-- stdbuf (for real-time output buffering)
 - plenary.nvim
 - uv (for AWS Bedrock integration)
 
 #### Installing curl
-- Ubuntu/Debian: `sudo apt-get install curl jq coreutils`
-- macOS: `brew install curl jq coreutils`
-- Arch Linux: `sudo pacman -S curl jq coreutils`
+- Ubuntu/Debian: `sudo apt-get install curl`
+- macOS: `brew install curl`
+- Arch Linux: `sudo pacman -S curl`
 
 ### API Requirements
 You only need to set up API keys for the providers whose models you intend to use:

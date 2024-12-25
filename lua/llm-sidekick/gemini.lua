@@ -82,14 +82,11 @@ function gemini:chat(messages, settings, callback)
     }
   end
 
-  local url = string.format("%s/%s:streamGenerateContent?key=%s",
+  local url = string.format("%s/%s:streamGenerateContent?alt=sse&key=%s",
     self.base_url, settings.model, self.api_key)
 
   local curl = require("llm-sidekick.executables").get_curl_executable()
-  local jq = require("llm-sidekick.executables").get_jq_executable()
-  local stdbuf = require("llm-sidekick.executables").get_stdbuf_executable()
-
-  local curl_args = {
+  local args = {
     '-s',
     '--no-buffer',
     '-H', 'Content-Type: application/json',
@@ -97,21 +94,11 @@ function gemini:chat(messages, settings, callback)
     url
   }
 
-  local curl_job = require('plenary.job'):new({
-    command = stdbuf,
-    args = vim.list_extend({ '-i0', '-o0', '-e0', curl }, curl_args),
-    on_stderr = function(_, text)
-      vim.schedule(function()
-        vim.api.nvim_err_writeln("Error: " .. text)
-      end)
-    end,
-  })
-
-  local stream_parser = require('plenary.job'):new({
-    command = stdbuf,
-    args = vim.list_extend({ '-i0', '-o0', '-e0', jq }, { '-cn', '--stream', 'fromstream(1|truncate_stream(inputs))' }),
-    writer = curl_job,
+  require('plenary.job'):new({
+    command = curl,
+    args = args,
     on_stdout = function(_, line)
+      line = line:gsub("^data: ", "")
       if line == "" then
         return
       end
@@ -126,22 +113,19 @@ function gemini:chat(messages, settings, callback)
     end,
     on_stderr = function(_, text)
       vim.schedule(function()
-        vim.api.nvim_err_writeln("Error in jq: " .. text)
+        vim.api.nvim_err_writeln("Error: API request failed with error " .. text)
       end)
     end,
     on_exit = function(_, return_val)
+      callback(message_types.DONE, "")
+
       if return_val ~= 0 then
         vim.schedule(function()
-          vim.api.nvim_err_writeln("Error: jq process failed with exit code " .. return_val)
+          vim.api.nvim_err_writeln("Error: API request failed with exit code " .. return_val)
         end)
-        return
       end
-      callback(message_types.DONE, "")
     end,
-  })
-
-  curl_job:start()
-  stream_parser:start()
+  }):start()
 end
 
 return gemini

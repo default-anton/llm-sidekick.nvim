@@ -19,25 +19,23 @@ Using lazy.nvim:
 
 System Requirements:
 1. curl (for API requests)
-2. jq (for JSON parsing)
-3. stdbuf (for real-time output buffering)
 4. uv (for AWS Bedrock integration)
 
 Installation examples for system requirements:
 
 Ubuntu/Debian:
 >
-    sudo apt-get install curl jq coreutils
+    sudo apt-get install curl
 <
 
 macOS:
 >
-    brew install curl jq coreutils
+    brew install curl
 <
 
 Arch Linux:
 >
-    sudo pacman -S curl jq coreutils
+    sudo pacman -S curl
 <
 
 API Requirements                                         *llm-sidekick-api-requirements*
