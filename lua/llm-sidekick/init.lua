@@ -31,14 +31,17 @@ local MODELS = {
   ["o1"] = {
     max_tokens = 100000,
     temperature = 0.0,
+    reasoning = true,
   },
   ["o1-mini"] = {
     max_tokens = 65536,
     temperature = 0.0,
+    reasoning = true,
   },
   ["o1-preview"] = {
     max_tokens = 32768,
     temperature = 0.0,
+    reasoning = true,
   },
   ["gpt-4o"] = {
     max_tokens = 16384,
@@ -74,6 +77,7 @@ local MODELS = {
     max_tokens = 8192,
     temperature = 1.0,
     top_k = 64,
+    reasoning = true,
   },
   ["ollama-qwen2.5-coder:1.5b"] = {
     max_tokens = 8192,

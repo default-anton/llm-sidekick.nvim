@@ -284,6 +284,7 @@ local ask_command = function(cmd_opts)
     end
 
     local model_settings = llm_sidekick.get_model_default_settings(model)
+    local is_o1 = vim.startswith(model, "o1")
 
     local settings = {
       model = model,
@@ -305,30 +306,32 @@ local ask_command = function(cmd_opts)
       end
 
       if cmd_opts.coding then
-        local system_prompt = prompts.system_prompt
-        if vim.startswith(model, "o1") then
-          system_prompt = prompts.openai_coding
-        end
         local args = {
           os.date("%B %d, %Y"),
+          model_settings.reasoning and "" or prompts.reasoning,
           guidelines,
           vim.trim(current_project_config.technologies or ""),
+          cmd_opts.include_modifications and vim.trim(prompts.modifications) or ""
         }
-        if not vim.startswith(model, "o1") then
-          table.insert(args, cmd_opts.include_modifications and vim.trim(prompts.modifications) or "")
+        if is_o1 then
+          table.remove(args, 2)     -- Remove reasoning for o1
+          table.remove(args, #args) -- Remove modifications for o1
         end
 
-        prompt = prompt ..
-            "SYSTEM: " .. adapt_system_prompt_for(model, string.format(vim.trim(system_prompt), unpack(args)))
-      elseif not vim.startswith(model, "o1") then
+        local system_prompt = is_o1 and prompts.openai_coding or prompts.system_prompt
+        system_prompt = string.format(vim.trim(system_prompt), unpack(args))
+        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
+        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
+      elseif not is_o1 then
         local args = {
           os.date("%B %d, %Y"),
+          model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
           cmd_opts.include_modifications and vim.trim(prompts.modifications) or "",
         }
-        prompt = prompt ..
-            "SYSTEM: " ..
-            adapt_system_prompt_for(model, string.format(vim.trim(prompts.generic_system_prompt), unpack(args)))
+        local system_prompt = string.format(vim.trim(prompts.generic_system_prompt), unpack(args))
+        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
+        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
       end
 
       prompt = prompt .. "\nUSER: "
