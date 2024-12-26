@@ -53,12 +53,17 @@ specific providers:
    - LLM_SIDEKICK_OPENAI_API_KEY
    - OPENAI_API_KEY
 
-3. Gemini API key (for Gemini models):
+3. DeepSeek AI API key:
+   Set one of these environment variables:
+   - LLM_SIDEKICK_DEEPSEEK_API_KEY
+   - DEEPSEEK_API_KEY
+
+4. Gemini API key (for Gemini models):
    Set the following environment variable:
    - LLM_SIDEKICK_GEMINI_API_KEY
    - GEMINI_API_KEY
 
-4. AWS Bedrock authentication (for AWS models):
+5. AWS Bedrock authentication (for AWS models):
    Set one from each pair:
    - LLM_SIDEKICK_AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY_ID
    - LLM_SIDEKICK_AWS_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY
@@ -108,13 +113,16 @@ Configure the plugin by calling the setup function:
     require('llm-sidekick').setup({
       -- Model aliases configuration
       aliases = {
-        claude = "claude-3-5-sonnet-latest",  -- Anthropic's Claude model
-        gpt = "gpt-4o-2024-11-20",            -- OpenAI's GPT-4 Turbo
-        o1 = "o1-preview",                    -- OpenAI preview model
-        mini = "o1-mini",                     -- OpenAI mini model
-        flash = "gemini-2.0-flash-exp",       -- Google's Gemini model
+        deepseek = "deepseek-chat",
+        sonnet = "claude-3-5-sonnet-latest",
+        exp_gemini = "gemini-exp-1206",
+        o1 = "o1-preview",
+        mini = "o1-mini",
+        flash = "gemini-2.0-flash-exp",
+        think_flash = "gemini-2.0-flash-thinking-exp-1219",
+        gpt = "gpt-4o-2024-11-20",
       },
-      default = "claude",                     -- Default model alias to use
+      default = "sonnet",
     })
 <
 

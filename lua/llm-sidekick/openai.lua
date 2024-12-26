@@ -1,12 +1,10 @@
 local message_types = require("llm-sidekick.message_types")
 local openai = {}
 
-function openai.new(url)
-  local api_key = require("llm-sidekick.settings").get_openai_api_key()
-
+function openai.new(opts)
   return setmetatable({
-      url = url or 'https://api.openai.com/v1/chat/completions',
-      api_key = api_key
+      url = opts.url or 'https://api.openai.com/v1/chat/completions',
+      api_key = opts.api_key
     },
     { __index = openai }
   )

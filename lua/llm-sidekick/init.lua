@@ -158,11 +158,12 @@ function M.ask(prompt_bufnr)
   if vim.startswith(prompt.settings.model, "claude-") then
     client = require "llm-sidekick.anthropic".new()
   elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "gpt-") then
-    client = require "llm-sidekick.openai".new()
+    client = require "llm-sidekick.openai".new({ api_key = require("llm-sidekick.settings").get_openai_api_key() })
   elseif vim.startswith(prompt.settings.model, "ollama-") then
-    client = require "llm-sidekick.openai".new("http://localhost:11434/v1/chat/completions")
+    client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
   elseif vim.startswith(prompt.settings.model, "deepseek") then
-    client = require "llm-sidekick.openai".new("https://api.deepseek.com/v1/chat/completions")
+    local api_key = require("llm-sidekick.settings").get_deepseek_api_key()
+    client = require "llm-sidekick.openai".new({ url = "https://api.deepseek.com/v1/chat/completions", api_key = api_key })
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
     client = require "llm-sidekick.bedrock".new()
   elseif vim.startswith(prompt.settings.model, "gemini") then

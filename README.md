@@ -60,6 +60,11 @@ Set one of these environment variables:
 - `LLM_SIDEKICK_OPENAI_API_KEY`
 - `OPENAI_API_KEY`
 
+#### DeepSeek AI:
+Set one of these environment variables:
+- `LLM_SIDEKICK_DEEPSEEK_API_KEY`
+- `DEEPSEEK_API_KEY`
+
 #### Google Gemini Models
 Set one of these environment variables:
 - `LLM_SIDEKICK_GEMINI_API_KEY`
@@ -90,13 +95,16 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
     require('llm-sidekick').setup({
       -- Model aliases configuration
       aliases = {
-        claude = "claude-3-5-sonnet-latest",  -- Anthropic's Claude model
-        gpt = "gpt-4o-2024-11-20",            -- OpenAI's GPT-4 Turbo
-        o1 = "o1-preview",                    -- OpenAI preview model
-        mini = "o1-mini",                     -- OpenAI mini model
-        flash = "gemini-2.0-flash-exp",       -- Google's Gemini model
+        deepseek = "deepseek-chat",
+        sonnet = "claude-3-5-sonnet-latest",
+        exp_gemini = "gemini-exp-1206",
+        o1 = "o1-preview",
+        mini = "o1-mini",
+        flash = "gemini-2.0-flash-exp",
+        think_flash = "gemini-2.0-flash-thinking-exp-1219",
+        gpt = "gpt-4o-2024-11-20",
       },
-      default = "claude",                     -- Default model alias to use
+      default = "sonnet",
     })
   end,
 }
@@ -117,6 +125,9 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `o1`
 - `o1-mini`
 - `o1-preview`
+
+### DeepSeek AI Models
+- `deepseek-chat`
 
 ### Google Gemini Models
 - Gemini Experimental 1206 `gemini-exp-1206`

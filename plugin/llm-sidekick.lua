@@ -217,6 +217,10 @@ local function adapt_system_prompt_for(model, prompt)
     return prompt:gsub("Claude", "GPT"):gsub("Anthropic", "OpenAI")
   end
 
+  if vim.startswith(model, "deepseek") then
+    return prompt:gsub("Claude", "DeepSeek"):gsub("Anthropic", "DeepSeek AI")
+  end
+
   return prompt
 end
 
