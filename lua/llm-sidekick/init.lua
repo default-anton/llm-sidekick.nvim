@@ -1,89 +1,8 @@
 local message_types = require "llm-sidekick.message_types"
 local fs = require "llm-sidekick.fs"
+local MODELS = require "llm-sidekick.models"
 
 local M = {}
-
-local MODELS = {
-  ["claude-3-5-sonnet-latest"] = {
-    max_tokens = 8192,
-    temperature = 0.3,
-  },
-  ["claude-3-5-haiku-latest"] = {
-    max_tokens = 8192,
-    temperature = 0.3,
-  },
-  ["anthropic.claude-3-5-sonnet-20241022-v2:0"] = {
-    max_tokens = 8192,
-    temperature = 0.3,
-  },
-  ["anthropic.claude-3-5-sonnet-20240620-v1:0"] = {
-    max_tokens = 4096,
-    temperature = 0.3,
-  },
-  ["anthropic.claude-3-5-haiku-20241022-v1:0"] = {
-    max_tokens = 8192,
-    temperature = 0.3,
-  },
-  ["anthropic.claude-3-haiku-20240307-v1:0"] = {
-    max_tokens = 4096,
-    temperature = 0.3,
-  },
-  ["o1"] = {
-    max_tokens = 100000,
-    temperature = 0.0,
-    reasoning = true,
-  },
-  ["o1-mini"] = {
-    max_tokens = 65536,
-    temperature = 0.0,
-    reasoning = true,
-  },
-  ["o1-preview"] = {
-    max_tokens = 32768,
-    temperature = 0.0,
-    reasoning = true,
-  },
-  ["gpt-4o"] = {
-    max_tokens = 16384,
-    temperature = 1.0,
-  },
-  ["gpt-4o-2024-11-20"] = {
-    max_tokens = 16384,
-    temperature = 1.0,
-  },
-  ["gpt-4o-2024-08-06"] = {
-    max_tokens = 16384,
-    temperature = 1.0,
-  },
-  ["gpt-4o-2024-05-13"] = {
-    max_tokens = 4096,
-    temperature = 1.0,
-  },
-  ["gpt-4o-mini"] = {
-    max_tokens = 16384,
-    temperature = 1.0,
-  },
-  ["gemini-exp-1206"] = {
-    max_tokens = 8192,
-    temperature = 1.0,
-    top_k = 64,
-  },
-  ["gemini-2.0-flash-exp"] = {
-    max_tokens = 8192,
-    temperature = 1.0,
-    top_k = 40,
-  },
-  ["gemini-2.0-flash-thinking-exp-1219"] = {
-    max_tokens = 8192,
-    temperature = 1.0,
-    top_k = 64,
-    reasoning = true,
-  },
-  ["ollama-qwen2.5-coder:1.5b"] = {
-    max_tokens = 8192,
-    temperature = 0.2,
-  },
-}
 
 function M.setup(opts)
   require("llm-sidekick.settings").setup(opts or {})
@@ -242,6 +161,8 @@ function M.ask(prompt_bufnr)
     client = require "llm-sidekick.openai".new()
   elseif vim.startswith(prompt.settings.model, "ollama-") then
     client = require "llm-sidekick.openai".new("http://localhost:11434/v1/chat/completions")
+  elseif vim.startswith(prompt.settings.model, "deepseek") then
+    client = require "llm-sidekick.openai".new("https://api.deepseek.com/v1/chat/completions")
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
     client = require "llm-sidekick.bedrock".new()
   elseif vim.startswith(prompt.settings.model, "gemini") then

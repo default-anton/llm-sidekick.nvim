@@ -289,7 +289,7 @@ local ask_command = function(cmd_opts)
     local settings = {
       model = model,
       max_tokens = model_settings.max_tokens,
-      temperature = model_settings.temperature,
+      temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat,
     }
 
     local prompt = ""
