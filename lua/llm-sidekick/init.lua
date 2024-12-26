@@ -17,10 +17,7 @@ function M.get_model_default_settings(model)
 end
 
 local DEFAULT_SETTTINGS = {
-  model = "",
-  max_tokens = 4096,
   stream = true,
-  temperature = 0.0,
 }
 
 function M.get_prompt(bufnr)
@@ -34,10 +31,12 @@ function M.parse_prompt(prompt)
     messages = {},
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
   }
+  local processed_keys = {}
   local lines = vim.split(prompt, "\n", { plain = true })
   for _, line in ipairs(lines) do
-    if line:sub(1, 7) == "SYSTEM:" then
+    if line:sub(1, 7) == "SYSTEM:" and not processed_keys.system then
       options.messages[#options.messages + 1] = { role = "system", content = line:sub(8) }
+      processed_keys.system = true
       goto continue
     end
     if line:sub(1, 5) == "USER:" then
@@ -48,20 +47,24 @@ function M.parse_prompt(prompt)
       options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
       goto continue
     end
-    if line:sub(1, 6) == "MODEL:" then
+    if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
       options.settings.model = vim.trim(line:sub(7))
+      processed_keys.model = true
       goto continue
     end
-    if line:sub(1, 11) == "MAX_TOKENS:" then
+    if line:sub(1, 11) == "MAX_TOKENS:" and not processed_keys.max_tokens then
       options.settings.max_tokens = tonumber(vim.trim(line:sub(12)))
+      processed_keys.max_tokens = true
       goto continue
     end
-    if line:sub(1, 7) == "STREAM:" then
+    if line:sub(1, 7) == "STREAM:" and not processed_keys.stream then
       options.settings.stream = vim.trim(line:sub(8)) == "true"
+      processed_keys.stream = true
       goto continue
     end
-    if line:sub(1, 12) == "TEMPERATURE:" then
+    if line:sub(1, 12) == "TEMPERATURE:" and not processed_keys.temperature then
       options.settings.temperature = tonumber(vim.trim(line:sub(13)))
+      processed_keys.temperature = true
       goto continue
     end
 
