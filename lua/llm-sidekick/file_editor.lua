@@ -219,15 +219,12 @@ local function parse_modification_block(lines)
   return file_path, table.concat(search, "\n"), table.concat(replace, "\n")
 end
 
-local function find_closest_assistant_start_line(cursor_line, lines)
-  local start_line = cursor_line
-  while start_line > 0 do
-    if lines[start_line]:match("^ASSISTANT:") then
-      return start_line
+local function find_last_assistant_start_line(lines)
+  for i = #lines, 1, -1 do
+    if lines[i]:match("^ASSISTANT:") then
+      return i
     end
-    start_line = start_line - 1
   end
-
   return -1
 end
 
@@ -253,40 +250,43 @@ local function find_candidate_modification_blocks(start_line, end_line, lines)
   return block_start_candidates
 end
 
+local function apply_modifications(bufnr, is_all)
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  local block_start_candidates = {}
+  if is_all then
+    local assistant_start_line = find_last_assistant_start_line(lines)
+    if assistant_start_line == -1 then
+      vim.api.nvim_err_writeln("No assistant block found")
+      return
+    end
+    local assistant_end_line = find_assistant_end_line(cursor_line, lines)
+    block_start_candidates = find_candidate_modification_blocks(assistant_start_line, assistant_end_line, lines)
+  end
+
+  if vim.tbl_isempty(block_start_candidates) then
+    block_start_candidates = { cursor_line }
+  end
+
+  for _, block_start_candidate in ipairs(block_start_candidates) do
+    local block_lines = find_modification_block(block_start_candidate, lines)
+    if vim.tbl_isempty(block_lines) then
+      vim.api.nvim_err_writeln("No modification block found at cursor position")
+      return
+    end
+    local file_path, search, replace = parse_modification_block(block_lines)
+    if not file_path then
+      vim.api.nvim_err_writeln("Invalid modification block format")
+      return
+    end
+    apply_file_operation(bufnr, file_path, search, replace, block_lines)
+  end
+end
+
 local function create_apply_modifications_command(bufnr)
   vim.api.nvim_buf_create_user_command(bufnr, "Apply", function(opts)
-    local is_all = opts.args == "all"
-    local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
-    local block_start_candidates = {}
-    if is_all then
-      local assistant_start_line = find_closest_assistant_start_line(cursor_line, lines)
-      if assistant_start_line == -1 then
-        vim.api.nvim_err_writeln("No assistant block found")
-        return
-      end
-      local assistant_end_line = find_assistant_end_line(cursor_line, lines)
-      block_start_candidates = find_candidate_modification_blocks(assistant_start_line, assistant_end_line, lines)
-    end
-
-    if vim.tbl_isempty(block_start_candidates) then
-      block_start_candidates = { cursor_line }
-    end
-
-    for _, block_start_candidate in ipairs(block_start_candidates) do
-      local block_lines = find_modification_block(block_start_candidate, lines)
-      if vim.tbl_isempty(block_lines) then
-        vim.api.nvim_err_writeln("No modification block found at cursor position")
-        return
-      end
-      local file_path, search, replace = parse_modification_block(block_lines)
-      if not file_path then
-        vim.api.nvim_err_writeln("Invalid modification block format")
-        return
-      end
-      apply_file_operation(bufnr, file_path, search, replace, block_lines)
-    end
+    apply_modifications(bufnr, opts.args == "all")
   end, {
     desc = "Apply the changes to the file(s) based on modification block(s)",
     nargs = "?",
@@ -300,4 +300,5 @@ return {
   create_apply_modifications_command = create_apply_modifications_command,
   find_modification_block = find_modification_block,
   parse_modification_block = parse_modification_block,
+  apply_modifications = apply_modifications,
 }

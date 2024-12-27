@@ -80,7 +80,7 @@ local function open_buffer_in_mode(buf, mode)
   end
 end
 
-local function parse_ask_args(args)
+local function parse_ask_args(args, auto_apply)
   local settings = require("llm-sidekick.settings")
   local parsed = {
     model = settings.get_model(),
@@ -107,6 +107,11 @@ local function parse_ask_args(args)
       error("Invalid argument: " .. arg)
     end
   end
+
+  if auto_apply then
+    parsed.open_mode = "split"
+  end
+
   return parsed
 end
 
@@ -275,7 +280,7 @@ end
 
 local ask_command = function(cmd_opts)
   return function(opts)
-    local parsed_args = parse_ask_args(opts.fargs)
+    local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
     local file_paths = parsed_args.file_paths
@@ -353,6 +358,7 @@ local ask_command = function(cmd_opts)
     local buf = vim.api.nvim_create_buf(false, true)
     vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
+    vim.b[buf].llm_sidekick_auto_apply = cmd_opts.auto_apply
     vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
@@ -361,12 +367,14 @@ local ask_command = function(cmd_opts)
     open_buffer_in_mode(buf, open_mode)
     set_llm_sidekick_options()
 
-    vim.api.nvim_buf_set_keymap(
-      buf,
-      "n",
+    vim.keymap.set(
+      cmd_opts.auto_apply and { "n", "i" } or "n",
       "<CR>",
-      string.format("<cmd>lua require('llm-sidekick').ask(%d)<CR>", buf),
-      { nowait = true, noremap = true, silent = true }
+      function()
+        vim.cmd('stopinsert!')
+        llm_sidekick.ask(buf)
+      end,
+      { buffer = buf, nowait = true, noremap = true, silent = true }
     )
 
     local lines = vim.split(prompt, "[\r]?\n")
@@ -440,6 +448,24 @@ vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_mo
     end, options)
   end,
 })
+
+vim.api.nvim_create_user_command("Yolo", ask_command({ coding = true, include_modifications = true, auto_apply = true }),
+  {
+    range = true,
+    nargs = "*",
+    complete = function(ArgLead, CmdLine, CursorPos)
+      local args = vim.split(CmdLine, "%s+")
+      local file_completions = vim.fn.getcompletion(ArgLead, 'file')
+      local options = {}
+      if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
+        options = file_completions
+      end
+      vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
+      return vim.tbl_filter(function(item)
+        return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
+      end, options)
+    end,
+  })
 
 local function is_image_file(file_path)
   local extension = vim.fn.fnamemodify(file_path, ":e")
@@ -678,6 +704,12 @@ vim.api.nvim_create_user_command("Stt", function()
         -- Move cursor to the end of inserted text
         local inserted_text = table.concat(lines)
         vim.api.nvim_win_set_cursor(orig_winnr, { orig_pos[1], orig_pos[2] + #inserted_text })
+      end
+
+      if vim.b[orig_bufnr].llm_sidekick_auto_apply then
+        vim.api.nvim_buf_call(orig_bufnr, function()
+          vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), mode, false)
+        end)
       end
     end)
   end)

@@ -10,8 +10,9 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 - `:Apply` - Apply suggested changes incrementally or all at once
 - `:Ask` - Technical discussions about code, debugging, and architecture
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
-- `:Chat` - Have open-ended discussions for brainstorming and creative tasks
 - `:Stt` - Use speech-to-text input instead of typing
+- `:Yolo` - Like `:Code`, but automatically applies changes and closes the chat buffer
+- `:Chat` - Have open-ended discussions for brainstorming and creative tasks
 
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
 
@@ -155,6 +156,10 @@ Opens a new buffer for code-related tasks. Handles file operations like creating
     - `%` (current file)
     - `script.js data.json` (multiple files)
     - `%:h` (all files in the current directory recursively)
+
+#### `:Yolo [args] [paths]`
+Like `:Code`, but automatically applies changes and closes the chat buffer.
+- Arguments: Same as `:Code`, minus the opening mode. Opening mode is always `split`.
 
 #### `:Ask [args] [paths]`
 Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.

@@ -195,9 +195,20 @@ function M.ask(prompt_bufnr)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
-      pcall(function()
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
-      end)
+      if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
+        require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
+        pcall(function()
+          vim.api.nvim_win_close(0, true)
+
+          if vim.api.nvim_buf_is_valid(prompt_bufnr) then
+            vim.api.nvim_buf_delete(prompt_bufnr, { force = true })
+          end
+        end)
+      else
+        pcall(function()
+          vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
+        end)
+      end
     end
   end)
 end
