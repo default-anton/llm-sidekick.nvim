@@ -105,10 +105,12 @@ function gemini:chat(messages, settings, callback)
 
       local ok, decoded = pcall(vim.json.decode, line)
       if ok and decoded and decoded.candidates and decoded.candidates[1] and
-          decoded.candidates[1].content and decoded.candidates[1].content.parts and
-          decoded.candidates[1].content.parts[1].text then
-        local content = decoded.candidates[1].content.parts[1].text
-        callback(message_types.DATA, content)
+          decoded.candidates[1].content and decoded.candidates[1].content.parts then
+        for _, part in ipairs(decoded.candidates[1].content.parts) do
+          if part.text then
+            callback(message_types.DATA, part.text)
+          end
+        end
       end
     end,
     on_stderr = function(_, text)
