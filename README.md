@@ -193,11 +193,6 @@ Only available in buffers created by the `:Code` command.
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
 
-Recommended keybinding for insert mode:
-```lua
-vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
-```
-
 ## Keybindings
 
 Recommended keybindings for common operations:
@@ -218,6 +213,9 @@ vim.keymap.set('n', '<leader>lp', '<cmd>Apply all<CR>', { noremap = true, desc =
 -- Add context to LLM
 vim.keymap.set('n', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add context to LLM" })
 vim.keymap.set('v', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add selected context to LLM" })
+
+-- Speech to text
+vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
 
 -- Fast coding with Yolo mode
 vim.keymap.set('n', '<leader>ly', '<cmd>Yolo split %<CR>', { noremap = true, desc = "Fast coding with LLM on current buffer. Automatically applies changes and closes the chat buffer" })
