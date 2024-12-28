@@ -198,6 +198,32 @@ Recommended keybinding for insert mode:
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
 ```
 
+## Keybindings
+
+Recommended keybindings for common operations:
+
+```lua
+-- Ask LLM about code
+vim.keymap.set('n', '<leader>la', '<cmd>Ask split %<CR>', { noremap = true, desc = "Ask LLM about current buffer" })
+vim.keymap.set('v', '<leader>la', '<cmd>Ask split<CR>', { noremap = true, desc = "Ask LLM about selection" })
+
+-- Code with LLM
+vim.keymap.set('n', '<leader>lc', '<cmd>Code split %<CR>', { noremap = true, desc = "Start coding with LLM on current buffer" })
+vim.keymap.set('v', '<leader>lc', '<cmd>Code split<CR>', { noremap = true, desc = "Start coding with LLM on selection" })
+vim.keymap.set('n', '<leader>ld', '<cmd>Code split %:h<CR>', { noremap = true, desc = "Start coding with LLM on files in current directory" })
+
+-- Apply LLM changes
+vim.keymap.set('n', '<leader>lp', '<cmd>Apply all<CR>', { noremap = true, desc = "Apply all LLM changes" })
+
+-- Add context to LLM
+vim.keymap.set('n', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add context to LLM" })
+vim.keymap.set('v', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add selected context to LLM" })
+
+-- Fast coding with Yolo mode
+vim.keymap.set('n', '<leader>ly', '<cmd>Yolo split %<CR>', { noremap = true, desc = "Fast coding with LLM on current buffer. Automatically applies changes and closes the chat buffer" })
+vim.keymap.set('v', '<leader>ly', '<cmd>Yolo split<CR>', { noremap = true, desc = "Fast coding with LLM on selection. Automatically applies changes and closes the chat buffer" })
+```
+
 ## Project Configuration
 
 llm-sidekick.nvim can be configured per project to provide context-aware assistance.
