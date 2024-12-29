@@ -102,6 +102,7 @@ Important guidelines for using this format:
    - Use <replace> tags to show the modified code snippet or the code with new content appended.
    - Include only the relevant parts of the code, not necessarily the entire file content.
    - When appending content, include some surrounding context in the <search> tags to precisely locate where the new content should be added.
+   - When choosing the code snippet for the `<search>` tag, select the **minimum unique** portion of the code that needs to be modified or used as a reference point. This ensures precise targeting of changes while avoiding unnecessary modifications to other parts of the file. The goal is to identify the smallest, distinct code segment that, when replaced, achieves the desired modification without ambiguity.
 6. When dealing with code or data wrapped/escaped in JSON, XML, quotes, or other containers, propose edits to the literal contents of the file, including the container markup. Do not attempt to unwrap or modify the container format.
 7. For creating new files:
    - Use empty <search> tags.
