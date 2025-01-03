@@ -1,6 +1,6 @@
 local fs = require "llm-sidekick.fs"
 
-local function apply_file_operation(chat_bufnr, file_path, search, replace, block_lines)
+local function apply_modification(chat_bufnr, file_path, search, replace, block_lines)
   local trimmed_search = vim.trim(search)
   local trimmed_replace = vim.trim(replace)
 
@@ -42,10 +42,18 @@ local function apply_file_operation(chat_bufnr, file_path, search, replace, bloc
     end
   else
     -- Modify existing file
-    local content = fs.read_file(file_path)
+    local content
+    local buf = vim.fn.bufnr(file_path)
+    if buf >= 0 and vim.api.nvim_buf_is_loaded(buf) then
+      content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+    else
+      content = fs.read_file(file_path)
+    end
+
     if not content then
       error(string.format("Failed to read file '%s'", file_path))
     end
+
     -- Find the exact string match
     local start_pos, end_pos = content:find(search, 1, true)
     if not start_pos then
@@ -280,7 +288,7 @@ local function apply_modifications(bufnr, is_all)
       vim.api.nvim_err_writeln("Invalid modification block format")
       return
     end
-    apply_file_operation(bufnr, file_path, search, replace, block_lines)
+    apply_modification(bufnr, file_path, search, replace, block_lines)
   end
 end
 
