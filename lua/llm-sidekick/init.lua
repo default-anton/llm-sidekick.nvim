@@ -130,7 +130,7 @@ function M.parse_prompt(prompt)
           },
         }
       else
-        vim.api.nvim_err_writeln("Model not supported: " .. options.settings.model)
+        vim.api.nvim_err_writeln("Model does not support images: " .. options.settings.model)
         return options
       end
 
