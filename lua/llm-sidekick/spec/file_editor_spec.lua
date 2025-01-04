@@ -1,4 +1,393 @@
 local file_editor = require('llm-sidekick.file_editor')
+local Path = require('plenary.path')
+
+describe("apply_modifications", function()
+  local original_nvim_err_writeln = vim.api.nvim_err_writeln
+  local test_dir = Path:new('lua/llm-sidekick/spec/testdata')
+
+  before_each(function()
+    -- Ensure the testdata directory exists
+    if not test_dir:exists() then
+      local success, err = pcall(function()
+        test_dir:mkdir({ parents = true })
+      end)
+      if not success then
+        error("Failed to create test directory: " .. tostring(err))
+      end
+    end
+  end)
+
+  after_each(function()
+    vim.api.nvim_err_writeln = original_nvim_err_writeln
+
+    -- Close all buffers that belong to testdata directory
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      local buf_name = vim.api.nvim_buf_get_name(buf)
+      if buf_name:match('^' .. test_dir:absolute()) then
+        vim.api.nvim_buf_delete(buf, { force = true })
+      end
+    end
+
+    -- Clean up the testdata directory after all tests
+    if test_dir:exists() then
+      test_dir:rm({ recursive = true })
+    end
+  end)
+
+  it("should delete a file when both search and replace are empty", function()
+    local file_path = test_dir:joinpath('delete_me.txt'):absolute()
+
+    Path:new(file_path):write('', 'w')
+    local bufnr = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "@" .. test_dir:joinpath('delete_me.txt'):absolute(),
+      "<search>",
+      "</search>",
+      "<replace>",
+      "</replace>",
+    }
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(bufnr, false)
+    assert.is_false(Path:new(file_path):exists())
+  end)
+
+  it("should create a new file when search is empty and replace is provided", function()
+    local file_path = test_dir:joinpath('new_file.txt'):absolute()
+    local replace_content = "This is a new file.\nWith multiple lines."
+
+    assert.is_false(Path:new(file_path):exists())
+
+    local bufnr = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "@" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "<search>",
+      "</search>",
+      "<replace>",
+      "This is a new file.",
+      "With multiple lines.",
+      "</replace>",
+    }
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(bufnr, false)
+
+    assert.is_true(Path:new(file_path):exists())
+    local content = Path:new(file_path):read()
+    assert.equals(replace_content .. "\n", content)
+  end)
+
+  it("should modify an existing file by replacing search text with replace text", function()
+    local file_path = test_dir:joinpath('modify_me.txt'):absolute()
+    local original_content = "Hello World!\nThis is a test file.\nGoodbye World!"
+    local search_text = "Hello World!"
+    local replace_text = "Hello Universe!"
+
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    local bufnr = vim.api.nvim_create_buf(true, true)
+
+    local mod_block = vim.split(
+      table.concat({
+        "@" .. test_dir:joinpath('modify_me.txt'):absolute(),
+        "<search>",
+        search_text,
+        "</search>",
+        "<replace>",
+        replace_text,
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(bufnr, false)
+
+    local expected_content = "Hello Universe!\nThis is a test file.\nGoodbye World!"
+    local content = Path:new(file_path):read()
+    assert.equals(expected_content .. "\n", content)
+
+    local buffer_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local expected_buffer_content = {
+      "@" .. test_dir:joinpath('modify_me.txt'):absolute(),
+      "<changes_applied>",
+      "Hello Universe!",
+      "</changes_applied>",
+    }
+    assert.same(expected_buffer_content, buffer_content)
+  end)
+
+  it("should handle multiple apply_modifications calls correctly", function()
+    local file_path = test_dir:joinpath('multi_modify.txt'):absolute()
+    local original_content = "Line 1\nLine 2\nLine 3\nLine 4"
+    local search_text_1 = "Line 2"
+    local replace_text_1 = "Second Line"
+    local search_text_2 = "Line 4"
+    local replace_text_2 = "Fourth Line"
+
+    -- Create the file with original content
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    -- Open the file in a buffer
+    local bufnr = vim.api.nvim_create_buf(true, true)
+
+    -- Insert the first modification block
+    local mod_block_1 = vim.split(
+      table.concat({
+        "ASSISTANT:",
+        "@" .. test_dir:joinpath('multi_modify.txt'):absolute(),
+        "<search>",
+        search_text_1,
+        "</search>",
+        "<replace>",
+        replace_text_1,
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block_1)
+
+    -- Set cursor at the beginning of the first modification block
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+
+    -- Apply first modification
+    file_editor.apply_modifications(bufnr, false)
+
+    -- Verify the first modification
+    local expected_content_1 = "Line 1\nSecond Line\nLine 3\nLine 4"
+    local content_1 = Path:new(file_path):read()
+    assert.equals(expected_content_1 .. "\n", content_1)
+
+    -- Insert the second modification block below the first
+    local mod_block_2 = {
+      "@" .. test_dir:joinpath('multi_modify.txt'):absolute(),
+      "<search>",
+      search_text_2,
+      "</search>",
+      "<replace>",
+      replace_text_2,
+      "</replace>",
+    }
+    vim.api.nvim_buf_set_lines(bufnr, #mod_block_1, -1, false, mod_block_2)
+
+
+    -- Set cursor at the beginning of the second modification block
+    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_cursor(0, { #mod_block_1 + 2, 0 })
+
+    -- Apply second modification
+    file_editor.apply_modifications(bufnr, false)
+
+    -- Verify the second modification
+    local expected_content_2 = "Line 1\nSecond Line\nLine 3\nFourth Line"
+    local content_2 = Path:new(file_path):read()
+    assert.equals(expected_content_2 .. "\n", content_2)
+
+    -- Verify the buffer reflects both modifications
+    local buffer_content = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local expected_buffer_content = {
+      'ASSISTANT:',
+      '@/Users/akuzmenko/code/llm-sidekick.nvim/lua/llm-sidekick/spec/testdata/multi_modify.txt',
+      '<changes_applied>',
+      'Second Line',
+      '</changes_applied>',
+      '@/Users/akuzmenko/code/llm-sidekick.nvim/lua/llm-sidekick/spec/testdata/multi_modify.txt',
+      '<changes_applied>',
+      'Fourth Line',
+      '</changes_applied>'
+    }
+    assert.same(expected_buffer_content, buffer_content)
+  end)
+
+  it("should handle applying modifications to multiple files with `is_all` flag", function()
+    local file1_path = test_dir:joinpath('multi_file1.txt'):absolute()
+    local file2_path = test_dir:joinpath('multi_file2.txt'):absolute()
+
+    local original_content1 = "Apple\nBanana\nCherry"
+    local original_content2 = "Dog\nElephant\nFrog"
+
+    local search_text1 = "Banana"
+    local replace_text1 = "Blueberry"
+
+    local search_text2 = "Elephant"
+    local replace_text2 = "Eagle"
+
+    -- Create the files with original content
+    Path:new(file1_path):write(original_content1, 'w')
+    Path:new(file2_path):write(original_content2, 'w')
+    assert.is_true(Path:new(file1_path):exists())
+    assert.is_true(Path:new(file2_path):exists())
+
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+
+    -- Insert modification blocks for both files
+    -- Insert the modification block
+    local mod_block1 = vim.split(
+      table.concat({
+        "ASSISTANT:",
+        "@" .. test_dir:joinpath('multi_file1.txt'):absolute(),
+        "<search>",
+        search_text1,
+        "</search>",
+        "<replace>",
+        replace_text1,
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+
+    local mod_block2 = {
+      "@" .. test_dir:joinpath('multi_file2.txt'):absolute(),
+      "<search>",
+      search_text2,
+      "</search>",
+      "<replace>",
+      replace_text2,
+      "</replace>",
+    }
+
+    -- Insert both blocks into the first buffer
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, vim.list_extend(mod_block1, { '', unpack(mod_block2) }))
+
+    -- Apply modifications with is_all = true
+    file_editor.apply_modifications(chatbuf, true)
+
+    -- Verify file1 has been modified
+    local expected_content1 = "Apple\nBlueberry\nCherry"
+    local content1 = Path:new(file1_path):read()
+    assert.equals(expected_content1 .. "\n", content1)
+
+    -- Verify file2 has been modified
+    local expected_content2 = "Dog\nEagle\nFrog"
+    local content2 = Path:new(file2_path):read()
+    assert.equals(expected_content2 .. "\n", content2)
+
+    local expected_chat_buf_content = {
+      "ASSISTANT:",
+      "@" .. test_dir:joinpath('multi_file1.txt'):absolute(),
+      "<changes_applied>",
+      replace_text1,
+      "</changes_applied>",
+      "",
+      "@" .. test_dir:joinpath('multi_file2.txt'):absolute(),
+      "<changes_applied>",
+      replace_text2,
+      "</changes_applied>",
+    }
+
+    assert.same(expected_chat_buf_content, vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false))
+  end)
+
+  it("should handle the case where the search text is not found", function()
+    local file_path = test_dir:joinpath('no_match.txt'):absolute()
+    local original_content = "Line A\nLine B\nLine C"
+    local search_text = "Line X"
+    local replace_text = "Line Y"
+
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+
+    -- Insert the modification block
+    local mod_block = vim.split(
+      table.concat({
+        "@" .. test_dir:joinpath('no_match.txt'):absolute(),
+        "<search>",
+        search_text,
+        "</search>",
+        "<replace>",
+        replace_text,
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    -- Apply modifications
+    -- Capture Neovim's error messages
+    local err_messages = {}
+    _G.vim.api.nvim_err_writeln = function(msg)
+      table.insert(err_messages, msg)
+    end
+
+    vim.api.nvim_win_set_buf(0, chatbuf)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(chatbuf, false)
+
+    -- Verify that an error message was displayed
+    assert.is_true(#err_messages > 0)
+    assert.equals(string.format("No exact matches found in '%s'.", file_path), err_messages[1])
+
+    -- Verify the file remains unchanged
+    local content = Path:new(file_path):read()
+    assert.equals(original_content, content)
+
+    -- Verify the buffer remains unchanged
+    assert.same(mod_block, vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false))
+  end)
+
+  it("should handle applying modifications with block_lines not present in the buffer", function()
+    local file_path = test_dir:joinpath('missing_block.txt'):absolute()
+    local original_content = "Line One\nLine Two\nLine Three"
+    local search_text = "Line Two"
+    local replace_text = "Second Line"
+
+    -- Create the file with original content
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    -- Create a buffer for the file
+    local file_buf = vim.fn.bufadd(file_path)
+    -- Manually delete all lines in the file buffer
+    vim.api.nvim_buf_set_lines(file_buf, 0, #vim.split(original_content, "\n"), false, {})
+    -- Open the file in a buffer
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+
+    -- Insert a modification block that does not exist in the buffer
+    local mod_block = vim.split(
+      table.concat({
+        "@" .. test_dir:joinpath('missing_block.txt'):absolute(),
+        "<search>",
+        search_text,
+        "</search>",
+        "<replace>",
+        replace_text,
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    -- Apply modifications
+    -- Capture the error
+    local err_messages = {}
+    _G.vim.api.nvim_err_writeln = function(msg)
+      table.insert(err_messages, msg)
+    end
+
+    vim.api.nvim_win_set_buf(0, chatbuf)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(chatbuf, false)
+
+    -- Verify that an error message was displayed
+    assert.is_true(#err_messages > 0)
+    assert.equals(string.format("No exact matches found in '%s'.", file_path), err_messages[1])
+
+    -- Verify the file remains unchanged
+    local content = Path:new(file_path):read()
+    assert.equals(original_content, content)
+  end)
+end)
 
 describe("find_modification_block", function()
   it("should find a single well-formed modification block", function()

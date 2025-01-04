@@ -141,7 +141,8 @@ local function find_modification_block(cursor_line, lines)
 
   -- Find the start of the block
   while start_line > 0 and state == "searching" do
-    if lines[start_line]:match("^@") then
+    local current_line = lines[start_line]
+    if current_line and current_line:match("^@") then
       state = "found_start"
       break
     end
