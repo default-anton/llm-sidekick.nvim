@@ -491,7 +491,7 @@ local function get_content(opts, callback)
   end
 
   if opts.args and opts.args ~= "" then
-    local file_path = vim.fn.expand(opts.args)
+    local file_path = vim.fn.expand(vim.trim(opts.args))
     if file_path:match("^https?://") then
       markdown.get_markdown(file_path, function(markdown_content)
         callback({ type = "text", content = markdown_content }, file_path)
