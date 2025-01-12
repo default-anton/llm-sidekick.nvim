@@ -326,7 +326,7 @@ describe("apply_modifications", function()
 
     -- Verify that an error message was displayed
     assert.is_true(#err_messages > 0)
-    assert.equals(string.format("No exact matches found in '%s'.", file_path), err_messages[1])
+    assert.is_not_nil(err_messages[1]:match("Could not find search pattern"))
 
     -- Verify the file remains unchanged
     local content = Path:new(file_path):read()
@@ -381,11 +381,61 @@ describe("apply_modifications", function()
 
     -- Verify that an error message was displayed
     assert.is_true(#err_messages > 0)
-    assert.equals(string.format("No exact matches found in '%s'.", file_path), err_messages[1])
+    assert.is_not_nil(err_messages[1]:match("Could not find search pattern"))
 
     -- Verify the file remains unchanged
     local content = Path:new(file_path):read()
     assert.equals(original_content, content)
+  end)
+
+  it("should maintain original indentation when applying modifications with larger indent", function()
+    local file_path = test_dir:joinpath('indent_test.py'):absolute()
+    local original_content = "def hello():\n    print(\"Hello, World!\")"
+
+    -- Create the file with original content
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    -- Create a buffer for the modifications
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+
+    -- Insert modification block with different indentation
+    local mod_block = vim.split(
+      table.concat({
+        "@" .. test_dir:joinpath('indent_test.py'):absolute(),
+        "<search>",
+        "    def hello():",
+        "        print(\"Hello, World!\")",
+        "</search>",
+        "<replace>",
+        "    def hello():",
+        "        print(\"Hello, Universe!\")",
+        "</replace>",
+      }, "\n"),
+      "\n"
+    )
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    -- Apply modifications
+    vim.api.nvim_win_set_buf(0, chatbuf)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(chatbuf, false)
+
+    -- Verify the file content maintains original indentation
+    local expected_content = "def hello():\n    print(\"Hello, Universe!\")"
+    local content = Path:new(file_path):read()
+    assert.equals(expected_content .. "\n", content)
+
+    -- Verify the buffer reflects the changes with correct indentation
+    local buffer_content = vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false)
+    local expected_buffer_content = {
+      "@" .. test_dir:joinpath('indent_test.py'):absolute(),
+      "<changes_applied>",
+      "def hello():",
+      "    print(\"Hello, Universe!\")",
+      "</changes_applied>",
+    }
+    assert.same(expected_buffer_content, buffer_content)
   end)
 end)
 

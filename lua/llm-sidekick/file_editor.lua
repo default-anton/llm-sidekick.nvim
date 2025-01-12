@@ -1,6 +1,42 @@
-local fs = require "llm-sidekick.fs"
+local function find_min_indentation(lines)
+  local min_indent = math.huge
+  for _, line in ipairs(lines) do
+    -- Skip empty lines when calculating min indent
+    if line:match("^%s*$") then
+      goto continue
+    end
+    local indent = vim.fn.strdisplaywidth(line:match("^%s*"))
+    min_indent = math.min(min_indent, indent)
+    ::continue::
+  end
+  return min_indent
+end
+
+local function dedent_lines(lines, min_indent)
+  local indent_pattern = "^" .. string.rep(" ", min_indent)
+  local dedented_lines = {}
+  -- Remove minimum indentation from all lines
+  for _, line in ipairs(lines) do
+    if line:match("^%s*$") then
+      -- Preserve empty lines
+      table.insert(dedented_lines, line)
+    else
+      local dedented = line:gsub(indent_pattern, "")
+      table.insert(dedented_lines, dedented)
+    end
+  end
+
+  return dedented_lines
+end
 
 local function apply_modification(chat_bufnr, file_path, search, replace, block_lines)
+  vim.validate({
+    chat_bufnr = { chat_bufnr, "number" },
+    file_path = { file_path, "string" },
+    search = { search, "string" },
+    replace = { replace, "string" },
+    block_lines = { block_lines, "table" },
+  })
   local trimmed_search = vim.trim(search)
   local trimmed_replace = vim.trim(replace)
 
@@ -47,7 +83,13 @@ local function apply_modification(chat_bufnr, file_path, search, replace, block_
     if buf >= 0 and vim.api.nvim_buf_is_loaded(buf) then
       content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
     else
-      content = fs.read_file(file_path)
+      buf = vim.fn.bufadd(file_path)
+      if buf == 0 then
+        error(string.format("Failed to open file '%s'", file_path))
+      end
+      vim.fn.bufload(buf)
+      content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+      vim.api.nvim_buf_delete(buf, { force = true })
     end
 
     if not content then
@@ -56,9 +98,45 @@ local function apply_modification(chat_bufnr, file_path, search, replace, block_
 
     -- Find the exact string match
     local start_pos, end_pos = content:find(search, 1, true)
+
     if not start_pos then
-      vim.api.nvim_err_writeln(string.format("No exact matches found in '%s'.", file_path))
-      return
+      local search_lines = vim.split(search, "\n")
+      local search_min_indent = find_min_indentation(search_lines)
+      local dedented_search_lines = dedent_lines(search_lines, search_min_indent)
+      local dedented_search = table.concat(dedented_search_lines, "\n")
+
+      start_pos, end_pos = content:find(dedented_search, 1, true)
+
+      if not start_pos then
+        vim.api.nvim_err_writeln(string.format("Could not find search pattern '%s' in file '%s'", search, file_path))
+        return
+      end
+
+      -- Extract and analyze the original matched text
+      local original_text = content:sub(start_pos, end_pos)
+      local original_lines = vim.split(original_text, "\n")
+      local original_indent = find_min_indentation(original_lines)
+
+      -- Process replacement text
+      local replace_lines = vim.split(replace, "\n")
+      local replace_min_indent = find_min_indentation(replace_lines)
+
+      if replace_min_indent ~= original_indent then
+        -- Adjust indentation of replacement text to match original
+        local indented_replace_lines = {}
+        for _, line in ipairs(replace_lines) do
+          if line:match("^%s*$") then
+            -- Preserve empty lines
+            table.insert(indented_replace_lines, line)
+          else
+            -- Remove existing minimum indentation
+            local dedented = line:gsub("^" .. string.rep(" ", replace_min_indent), "")
+            -- Add original indentation
+            table.insert(indented_replace_lines, string.rep(" ", original_indent) .. dedented)
+          end
+        end
+        replace = table.concat(indented_replace_lines, "\n")
+      end
     end
     -- Perform the substitution
     local modified_content = content:sub(1, start_pos - 1) .. replace .. content:sub(end_pos + 1)
