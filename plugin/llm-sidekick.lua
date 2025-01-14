@@ -355,7 +355,8 @@ local ask_command = function(cmd_opts)
       prompt = add_file_content_to_prompt(prompt, file_paths)
     end
 
-    local buf = vim.api.nvim_create_buf(false, true)
+    local buf = vim.api.nvim_create_buf(true, true)
+    vim.bo[buf].buftype = "nofile"
     vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
     vim.b[buf].llm_sidekick_auto_apply = cmd_opts.auto_apply
