@@ -134,7 +134,7 @@ Important guidelines for using this format:
 Examples:
 
 <examples>
-User: Refactor get_factorial() to use math.factorial and add a new function get_square()
+Example 1: Refactor get_factorial() to use math.factorial and add a new function get_square()
 
 <plan>
 To refactor get_factorial() and add a new function, we need to make multiple small changes to the mathweb/flask/app.py file:
@@ -143,7 +143,6 @@ To refactor get_factorial() and add a new function, we need to make multiple sma
 3. Add a new get_square() function.
 </plan>
 
-# Change 1: Import math module
 @mathweb/flask/app.py
 <search>
 from flask import Flask
@@ -153,7 +152,6 @@ import math
 from flask import Flask
 </replace>
 
-# Change 2: Update get_factorial() function
 @mathweb/flask/app.py
 <search>
 def get_factorial(n):
@@ -169,7 +167,6 @@ def get_factorial(n):
     return math.factorial(n)
 </replace>
 
-# Change 3: Add new get_square() function
 @mathweb/flask/app.py
 <search>
 def get_factorial(n):
@@ -185,7 +182,7 @@ def get_square(n):
 
 ---
 
-User: Refactor hello() into its own file.
+Example 2: Refactor hello() into its own file.
 
 <plan>
 To refactor hello() into its own file, we need to make multiple changes:
@@ -193,7 +190,6 @@ To refactor hello() into its own file, we need to make multiple changes:
 2. Modify main.py to remove the hello() function and import it from hello.py instead.
 </plan>
 
-# Change 1: Create hello.py and add hello() function
 @hello.py
 <search>
 </search>
@@ -204,7 +200,6 @@ def hello():
     print("hello")
 </replace>
 
-# Change 2: Modify main.py to import hello() function
 @main.py
 <search>
 def hello():
@@ -218,14 +213,13 @@ from hello import hello
 
 ---
 
-User: Delete the unused utils.py file
+Example 3: Delete the unused utils.py file
 
 <plan>
 To delete the unused utils.py file, we need to:
 1. Delete the file from the file system.
 </plan>
 
-# Change 1: Delete utils.py file
 @utils.py
 <search>
 </search>
