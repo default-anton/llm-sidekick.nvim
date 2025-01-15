@@ -441,17 +441,16 @@ end)
 
 describe("find_modification_block", function()
   it("should find a single well-formed modification block", function()
-    local content = [[
-@mathweb/flask/app.py
-<search>
-from flask import Flask
-</search>
-<replace>
-import math
-from flask import Flask
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@mathweb/flask/app.py",
+      "<search>",
+      "from flask import Flask",
+      "</search>",
+      "<replace>",
+      "import math",
+      "from flask import Flask",
+      "</replace>",
+    }
     local cursor_line = 2 -- Line with "@mathweb/flask/app.py"
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -466,11 +465,10 @@ from flask import Flask
   end)
 
   it("should return empty table if no block is found", function()
-    local content = [[
-def hello():
-    print("Hello, World!")
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "def hello():",
+      "    print(\"Hello, World!\")",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -478,14 +476,13 @@ def hello():
   end)
 
   it("should return empty table if block is incomplete (missing <replace>)", function()
-    local content = [[
-@main.py
-<search>
-def hello():
-    print("Hello, World!")
-</search>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@main.py",
+      "<search>",
+      "def hello():",
+      "    print(\"Hello, World!\")",
+      "</search>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -493,25 +490,23 @@ def hello():
   end)
 
   it("should handle multiple modification blocks and find the correct one", function()
-    local content = [[
-@file1.py
-<search>
-old_code1
-</search>
-<replace>
-new_code1
-</replace>
-
-@file2.py
-<search>
-old_code2
-</search>
-<replace>
-new_code2
-</replace>
-]]
-    local lines = vim.split(content, "\n")
-
+    local lines = {
+      "@file1.py",
+      "<search>",
+      "old_code1",
+      "</search>",
+      "<replace>",
+      "new_code1",
+      "</replace>",
+      "",
+      "@file2.py",
+      "<search>",
+      "old_code2",
+      "</search>",
+      "<replace>",
+      "new_code2",
+      "</replace>",
+    }
     -- Test first block
     local cursor_line1 = 2
     local result1 = file_editor.find_modification_block(cursor_line1, lines)
@@ -542,27 +537,25 @@ new_code2
   end)
 
   it("should handle blocks at the start and end of the file", function()
-    local content = [[
-@start_file.py
-<search>
-start_code
-</search>
-<replace>
-new_start_code
-</replace>
-
-Middle content
-
-@end_file.py
-<search>
-end_code
-</search>
-<replace>
-new_end_code
-</replace>
-]]
-    local lines = vim.split(content, "\n")
-
+    local lines = {
+      "@start_file.py",
+      "<search>",
+      "start_code",
+      "</search>",
+      "<replace>",
+      "new_start_code",
+      "</replace>",
+      "",
+      "Middle content",
+      "",
+      "@end_file.py",
+      "<search>",
+      "end_code",
+      "</search>",
+      "<replace>",
+      "new_end_code",
+      "</replace>",
+    }
     -- Test start block
     local cursor_start = 2
     local result_start = file_editor.find_modification_block(cursor_start, lines)
@@ -593,21 +586,19 @@ new_end_code
   end)
 
   it("should return empty table if cursor_line is not within a block", function()
-    local content = [[
-Some unrelated line
-
-@file.py
-<search>
-code
-</search>
-<replace>
-new_code
-</replace>
-
-Some unrelated line
-]]
-    local lines = vim.split(content, "\n")
-
+    local lines = {
+      "Some unrelated line",
+      "",
+      "@file.py",
+      "<search>",
+      "code",
+      "</search>",
+      "<replace>",
+      "new_code",
+      "</replace>",
+      "",
+      "Some unrelated line",
+    }
     -- Cursor line before any block
     local cursor_before = 1
     local result_before = file_editor.find_modification_block(cursor_before, lines)
@@ -630,16 +621,15 @@ Some unrelated line
   end)
 
   it("should return empty table if another block starts before completing the current one", function()
-    local content = [[
-@file1.py
-<search>
-code1
-@file2.py
-<replace>
-new_code2
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@file1.py",
+      "<search>",
+      "code1",
+      "@file2.py",
+      "<replace>",
+      "new_code2",
+      "</replace>",
+    }
     local cursor_line = 2 -- Line with "@file1.py" and start searching for block
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -648,14 +638,13 @@ new_code2
   end)
 
   it("should handle blocks with empty <search> and <replace> sections", function()
-    local content = [[
-@empty.py
-<search>
-</search>
-<replace>
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@empty.py",
+      "<search>",
+      "</search>",
+      "<replace>",
+      "</replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -669,16 +658,15 @@ new_code2
   end)
 
   it("should handle cursor_line at the first line", function()
-    local content = [[
-@first_line.py
-<search>
-code
-</search>
-<replace>
-new_code
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@first_line.py",
+      "<search>",
+      "code",
+      "</search>",
+      "<replace>",
+      "new_code",
+      "</replace>",
+    }
     local cursor_line = 1
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -694,19 +682,18 @@ new_code
   end)
 
   it("should handle blocks with additional unrelated lines inside", function()
-    local content = [[
-@complex.py
-<search>
-def func():
-    # Some comment
-    pass
-</search>
-<replace>
-def func():
-    print("Updated")
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@complex.py",
+      "<search>",
+      "def func():",
+      "    # Some comment",
+      "    pass",
+      "</search>",
+      "<replace>",
+      "def func():",
+      "    print(\"Updated\")",
+      "</replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -726,15 +713,14 @@ def func():
   end)
 
   it("should handle closing tags on the same line as content", function()
-    local content = [[
-@app.py
-<search>
-from flask import Flask</search>
-<replace>
-import math
-from flask import Flask</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@app.py",
+      "<search>",
+      "from flask import Flask</search>",
+      "<replace>",
+      "import math",
+      "from flask import Flask</replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -749,15 +735,14 @@ from flask import Flask</replace>
   end)
 
   it("should handle mixed inline and newline closing tags", function()
-    local content = [[
-@app.py
-<search>
-print("hello")</search>
-<replace>
-print("world")
-</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@app.py",
+      "<search>",
+      "print(\"hello\")</search>",
+      "<replace>",
+      "print(\"world\")",
+      "</replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -772,12 +757,11 @@ print("world")
   end)
 
   it("should handle empty blocks with inline closing tags", function()
-    local content = [[
-@empty.py
-<search></search>
-<replace></replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@empty.py",
+      "<search></search>",
+      "<replace></replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
@@ -786,17 +770,15 @@ print("world")
   end)
 
   it("should handle multiple blocks with inline closing tags", function()
-    local content = [[
-@file1.py
-<search>old_code1</search>
-<replace>new_code1</replace>
-
-@file2.py
-<search>old_code2</search>
-<replace>new_code2</replace>
-]]
-    local lines = vim.split(content, "\n")
-
+    local lines = {
+      "@file1.py",
+      "<search>old_code1</search>",
+      "<replace>new_code1</replace>",
+      "",
+      "@file2.py",
+      "<search>old_code2</search>",
+      "<replace>new_code2</replace>",
+    }
     local cursor_line1 = 2
     local result1 = file_editor.find_modification_block(cursor_line1, lines)
 
@@ -811,12 +793,11 @@ print("world")
   end)
 
   it("should return empty table for invalid inline tag formats", function()
-    local content = [[
-@invalid.py
-<search>code</search>invalid</search>
-<replace>new</replace>code</replace>
-]]
-    local lines = vim.split(content, "\n")
+    local lines = {
+      "@invalid.py",
+      "<search>code</search>invalid</search>",
+      "<replace>new</replace>code</replace>",
+    }
     local cursor_line = 2
     local result = file_editor.find_modification_block(cursor_line, lines)
 
