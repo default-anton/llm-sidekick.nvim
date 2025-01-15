@@ -359,15 +359,15 @@ local function apply_modifications(bufnr, is_all)
   for _, block_start_candidate in ipairs(block_start_candidates) do
     local block_lines = find_modification_block(block_start_candidate, lines)
     if vim.tbl_isempty(block_lines) then
-      vim.api.nvim_err_writeln("No modification block found at cursor position")
-      return
+      goto continue
     end
     local file_path, search, replace = parse_modification_block(block_lines)
     if not file_path then
-      vim.api.nvim_err_writeln("Invalid modification block format")
-      return
+      vim.api.nvim_err_writeln("Skipping invalid modification block at line " .. block_start_candidate)
+      goto continue
     end
     apply_modification(bufnr, file_path, search, replace, block_lines)
+    ::continue::
   end
 end
 

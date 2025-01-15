@@ -388,6 +388,59 @@ describe("apply_modifications", function()
     assert.equals(original_content, content)
   end)
 
+  it("should ignore blocks with changes_applied tags and apply valid blocks", function()
+    local file_path = test_dir:joinpath('mixed_blocks.txt'):absolute()
+    local original_content = "Line One\nLine Two\nLine Three"
+
+    -- Create the file with original content
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    -- Create a buffer with both types of blocks
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+    local mod_blocks = {
+      "ASSISTANT:",
+      "@" .. file_path,
+      "<changes_applied>",
+      "This block should be ignored",
+      "</changes_applied>",
+      "",
+      "@" .. file_path,
+      "<search>",
+      "Line Two",
+      "</search>",
+      "<replace>",
+      "Modified Line",
+      "</replace>",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_blocks)
+
+    -- Apply modifications
+    vim.api.nvim_win_set_buf(0, chatbuf)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    file_editor.apply_modifications(chatbuf, true)
+
+    -- Verify the file content was modified according to the valid block
+    local expected_content = "Line One\nModified Line\nLine Three"
+    local content = Path:new(file_path):read()
+    assert.equals(expected_content .. "\n", content)
+
+    -- Verify the buffer content reflects the changes correctly
+    local expected_buffer_content = {
+      "ASSISTANT:",
+      "@" .. file_path,
+      "<changes_applied>",
+      "This block should be ignored",
+      "</changes_applied>",
+      "",
+      "@" .. file_path,
+      "<changes_applied>",
+      "Modified Line",
+      "</changes_applied>",
+    }
+    assert.same(expected_buffer_content, vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false))
+  end)
+
   it("should maintain original indentation when applying modifications with larger indent", function()
     local file_path = test_dir:joinpath('indent_test.py'):absolute()
     local original_content = "def hello():\n    print(\"Hello, World!\")"
@@ -835,6 +888,47 @@ describe("find_modification_block", function()
     assert.equals("    return \"Goodbye\\nWorld\"", result[9])
     assert.equals("    # More special chars: <>!@#$%^&*()", result[10])
     assert.equals("</replace>", result[11])
+  end)
+
+  it("should ignore blocks with changes_applied tags and find regular blocks", function()
+    local lines = {
+      "@applied.py",
+      "<changes_applied>",
+      "def new_function():",
+      "    print('Already applied')",
+      "</changes_applied>",
+      "",
+      "@pending.py",
+      "<search>",
+      "def old_function():",
+      "    pass",
+      "</search>",
+      "<replace>",
+      "def old_function():",
+      "    print('Not yet applied')",
+      "</replace>",
+    }
+
+    -- Test cursor in changes_applied block
+    local cursor_applied = 2
+    local result_applied = file_editor.find_modification_block(cursor_applied, lines)
+    assert.same({}, result_applied)
+
+    -- Test cursor in regular block
+    local cursor_regular = 8
+    local result_regular = file_editor.find_modification_block(cursor_regular, lines)
+
+    assert.is_not_nil(result_regular)
+    assert.equals(9, #result_regular)
+    assert.equals("@pending.py", result_regular[1])
+    assert.equals("<search>", result_regular[2])
+    assert.equals("def old_function():", result_regular[3])
+    assert.equals("    pass", result_regular[4])
+    assert.equals("</search>", result_regular[5])
+    assert.equals("<replace>", result_regular[6])
+    assert.equals("def old_function():", result_regular[7])
+    assert.equals("    print('Not yet applied')", result_regular[8])
+    assert.equals("</replace>", result_regular[9])
   end)
 end)
 
