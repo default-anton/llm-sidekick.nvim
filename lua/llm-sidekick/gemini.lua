@@ -114,8 +114,12 @@ function gemini:chat(messages, settings, callback)
       end
     end,
     on_stderr = function(_, text)
+      if not text or text == "" then
+        return
+      end
+
       vim.schedule(function()
-        vim.api.nvim_err_writeln("Error: API request failed with error " .. text)
+        vim.api.nvim_err_writeln("Error: API request failed with error " .. tostring(text))
       end)
     end,
     on_exit = function(_, return_val)

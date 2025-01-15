@@ -76,8 +76,12 @@ function anthropic:chat(messages, settings, callback)
       end
     end,
     on_stderr = function(_, text)
+      if not text or text == "" then
+        return
+      end
+
       vim.schedule(function()
-        vim.api.nvim_err_writeln("Error: " .. text)
+        vim.api.nvim_err_writeln("Error: " .. tostring(text))
       end)
     end,
     on_exit = function(_, return_val)
