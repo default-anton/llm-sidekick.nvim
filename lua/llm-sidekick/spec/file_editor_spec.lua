@@ -38,7 +38,7 @@ describe("apply_modifications", function()
     local file_path = test_dir:joinpath('delete_me.txt'):absolute()
 
     Path:new(file_path):write('', 'w')
-    local bufnr = vim.api.nvim_create_buf(true, true)
+    local chatbuf = vim.api.nvim_create_buf(true, true)
     local mod_block = {
       "@" .. test_dir:joinpath('delete_me.txt'):absolute(),
       "<search>",
@@ -46,12 +46,21 @@ describe("apply_modifications", function()
       "<replace>",
       "</replace>",
     }
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_buf(0, chatbuf)
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
-    file_editor.apply_modifications(bufnr, false)
+    file_editor.apply_modifications(chatbuf, false)
     assert.is_false(Path:new(file_path):exists())
+
+    local buffer_content = vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false)
+    local expected_buffer_content = {
+      "@" .. test_dir:joinpath('delete_me.txt'):absolute(),
+      "<changes_applied>",
+      "",
+      "</changes_applied>",
+    }
+    assert.same(expected_buffer_content, buffer_content)
   end)
 
   it("should create a new file when search is empty and replace is provided", function()
@@ -60,7 +69,7 @@ describe("apply_modifications", function()
 
     assert.is_false(Path:new(file_path):exists())
 
-    local bufnr = vim.api.nvim_create_buf(true, true)
+    local chatbuf = vim.api.nvim_create_buf(true, true)
     local mod_block = {
       "@" .. test_dir:joinpath('new_file.txt'):absolute(),
       "<search>",
@@ -70,15 +79,25 @@ describe("apply_modifications", function()
       "With multiple lines.",
       "</replace>",
     }
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    vim.api.nvim_win_set_buf(0, bufnr)
+    vim.api.nvim_win_set_buf(0, chatbuf)
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
-    file_editor.apply_modifications(bufnr, false)
+    file_editor.apply_modifications(chatbuf, false)
 
     assert.is_true(Path:new(file_path):exists())
     local content = Path:new(file_path):read()
     assert.equals(replace_content .. "\n", content)
+
+    local buffer_content = vim.api.nvim_buf_get_lines(chatbuf, 0, -1, false)
+    local expected_buffer_content = {
+      "@" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "<changes_applied>",
+      "This is a new file.",
+      "With multiple lines.",
+      "</changes_applied>",
+    }
+    assert.same(expected_buffer_content, buffer_content)
   end)
 
   it("should modify an existing file by replacing search text with replace text", function()
