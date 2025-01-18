@@ -46,13 +46,31 @@ local function apply_modification(chat_bufnr, block)
     vim.validate('create', replace, 'string')
   end
 
+  local function add_diagnostic(severity, message)
+    local diagnostics = vim.diagnostic.get(chat_bufnr, {
+      namespace = vim.g.llm_sidekick_diagnostic_ns
+    })
+    local new_line = chat_buf_start_line - 1
+    local new_diagnostic = {
+      lnum = new_line,
+      col = 0,
+      severity = severity,
+      message = message,
+    }
+    diagnostics = vim.tbl_filter(function(d) return d.lnum ~= new_line end, diagnostics)
+    table.insert(diagnostics, new_diagnostic)
+    vim.diagnostic.set(vim.g.llm_sidekick_diagnostic_ns, chat_bufnr, diagnostics)
+  end
+
   if type == "create" then
     -- Create new file
     local dir = vim.fn.fnamemodify(file_path, ":h")
     if vim.fn.isdirectory(dir) == 0 then
       local success = vim.fn.mkdir(dir, "p")
       if success == 0 then
-        error(string.format("Failed to create directory: %s", dir))
+        local err_msg = string.format("Failed to create directory: %s", dir)
+        add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+        error(err_msg)
       end
     end
     -- Get buffer for the new file
@@ -62,7 +80,9 @@ local function apply_modification(chat_bufnr, block)
         vim.fn.writefile(vim.split(replace, "\n"), file_path)
       end)
       if not ok then
-        error(string.format("Failed to write file %s: %s", file_path, err))
+        local err_msg = string.format("Failed to write file %s: %s", file_path, err)
+        add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+        error(err_msg)
       end
     else
       -- File is already open in a buffer
@@ -71,17 +91,21 @@ local function apply_modification(chat_bufnr, block)
         vim.cmd("write")
       end)
     end
+    add_diagnostic(vim.diagnostic.severity.INFO, string.format("Successfully created file '%s'", file_path))
   elseif type == "delete" then
     -- Delete file
     local ok, err = vim.fn.delete(file_path)
     if ok ~= 0 then
-      error(string.format("Failed to remove file '%s': %s", file_path, err))
+      local err_msg = string.format("Failed to remove file '%s': %s", file_path, err)
+      add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+      error(err_msg)
     end
     -- Close the buffer if it's open
     local buf = vim.fn.bufnr(file_path)
     if buf ~= -1 then
       vim.api.nvim_buf_delete(buf, { force = true })
     end
+    add_diagnostic(vim.diagnostic.severity.INFO, string.format("Successfully deleted file '%s'", file_path))
   elseif type == "update" then
     local content
     local buf = vim.fn.bufnr(file_path)
@@ -90,7 +114,9 @@ local function apply_modification(chat_bufnr, block)
     else
       buf = vim.fn.bufadd(file_path)
       if buf == 0 then
-        error(string.format("Failed to open file '%s'", file_path))
+        local err_msg = string.format("Failed to open file '%s'", file_path)
+        add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+        error(err_msg)
       end
       vim.fn.bufload(buf)
       content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
@@ -98,7 +124,9 @@ local function apply_modification(chat_bufnr, block)
     end
 
     if not content then
-      error(string.format("Failed to read file '%s'", file_path))
+      local err_msg = string.format("Failed to read file '%s'", file_path)
+      add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+      error(err_msg)
     end
 
     -- Find the exact string match
@@ -118,7 +146,8 @@ local function apply_modification(chat_bufnr, block)
     end
 
     if not start_pos then
-      vim.api.nvim_err_writeln(string.format("Could not find search pattern '%s' in file '%s'", search, file_path))
+      local err_msg = string.format("Could not find search pattern in file '%s'", file_path)
+      add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
       return
     end
 
@@ -145,7 +174,9 @@ local function apply_modification(chat_bufnr, block)
       -- File is not open; write directly to disk
       local ok, err = pcall(vim.fn.writefile, vim.split(modified_content, "\n"), file_path)
       if not ok then
-        error(string.format("Failed to write to file '%s': %s", file_path, err))
+        local err_msg = string.format("Failed to write to file '%s': %s", file_path, err)
+        add_diagnostic(vim.diagnostic.severity.ERROR, err_msg)
+        error(err_msg)
       end
     end
 
@@ -158,9 +189,9 @@ local function apply_modification(chat_bufnr, block)
         end)
       end
     end
-  end
 
-  -- TODO: add diagnostics if Apply failed
+    add_diagnostic(vim.diagnostic.severity.INFO, string.format("Successfully updated file '%s'", file_path))
+  end
 end
 
 local function find_and_parse_modification_blocks(bufnr, start_search_line, end_search_line)

@@ -3,6 +3,7 @@ if vim.g.loaded_llm_sidekick == 1 then
 end
 
 vim.g.loaded_llm_sidekick = 1
+vim.g.llm_sidekick_diagnostic_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 
 local M = {}
