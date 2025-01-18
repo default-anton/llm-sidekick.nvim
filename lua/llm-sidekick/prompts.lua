@@ -98,62 +98,57 @@ Exact code to be replaced, modified, or used as a reference point
 Modified, new, or appended code goes here
 </replace>
 
+@path/to/new/file
+<create>
+Content of the new file goes here
+</create>
+
+@path/to/file/to/delete
+<delete />
+
 Important guidelines for using this format:
 1. Each file operation starts with @ followed by the file path.
-2. Always include both <search> and <replace> tags for every file operation.
-3. The content within <search> tags must be an EXACT, CHARACTER-FOR-CHARACTER copy of the original code, including ALL comments, docstrings, spacing, indentation, and other formatting details. This precise replication is crucial for accurately locating the block of code that needs to be replaced, modified, or used as a reference point. Do not omit or modify ANY characters, even if they seem irrelevant.
-4. The <search>, </search>, <replace>, and </replace> tags:
-   - Must each be on their own line
-   - Must be at the beginning of the line (no preceding spaces or characters)
-   - Must not have any characters following them on the same line
-5. For modifying files:
-   - Use <search> tags to show a unique, identifiable code snippet that will be modified or used as a reference point. This must be an exact copy of the existing file content.
+2. For modifying files:
+   - Use <search> tags to show a unique, identifiable code snippet that will be modified or used as a reference point. This must be an EXACT, CHARACTER-FOR-CHARACTER copy of the original code, including ALL comments, docstrings, spacing, indentation, and other formatting details. Do not omit or modify ANY characters, even if they seem irrelevant.
    - Use <replace> tags to show the modified code snippet or the code with new content appended.
    - Include only the relevant parts of the code, not necessarily the entire file content.
    - When appending content, include some surrounding context in the <search> tags to precisely locate where the new content should be added.
-   - When choosing the code snippet for the `<search>` tag, select the **minimum unique** portion of the code that needs to be modified or used as a reference point. This ensures precise targeting of changes while avoiding unnecessary modifications to other parts of the file. The goal is to identify the smallest, distinct code segment that, when replaced, achieves the desired modification without ambiguity.
-6. When dealing with code or data wrapped/escaped in JSON, XML, quotes, or other containers, propose edits to the literal contents of the file, including the container markup. Do not attempt to unwrap or modify the container format.
-7. For creating new files:
-   - Use empty <search> tags.
-   - Use <replace> tags to show the new file's content.
-8. For deleting code within a file:
-   - Use <search> tags with the exact code to be deleted.
-   - Use empty <replace> tags to indicate the code should be removed.
-9. For deleting entire files:
-   - Use empty <search> tags.
-   - Use empty <replace> tags.
-10. For multiple file operations, repeat this structure for each file.
-11. For multiple modifications within the same file, use separate @path/to/file blocks for each change.
-12. Preserve all indentation, spacing, and formatting within the code blocks, matching the original code's style.
-13. When making changes, focus on the specific section that needs modification rather than replacing large portions of the file. Use surrounding context to ensure precise localization of changes.
-14. For very large files or changes spanning multiple, non-contiguous sections:
+   - When choosing the code snippet for the <search> tag, select the **minimum unique** portion of the code that needs to be modified or used as a reference point. This ensures precise targeting of changes while avoiding unnecessary modifications to other parts of the file. The goal is to identify the smallest, distinct code segment that, when replaced, achieves the desired modification without ambiguity.
+3. The <search>, </search>, <replace>, </replace>, <create>, </create>, and <delete /> tags:
+   - Must each be on their own line
+   - Must be at the beginning of the line (no preceding spaces or characters)
+   - Must not have any characters following them on the same line
+4. When dealing with code or data wrapped/escaped in JSON, XML, quotes, or other containers, propose edits to the literal contents of the file, including the container markup. Do not attempt to unwrap or modify the container format.
+5. For creating new files:
+   - Use @path/to/new/file followed by <create> and </create> tags.
+   - Place the new file's content between the <create> and </create> tags.
+6. For deleting files:
+   - Use @path/to/file/to/delete followed by a self-closing <delete /> tag.
+7. For multiple file operations, repeat this structure for each file.
+8. For multiple modifications within the same file, use separate @path/to/file blocks for each change.
+9. Preserve all indentation, spacing, and formatting within the code blocks, matching the original code's style.
+10. When making changes, focus on the specific section that needs modification rather than replacing large portions of the file. Use surrounding context to ensure precise localization of changes.
+11. For very large files or changes spanning multiple, non-contiguous sections:
     - Break down the changes into multiple, smaller modifications.
     - Use separate @path/to/file blocks for each non-contiguous section.
-15. Before each file modification, write a brief plan inside <plan> tags. This plan should explain the approach for applying the changes and any considerations specific to that modification.
+12. Before each file modification, write a brief plan inside <plan> tags. This plan should explain the approach for applying the changes and any considerations specific to that modification.
 
-Examples:
-
-<examples>
-User: Refactor get_factorial() to use math.factorial and add a new function get_square()
+Example:
 
 <plan>
-To refactor get_factorial() and add a new function, we need to make multiple small changes to the mathweb/flask/app.py file:
-1. Import the math module.
-2. Update the get_factorial() function to use math.factorial.
-3. Add a new get_square() function.
+Create a new file 'functions.py' and move the get_factorial function into it.
+Import the get_factorial function in app.py.
+Then, delete the unused 'utils.py' file.
 </plan>
 
-# Change 1: Import math module
-@mathweb/flask/app.py
-<search>
-from flask import Flask
-</search>
-<replace>
+@functions.py
+<create>
 import math
-from flask import Flask
-</replace>
 
-# Change 2: Update get_factorial() function
+def get_factorial(n):
+    return math.factorial(n)
+</create>
+
 @mathweb/flask/app.py
 <search>
 def get_factorial(n):
@@ -165,74 +160,11 @@ def get_factorial(n):
         return n * get_factorial(n-1)
 </search>
 <replace>
-def get_factorial(n):
-    return math.factorial(n)
+from functions import get_factorial
 </replace>
 
-# Change 3: Add new get_square() function
-@mathweb/flask/app.py
-<search>
-def get_factorial(n):
-    return math.factorial(n)
-</search>
-<replace>
-def get_factorial(n):
-    return math.factorial(n)
-
-def get_square(n):
-    return n ** 2
-</replace>
-
----
-
-User: Refactor hello() into its own file.
-
-<plan>
-To refactor hello() into its own file, we need to make multiple changes:
-1. Create a new file hello.py and add the hello() function to it.
-2. Modify main.py to remove the hello() function and import it from hello.py instead.
-</plan>
-
-# Change 1: Create hello.py and add hello() function
-@hello.py
-<search>
-</search>
-<replace>
-def hello():
-    "print a greeting"
-
-    print("hello")
-</replace>
-
-# Change 2: Modify main.py to import hello() function
-@main.py
-<search>
-def hello():
-    "print a greeting"
-
-    print("hello")
-</search>
-<replace>
-from hello import hello
-</replace>
-
----
-
-User: Delete the unused utils.py file
-
-<plan>
-To delete the unused utils.py file, we need to:
-1. Delete the file from the file system.
-</plan>
-
-# Change 1: Delete utils.py file
 @utils.py
-<search>
-</search>
-<replace>
-</replace>
-
-</examples>
+<delete />
 
 IMPORTANT: Claude must include ALL content in <search> tags exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
