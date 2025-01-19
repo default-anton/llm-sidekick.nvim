@@ -136,35 +136,58 @@ Important guidelines for using this format:
 Example:
 
 <plan>
-Create a new file 'functions.py' and move the get_factorial function into it.
-Import the get_factorial function in app.py.
-Then, delete the unused 'utils.py' file.
+Create a new file 'logging.yaml' to store logging configuration.
+Modify 'config.yaml' twice:
+1. Remove the `logging` section from the `development` environment.
+2. Add a new setting `enable_new_feature` under the `general` section.
+Then, delete the unused configuration file `old_feature.yaml`.
 </plan>
 
-@functions.py
+@logging.yaml
 <create>
-import math
-
-def get_factorial(n):
-    return math.factorial(n)
+version: 1
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    stream: ext://sys.stdout
+root:
+  level: DEBUG
+  handlers: [console]
 </create>
 
-@mathweb/flask/app.py
+@config.yaml
 <search>
-def get_factorial(n):
-    "compute factorial"
-
-    if n == 0:
-        return 1
-    else:
-        return n * get_factorial(n-1)
+development:
+  database:
+    host: localhost
+    port: 5432
+  logging:
+    level: DEBUG
+    file: dev.log
 </search>
 <replace>
-from functions import get_factorial
+development:
+  database:
+    host: localhost
+    port: 5432
 </replace>
 
-@utils.py
+@config.yaml
+<search>
+general:
+  app_name: My App
+</search>
+<replace>
+general:
+  app_name: My App
+  enable_new_feature: true
+</replace>
+
+@old_feature.yaml
 <delete />
+
+---
 
 IMPORTANT: Claude must include ALL content in <search> tags exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
