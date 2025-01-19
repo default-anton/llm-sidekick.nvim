@@ -196,7 +196,7 @@ function M.ask(prompt_bufnr)
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
       if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
-        require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
+        require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr)
         pcall(function()
           vim.api.nvim_win_close(0, true)
 
