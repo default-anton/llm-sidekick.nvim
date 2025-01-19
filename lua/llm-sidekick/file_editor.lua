@@ -57,7 +57,8 @@ local function apply_modification(chat_bufnr, block)
       local success = vim.fn.mkdir(dir, "p")
       if success == 0 then
         local err_msg = string.format("Failed to create directory: %s", dir)
-        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+          err_msg)
         error(err_msg)
       end
     end
@@ -69,7 +70,8 @@ local function apply_modification(chat_bufnr, block)
       end)
       if not ok then
         local err_msg = string.format("Failed to write file %s: %s", file_path, err)
-        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+          err_msg)
         error(err_msg)
       end
     else
@@ -80,13 +82,15 @@ local function apply_modification(chat_bufnr, block)
       end)
     end
     local success_msg = string.format("Successfully created file '%s'", file_path)
-    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO, success_msg)
+    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO,
+      success_msg)
   elseif type == "delete" then
     -- Delete file
     local ok, err = vim.fn.delete(file_path)
     if ok ~= 0 then
       local err_msg = string.format("Failed to remove file '%s': %s", file_path, err)
-      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+        err_msg)
       error(err_msg)
     end
     -- Close the buffer if it's open
@@ -95,7 +99,8 @@ local function apply_modification(chat_bufnr, block)
       vim.api.nvim_buf_delete(buf, { force = true })
     end
     local success_msg = string.format("Successfully deleted file '%s'", file_path)
-    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO, success_msg)
+    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO,
+      success_msg)
   elseif type == "update" then
     local content
     local buf = vim.fn.bufnr(file_path)
@@ -105,7 +110,8 @@ local function apply_modification(chat_bufnr, block)
       buf = vim.fn.bufadd(file_path)
       if buf == 0 then
         local err_msg = string.format("Failed to open file '%s'", file_path)
-        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+          err_msg)
         error(err_msg)
       end
       vim.fn.bufload(buf)
@@ -115,7 +121,8 @@ local function apply_modification(chat_bufnr, block)
 
     if not content then
       local err_msg = string.format("Failed to read file '%s'", file_path)
-      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+        err_msg)
       error(err_msg)
     end
 
@@ -137,7 +144,8 @@ local function apply_modification(chat_bufnr, block)
 
     if not start_pos then
       local err_msg = string.format("Could not find search pattern in file '%s'", file_path)
-      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+      add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+        err_msg)
       return
     end
 
@@ -165,7 +173,8 @@ local function apply_modification(chat_bufnr, block)
       local ok, err = pcall(vim.fn.writefile, vim.split(modified_content, "\n"), file_path)
       if not ok then
         local err_msg = string.format("Failed to write to file '%s': %s", file_path, err)
-        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR, err_msg)
+        add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.ERROR,
+          err_msg)
         error(err_msg)
       end
     end
@@ -181,7 +190,8 @@ local function apply_modification(chat_bufnr, block)
     end
 
     local success_msg = string.format("Successfully updated file '%s'", file_path)
-    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO, success_msg)
+    add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO,
+      success_msg)
   end
 end
 
@@ -303,7 +313,7 @@ local function find_assistant_end_line(start_line, lines)
   return #lines
 end
 
-local function apply_modifications(bufnr)
+local function apply_modifications(bufnr, is_apply_all)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
   local assistant_start_line = find_last_assistant_start_line(lines)
@@ -314,20 +324,32 @@ local function apply_modifications(bufnr)
   local assistant_end_line = find_assistant_end_line(assistant_start_line, lines)
   local modification_blocks = find_and_parse_modification_blocks(bufnr, assistant_start_line, assistant_end_line)
 
-  for _, block in ipairs(modification_blocks) do
-    apply_modification(bufnr, block)
+  if is_apply_all then
+    for _, block in ipairs(modification_blocks) do
+      apply_modification(bufnr, block)
+    end
+  else
+    local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+    for _, block in ipairs(modification_blocks) do
+      if cursor_line >= block.start_line and cursor_line <= block.end_line then
+        apply_modification(bufnr, block)
+        break
+      end
+    end
   end
 end
 
 local function create_apply_modifications_command(bufnr)
   vim.api.nvim_buf_create_user_command(bufnr, "Apply", function()
-    apply_modifications(bufnr)
+    apply_modifications(bufnr, false)
   end, {
-    desc = "Apply the changes to the file(s) based on modification block(s)",
-    nargs = "?",
-    complete = function()
-      return { "all" }
-    end,
+    desc = "Apply the modification block containing the cursor",
+  })
+
+  vim.api.nvim_buf_create_user_command(bufnr, "ApplyAll", function()
+    apply_modifications(bufnr, true)
+  end, {
+    desc = "Apply all modification blocks in the last assistant message",
   })
 end
 
