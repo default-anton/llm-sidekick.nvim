@@ -374,6 +374,7 @@ local ask_command = function(cmd_opts)
       "<CR>",
       function()
         vim.cmd('stopinsert!')
+        require 'llm-sidekick.diagnostic'.prune_stale(buf)
         llm_sidekick.ask(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }
