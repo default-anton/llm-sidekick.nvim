@@ -189,11 +189,14 @@ COMMANDS                                                 *llm-sidekick-commands*
                     Must be used after an :Ask or :Code command.
 
                                                         *:Apply*
-:Apply [all]        Applies file modifications from the LLM response. Only
-                    available in buffers created by the :Code command.
-                    Without arguments, applies changes from the modification
-                    block at cursor position. With "all" argument, applies all
-                    changes from the current assistant response.
+:Apply              Applies file modifications from the modification block
+                    containing the cursor. Only available in buffers created
+                    by the :Code command.
+
+                                                        *:ApplyAll*
+:ApplyAll           Applies all file modifications from the last assistant
+                    message. Only available in buffers created by the :Code
+                    command.
 
                                                         *:Stt*
 :Stt                Starts speech-to-text recording at the current cursor
