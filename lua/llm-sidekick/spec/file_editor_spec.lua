@@ -46,8 +46,13 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
     assert.is_false(Path:new(file_path):exists())
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully deleted file"))
   end)
 
   it("should create a new file", function()
@@ -67,11 +72,16 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     assert.is_true(Path:new(file_path):exists())
     local content = Path:new(file_path):read()
     assert.equals(replace_content .. "\n", content)
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully created file"))
   end)
 
   it("should modify an existing file by replacing search text with replace text", function()
@@ -97,11 +107,16 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
 
-    file_editor.apply_modifications(bufnr)
+    file_editor.apply_modifications(bufnr, true)
 
     local expected_content = "Hello Universe!\nThis is a test file.\nGoodbye World!"
     local content = Path:new(file_path):read()
     assert.equals(expected_content .. "\n", content)
+
+    local diagnostics = vim.diagnostic.get(bufnr, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully updated file"))
   end)
 
   it("should handle multiple apply_modifications calls correctly", function()
@@ -133,15 +148,21 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block_1)
 
     -- Apply first modification
-    file_editor.apply_modifications(bufnr)
+    file_editor.apply_modifications(bufnr, true)
 
     -- Verify the first modification
     local expected_content_1 = "Line 1\nSecond Line\nLine 3\nLine 4"
     local content_1 = Path:new(file_path):read()
     assert.equals(expected_content_1 .. "\n", content_1)
 
+    local diagnostics = vim.diagnostic.get(bufnr, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully updated file"))
+
     -- Insert the second modification block below the first
     local mod_block_2 = {
+      "ASSISTANT:",
       "@" .. test_dir:joinpath('multi_modify.txt'):absolute(),
       "<search>",
       search_text_2,
@@ -153,12 +174,18 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(bufnr, #mod_block_1, -1, false, mod_block_2)
 
     -- Apply second modification
-    file_editor.apply_modifications(bufnr)
+    file_editor.apply_modifications(bufnr, true)
 
     -- Verify the second modification
     local expected_content_2 = "Line 1\nSecond Line\nLine 3\nFourth Line"
     local content_2 = Path:new(file_path):read()
     assert.equals(expected_content_2 .. "\n", content_2)
+
+    diagnostics = vim.diagnostic.get(bufnr, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(2, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully updated file"))
+    assert.is_not_nil(diagnostics[2].message:match("Successfully updated file"))
   end)
 
   it("should handle applying modifications to multiple files", function()
@@ -201,7 +228,7 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify file1 has been modified
     local expected_content1 = "Apple\nBlueberry\nCherry"
@@ -238,25 +265,19 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    -- Apply modifications
-    -- Capture Neovim's error messages
-    local err_messages = {}
-    _G.vim.api.nvim_err_writeln = function(msg)
-      table.insert(err_messages, msg)
-    end
-
-    file_editor.apply_modifications(chatbuf)
-
-    -- Verify that an error message was displayed
-    assert.is_true(#err_messages > 0)
-    assert.is_not_nil(err_messages[1]:match("Could not find search pattern"))
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file remains unchanged
     local content = Path:new(file_path):read()
     assert.equals(original_content, content)
+
+    local errors = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.ERROR })
+    assert.is_not_nil(errors)
+    assert.is_true(#errors > 0)
+    assert.is_not_nil(errors[1].message:match("Could not find search pattern"))
   end)
 
-  it("should handle applying modifications with block_lines not present in the buffer", function()
+  it("skip modifications with block_lines not present in the buffer", function()
     local file_path = test_dir:joinpath('missing_block.txt'):absolute()
     local original_content = "Line One\nLine Two\nLine Three"
     local search_text = "Line Two"
@@ -286,18 +307,7 @@ describe("apply_modifications", function()
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
-    -- Apply modifications
-    -- Capture the error
-    local err_messages = {}
-    _G.vim.api.nvim_err_writeln = function(msg)
-      table.insert(err_messages, msg)
-    end
-
-    file_editor.apply_modifications(chatbuf)
-
-    -- Verify that an error message was displayed
-    assert.is_true(#err_messages > 0)
-    assert.is_not_nil(err_messages[1]:match("Could not find search pattern"))
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file remains unchanged
     local content = Path:new(file_path):read()
@@ -331,7 +341,7 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
     -- Apply modifications
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file content maintains original indentation
     local expected_content = "def hello():\n    print(\"Hello, Universe!\")"
@@ -364,7 +374,7 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
     -- Apply modifications
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file content
     local expected_content = "This is a test.\nModified line.\nEnd of file."
@@ -397,7 +407,7 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
     -- Apply modifications
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file content
     local expected_content = "This is a test.\nModified line.\nEnd of file."
@@ -428,7 +438,7 @@ describe("apply_modifications", function()
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
 
     -- Apply modifications
-    file_editor.apply_modifications(chatbuf)
+    file_editor.apply_modifications(chatbuf, true)
 
     -- Verify the file content
     local expected_content = "This is a test.\nModified line.\nEnd of file."
