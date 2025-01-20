@@ -23,9 +23,6 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 })
 
 local function record_voice(output_file)
-  -- NOTE: Check if the user has set the GROQ API key
-  require 'llm-sidekick.settings'.get_groq_api_key()
-
   if vim.fn.executable("sox") == 0 then
     error("sox is not installed")
   end
@@ -55,9 +52,7 @@ local function record_voice(output_file)
   return job
 end
 
-local function transcribe(callback)
-  local api_key = require 'llm-sidekick.settings'.get_groq_api_key()
-
+local function transcribe(api_key, callback)
   return Job:new({
     command = execs.get_curl_executable(),
     args = {
@@ -86,13 +81,15 @@ local function transcribe(callback)
 end
 
 local function speech_to_text(callback)
+  local api_key = require 'llm-sidekick.settings'.get_groq_api_key()
+
   -- Cleanup any existing recording
   cleanup_recording()
 
   local job = record_voice(FILE_PATH)
   job:after_success(function(_, _, signal)
     if signal == 0 then
-      transcribe(callback):start()
+      transcribe(api_key, callback):start()
     end
   end)
   return job
