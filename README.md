@@ -98,7 +98,9 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       -- Model aliases configuration
       aliases = {
         deepseek = "deepseek-chat",
+        r1 = "deepseek-reasoner",
         sonnet = "claude-3-5-sonnet-latest",
+        bedrock_sonnet = "anthropic.claude-3-5-sonnet-20241022-v2:0",
         exp_gemini = "gemini-exp-1206",
         o1 = "o1-preview",
         mini = "o1-mini",
@@ -129,7 +131,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `o1-preview`
 
 ### DeepSeek AI Models
-- `deepseek-chat`
+- `deepseek-chat`: DeepSeek-V3
+- `deepseek-reasoner`: DeepSeek-R1
 
 ### Google Gemini Models
 - Gemini Experimental 1206 `gemini-exp-1206`

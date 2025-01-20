@@ -29,7 +29,6 @@ function openai:chat(messages, settings, callback)
       messages)
     data.max_tokens = nil
     data.max_completion_tokens = settings.max_tokens
-    data.temperature = nil
     -- prepend the system prompt to the first message
     local system_prompt = vim.tbl_filter(function(message) return message.role == "system" end, messages)[1]
     if system_prompt then
@@ -69,9 +68,16 @@ function openai:chat(messages, settings, callback)
       end
 
       local ok, decoded = pcall(vim.json.decode, line)
-      if ok and decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].delta and decoded.choices[1].delta.content then
+      if ok and decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].delta then
+        local reasoning_content = decoded.choices[1].delta.reasoning_content
+        if reasoning_content and reasoning_content ~= "" and vim.NIL ~= reasoning_content then
+          callback(message_types.REASONING, reasoning_content)
+        end
+
         local content = decoded.choices[1].delta.content
-        callback(message_types.DATA, content)
+        if content and content ~= "" and vim.NIL ~= content then
+          callback(message_types.DATA, content)
+        end
       end
     end,
     on_stderr = function(_, text)
@@ -104,8 +110,15 @@ function openai:chat(messages, settings, callback)
         return
       end
 
+      local reasoning_content = decoded.choices[1].message.reasoning_content
+      if reasoning_content and reasoning_content ~= "" and vim.NIL ~= reasoning_content then
+        callback(message_types.REASONING, reasoning_content)
+      end
+
       local content = decoded.choices[1].message.content
-      callback(message_types.DATA, content)
+      if content and content ~= "" and vim.NIL ~= content then
+        callback(message_types.DATA, content)
+      end
       callback(message_types.DONE, "")
     end,
   }):start()

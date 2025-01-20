@@ -293,14 +293,17 @@ local ask_command = function(cmd_opts)
       range_end = opts.line2
     end
 
-    local model_settings = llm_sidekick.get_model_default_settings(model)
-    local is_o1 = vim.startswith(model, "o1")
+    local model_settings = llm_sidekick.get_default_model_settings(model)
+    local is_reasoning = model_settings.reasoning
 
     local settings = {
       model = model,
       max_tokens = model_settings.max_tokens,
-      temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat,
     }
+
+    if model_settings.temperature then
+      settings.temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat
+    end
 
     local prompt = ""
     if is_llm_sidekick_chat_file(0) and not vim.b.is_llm_sidekick_chat then
@@ -323,23 +326,23 @@ local ask_command = function(cmd_opts)
           vim.trim(current_project_config.technologies or ""),
           cmd_opts.include_modifications and vim.trim(prompts.modifications) or ""
         }
-        if is_o1 then
-          table.remove(args, 2)     -- Remove reasoning for o1
-          table.remove(args, #args) -- Remove modifications for o1
+        if is_reasoning then
+          table.remove(args, 2) -- Remove reasoning instructionsk
+          -- table.remove(args, #args) -- Remove modifications for o1
         end
 
-        local system_prompt = is_o1 and prompts.openai_coding or prompts.system_prompt
+        local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
         system_prompt = string.format(vim.trim(system_prompt), unpack(args))
         system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
         prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
-      elseif not is_o1 then
+      elseif not is_reasoning then
         local args = {
           os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
           cmd_opts.include_modifications and vim.trim(prompts.modifications) or "",
         }
-        local system_prompt = string.format(vim.trim(prompts.generic_system_prompt), unpack(args))
+        local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
         system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
         prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
       end
@@ -355,6 +358,9 @@ local ask_command = function(cmd_opts)
 
       prompt = add_file_content_to_prompt(prompt, file_paths)
     end
+
+    -- NOTE: delete all <llm_sidekick_reasoning> tags
+    prompt = prompt:gsub("<llm_sidekick_reasoning>.-</llm_sidekick_reasoning>", "")
 
     local buf = vim.api.nvim_create_buf(true, true)
     vim.bo[buf].buftype = "nofile"
