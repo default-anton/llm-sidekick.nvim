@@ -328,7 +328,6 @@ local ask_command = function(cmd_opts)
         }
         if is_reasoning then
           table.remove(args, 2) -- Remove reasoning instructionsk
-          -- table.remove(args, #args) -- Remove modifications for o1
         end
 
         local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
