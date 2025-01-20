@@ -180,16 +180,13 @@ Adds content to the last chat with llm-sidekick. Can add content from:
 
 Must be used after an `:Ask`, `:Code`, or `:Chat` command.
 
-#### `:Apply [all]`
-Applies file modifications from the LLM response. Handles complex operations across multiple files, including:
-- Creating new files and directories
-- Modifying specific sections of existing files
-- Deleting files or code snippets
-- Applying changes to multiple files in a single operation
+#### `:Apply`
+Applies a single change from the LLM response at the current cursor position. Use for selective, careful modifications.
 
-Only available in buffers created by the `:Code` command.
-- Without arguments: applies changes from the modification block at cursor position
-- With `all`: applies all changes from the current assistant response, maintaining consistency across related modifications
+#### `:ApplyAll`
+Applies all changes from the LLM response at once. Use for bulk, consistent modifications.
+
+Both commands handle file operations (create/modify/delete) and are only available in `:Code` buffers.
 
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
@@ -209,7 +206,7 @@ vim.keymap.set('v', '<leader>lc', '<cmd>Code split<CR>', { noremap = true, desc 
 vim.keymap.set('n', '<leader>ld', '<cmd>Code split %:h<CR>', { noremap = true, desc = "Start coding with LLM on files in current directory" })
 
 -- Apply LLM changes
-vim.keymap.set('n', '<leader>lp', '<cmd>Apply all<CR>', { noremap = true, desc = "Apply all LLM changes" })
+vim.keymap.set('n', '<leader>lp', '<cmd>ApplyAll<CR>', { noremap = true, desc = "Apply all LLM changes" })
 
 -- Add context to LLM
 vim.keymap.set('n', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add context to LLM" })
