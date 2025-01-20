@@ -23,9 +23,8 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 })
 
 local function record_voice(output_file)
-  if not os.getenv("GROQ_API_KEY") then
-    error("GROQ_API_KEY environment variable is not set")
-  end
+  -- NOTE: Check if the user has set the GROQ API key
+  require 'llm-sidekick.settings'.get_groq_api_key()
 
   if vim.fn.executable("sox") == 0 then
     error("sox is not installed")
@@ -57,11 +56,13 @@ local function record_voice(output_file)
 end
 
 local function transcribe(callback)
+  local api_key = require 'llm-sidekick.settings'.get_groq_api_key()
+
   return Job:new({
     command = execs.get_curl_executable(),
     args = {
       "https://api.groq.com/openai/v1/audio/transcriptions",
-      "-H", "Authorization: bearer " .. (os.getenv("GROQ_API_KEY") or ""),
+      "-H", "Authorization: bearer " .. api_key,
       "-H", "Content-Type: multipart/form-data",
       "-F", "file=@" .. FILE_PATH,
       "-F", "model=whisper-large-v3-turbo",

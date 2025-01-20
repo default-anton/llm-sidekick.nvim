@@ -76,7 +76,7 @@ Set one of these environment variables:
 Required only if you plan to use the `:Stt` command:
 - sox (command-line audio recording tool)
 - Working audio input device
-- Groq API key (set as `GROQ_API_KEY` environment variable)
+- Groq API key (set as `LLM_SIDEKICK_GROQ_API_KEY` or `GROQ_API_KEY` environment variable) for Whisper model
 
 #### Installing sox
 - Ubuntu/Debian: `sudo apt-get install sox`

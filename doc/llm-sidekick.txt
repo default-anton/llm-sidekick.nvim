@@ -86,7 +86,7 @@ for Speech-to-Text functionality. They are optional for the core plugin.
 1. System requirements:
    - sox: Command-line audio recording tool
    - Working audio input device
-   - Groq API key (set as GROQ_API_KEY environment variable) for Whisper model
+   - Groq API key (set as `LLM_SIDEKICK_GROQ_API_KEY` or `GROQ_API_KEY` environment variable) for Whisper model
 
 Installation examples for STT dependencies:
 
