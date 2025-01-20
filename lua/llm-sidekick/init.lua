@@ -12,7 +12,7 @@ function M.get_models()
   return MODELS
 end
 
-function M.get_model_default_settings(model)
+function M.get_default_model_settings(model)
   return MODELS[model] or error("Model not found: " .. model)
 end
 
@@ -116,7 +116,7 @@ function M.parse_prompt(prompt)
             media_type = mime_type,
           },
         }
-      elseif vim.startswith(options.settings.model, "gpt") then
+      elseif vim.startswith(options.settings.model, "gpt") or options.settings.model == "o1" then
         image = {
           type = "image_url",
           image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
@@ -175,13 +175,25 @@ function M.ask(prompt_bufnr)
     error("Model not supported: " .. prompt.settings.model)
   end
 
+  local in_reasoning_tag = false
+
   client:chat(prompt.messages, prompt.settings, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
       return
     end
 
-    local lines = vim.split(chars, "\n", { plain = true })
+    local lines = vim.split(chars, "\n")
     local success = pcall(function()
+      if state == message_types.REASONING and not in_reasoning_tag then
+        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "<llm_sidekick_reasoning>", "" })
+        in_reasoning_tag = true
+      end
+
+      if state == message_types.DATA and in_reasoning_tag then
+        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "</llm_sidekick_reasoning>", "", "" })
+        in_reasoning_tag = false
+      end
+
       local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1]
       local new_last_line = last_line .. lines[1]
       vim.api.nvim_buf_set_lines(prompt_bufnr, -2, -1, false, { new_last_line })

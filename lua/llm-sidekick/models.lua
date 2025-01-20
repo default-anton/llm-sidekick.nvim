@@ -6,6 +6,11 @@ return {
       chat = 1.3, -- https://api-docs.deepseek.com/quick_start/parameter_settings
     }
   },
+  ["deepseek-reasoner"] = {
+    max_tokens = 8192,
+    temperature = nil, -- temperature is not supported
+    reasoning = true,
+  },
   ["claude-3-5-sonnet-latest"] = {
     max_tokens = 8192,
     temperature = {
@@ -50,26 +55,17 @@ return {
   },
   ["o1"] = {
     max_tokens = 100000,
-    temperature = {
-      coding = 0.0,
-      chat = 0.0,
-    },
+    temperature = nil, -- temperature is not supported
     reasoning = true,
   },
   ["o1-mini"] = {
     max_tokens = 65536,
-    temperature = {
-      coding = 0.0,
-      chat = 0.0,
-    },
+    temperature = nil, -- temperature is not supported
     reasoning = true,
   },
   ["o1-preview"] = {
     max_tokens = 32768,
-    temperature = {
-      coding = 0.0,
-      chat = 0.0,
-    },
+    temperature = nil, -- temperature is not supported
     reasoning = true,
   },
   ["gpt-4o"] = {

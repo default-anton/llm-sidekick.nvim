@@ -76,6 +76,15 @@ function M.get_anthropic_api_key()
   return api_key
 end
 
+function M.get_groq_api_key()
+  local api_key = vim.env.LLM_SIDEKICK_GROQ_API_KEY or vim.env.GROQ_API_KEY
+  if not api_key then
+    error("No API key found. Set LLM_SIDEKICK_GROQ_API_KEY or GROQ_API_KEY in your environment.")
+  end
+
+  return api_key
+end
+
 function M.get_openai_api_key()
   local api_key = vim.env.LLM_SIDEKICK_OPENAI_API_KEY or vim.env.OPENAI_API_KEY
   if not api_key then
