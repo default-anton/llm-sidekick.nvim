@@ -349,6 +349,41 @@ describe("apply_modifications", function()
     assert.equals(expected_content .. "\n", content)
   end)
 
+  it("should maintain original indentation when applying modifications with smaller indent", function()
+    local file_path = test_dir:joinpath('indent_test.py'):absolute()
+    local original_content = "    def hello():\n        print(\"Hello, World!\")"
+
+    -- Create the file with original content
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    -- Create a buffer for the modifications
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+
+    -- Insert modification block with different indentation
+    local mod_block = {
+      "ASSISTANT:",
+      "@" .. test_dir:joinpath('indent_test.py'):absolute(),
+      "<search>",
+      "def hello():",
+      "    print(\"Hello, World!\")",
+      "</search>",
+      "<replace>",
+      "def hello():",
+      "    print(\"Hello, Universe!\")",
+      "</replace>",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    -- Apply modifications
+    file_editor.apply_modifications(chatbuf, true)
+
+    -- Verify the file content maintains original indentation
+    local expected_content = "    def hello():\n        print(\"Hello, Universe!\")"
+    local content = Path:new(file_path):read()
+    assert.equals(expected_content .. "\n", content)
+  end)
+
   it("should handle search and replace tags not ending on their own line", function()
     local file_path = test_dir:joinpath('inline_tags.txt'):absolute()
     local original_content = "This is a test.\nAnother line.\nEnd of file."

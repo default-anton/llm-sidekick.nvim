@@ -12,6 +12,20 @@ local function find_min_indentation(lines)
   return min_indent
 end
 
+local function find_max_indentation(lines)
+  local max_indent = 0
+  for _, line in ipairs(lines) do
+    -- Skip empty lines when calculating max indent
+    if line:match("^%s*$") then
+      goto continue
+    end
+    local indent = vim.fn.strdisplaywidth(line:match("^%s*"))
+    max_indent = math.max(max_indent, indent)
+    ::continue::
+  end
+  return max_indent
+end
+
 local function dedent_lines(lines, min_indent)
   local indent_pattern = "^" .. string.rep(" ", min_indent)
   local dedented_lines = {}
@@ -102,10 +116,11 @@ local function apply_modification(chat_bufnr, block)
     add_diagnostic(chat_bufnr, chat_buf_start_line, chat_buf_end_line, raw_block, vim.diagnostic.severity.INFO,
       success_msg)
   elseif type == "update" then
-    local content
+    local content, content_lines
     local buf = vim.fn.bufnr(file_path)
     if buf >= 0 and vim.api.nvim_buf_is_loaded(buf) then
-      content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+      content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      content = table.concat(content_lines, "\n")
     else
       buf = vim.fn.bufadd(file_path)
       if buf == 0 then
@@ -115,7 +130,8 @@ local function apply_modification(chat_bufnr, block)
         error(err_msg)
       end
       vim.fn.bufload(buf)
-      content = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+      content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      content = table.concat(content_lines, "\n")
       vim.api.nvim_buf_delete(buf, { force = true })
     end
 
@@ -127,18 +143,47 @@ local function apply_modification(chat_bufnr, block)
     end
 
     -- Find the exact string match
-    local start_pos, end_pos = content:find(search, 1, true)
-    local search_lines = vim.split(search, "\n")
-    local search_min_indent = find_min_indentation(search_lines)
+    local original_search = search
+    local original_search_lines = vim.split(original_search, "\n")
+    local original_search_min_indent = find_min_indentation(original_search_lines)
+    local max_indent = find_max_indentation(content_lines)
 
+    local start_pos, end_pos = content:find(original_search, 1, true)
+    local adjusted_search = original_search
+    local adjusted_search_lines = original_search_lines
+    local adjusted_search_min_indent = original_search_min_indent
+
+    -- Try dedenting up to the max indent
     if not start_pos then
-      local max_iterations = 10
-      while search_min_indent > 0 and start_pos == nil and max_iterations > 0 do
-        search_lines = dedent_lines(search_lines, 1)
-        search = table.concat(search_lines, "\n")
-        search_min_indent = find_min_indentation(search_lines)
-        start_pos, end_pos = content:find(search, 1, true)
-        max_iterations = max_iterations - 1
+      local max_dedent = math.min(original_search_min_indent, max_indent)
+      for dedent = 1, max_dedent do
+        adjusted_search_lines = dedent_lines(original_search_lines, dedent)
+        adjusted_search = table.concat(adjusted_search_lines, "\n")
+        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
+        start_pos, end_pos = content:find(adjusted_search, 1, true)
+        if start_pos then
+          break
+        end
+      end
+    end
+
+    -- Try indenting up to the max indent
+    if not start_pos then
+      for indent = 1, max_indent do
+        adjusted_search_lines = {}
+        for _, line in ipairs(original_search_lines) do
+          if line:match("^%s*$") then
+            table.insert(adjusted_search_lines, line)
+          else
+            table.insert(adjusted_search_lines, string.rep(" ", indent) .. line)
+          end
+        end
+        adjusted_search = table.concat(adjusted_search_lines, "\n")
+        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
+        start_pos, end_pos = content:find(adjusted_search, 1, true)
+        if start_pos then
+          break
+        end
       end
     end
 
@@ -152,8 +197,21 @@ local function apply_modification(chat_bufnr, block)
     -- match the indentation of the search pattern
     local replace_lines = vim.split(replace, "\n")
     local replace_min_indent = find_min_indentation(replace_lines)
-    if replace_min_indent ~= search_min_indent then
-      replace_lines = dedent_lines(replace_lines, replace_min_indent - search_min_indent)
+    local indent_diff = adjusted_search_min_indent - replace_min_indent
+    if indent_diff ~= 0 then
+      if indent_diff > 0 then
+        -- Add indentation to match original
+        for i, line in ipairs(replace_lines) do
+          replace_lines[i] = string.rep(" ", indent_diff) .. line
+        end
+      else
+        -- Remove excess indentation
+        local remove_spaces = -indent_diff
+        local indent_pattern = "^" .. string.rep(" ", remove_spaces)
+        for i, line in ipairs(replace_lines) do
+          replace_lines[i] = line:gsub(indent_pattern, "", 1)
+        end
+      end
       replace = table.concat(replace_lines, "\n")
     end
 
