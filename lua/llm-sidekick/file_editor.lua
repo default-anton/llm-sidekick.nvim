@@ -46,20 +46,26 @@ end
 local function apply_modification(chat_bufnr, block)
   local file_path, search, replace, chat_buf_start_line, chat_buf_end_line, type, raw_block =
       block.file_path, block.search, block.replace, block.start_line, block.end_line, block.type, block.raw_block
-  vim.validate('chat_bufnr', chat_bufnr, 'number')
-  vim.validate('file_path', file_path, 'string')
-  vim.validate('chat_buf_start_line', chat_buf_start_line, 'number')
-  vim.validate('chat_buf_end_line', chat_buf_end_line, 'number')
-  vim.validate('type', type, 'string')
-  vim.validate('raw_block', raw_block, 'string')
+  vim.validate({
+    chat_bufnr = { chat_bufnr, "number" },
+    file_path = { file_path, "string" },
+    chat_buf_start_line = { chat_buf_start_line, "number" },
+    chat_buf_end_line = { chat_buf_end_line, "number" },
+    type = { type, "string" },
+    raw_block = { raw_block, "string" }
+  })
 
   if type == "update" then
-    vim.validate('search', search, 'string')
-    vim.validate('replace', replace, 'string')
+    vim.validate({
+      search = { search, "string" },
+      replace = { replace, "string" }
+    })
   end
 
   if type == "create" then
-    vim.validate('create', replace, 'string')
+    vim.validate({
+      create = { replace, "string" }
+    })
   end
 
   local add_diagnostic = require("llm-sidekick.diagnostic").add_diagnostic
