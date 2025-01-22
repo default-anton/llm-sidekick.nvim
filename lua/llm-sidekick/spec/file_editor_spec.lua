@@ -63,11 +63,39 @@ describe("apply_modifications", function()
 
     local chatbuf = vim.api.nvim_create_buf(true, true)
     local mod_block = {
-      "ASSISTANT:",
-      "@" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "ASSISTANT: @" .. test_dir:joinpath('new_file.txt'):absolute(),
       "<create>",
       "This is a new file.",
       "With multiple lines.",
+      "</create>",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    file_editor.apply_modifications(chatbuf, true)
+
+    assert.is_true(Path:new(file_path):exists())
+    local content = Path:new(file_path):read()
+    assert.equals(replace_content .. "\n", content)
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully created file"))
+  end)
+
+  it("should create a new file with underscore in filename", function()
+    local file_path = test_dir:joinpath('views/users/_index.html.erb'):absolute()
+    local replace_content = "This is a new file with underscore.\nIt should be created."
+
+    assert.is_false(Path:new(file_path):exists())
+
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "ASSISTANT:",
+      "@" .. file_path,
+      "<create>",
+      "This is a new file with underscore.",
+      "It should be created.",
       "</create>",
     }
     vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)

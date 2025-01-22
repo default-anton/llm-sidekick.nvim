@@ -261,6 +261,9 @@ end
 
 local function find_and_parse_modification_blocks(bufnr, start_search_line, end_search_line)
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_search_line - 1, end_search_line, false)
+  for i = 1, #lines do
+    lines[i] = lines[i]:gsub("^ASSISTANT:%s*", "")
+  end
   local content = table.concat(lines, "\n")
 
   local blocks = {}
