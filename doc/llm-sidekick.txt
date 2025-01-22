@@ -121,7 +121,7 @@ Configure the plugin by calling the setup function:
         o1 = "o1-preview",
         mini = "o1-mini",
         flash = "gemini-2.0-flash-exp",
-        think_flash = "gemini-2.0-flash-thinking-exp-1219",
+        think_flash = "gemini-2.0-flash-thinking-exp-01-21",
         gpt = "gpt-4o-2024-11-20",
       },
       default = "sonnet",

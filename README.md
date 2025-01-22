@@ -105,7 +105,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         o1 = "o1-preview",
         mini = "o1-mini",
         flash = "gemini-2.0-flash-exp",
-        think_flash = "gemini-2.0-flash-thinking-exp-1219",
+        think_flash = "gemini-2.0-flash-thinking-exp-01-21",
         gpt = "gpt-4o-2024-11-20",
       },
       default = "sonnet",
@@ -137,7 +137,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ### Google Gemini Models
 - Gemini Experimental 1206 `gemini-exp-1206`
 - Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
-- Gemini 2.0 Flash Thinking Experimental `gemini-2.0-flash-thinking-exp-1219`
+- Gemini 2.0 Flash Thinking Exp-1219 `gemini-2.0-flash-thinking-exp-1219`
+- Gemini 2.0 Flash Thinking Exp-01-21 `gemini-2.0-flash-thinking-exp-01-21`
 
 ### Ollama Models
 - `ollama-qwen2.5-coder:1.5b`

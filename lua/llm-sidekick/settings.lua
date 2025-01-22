@@ -3,13 +3,8 @@ local M = {}
 local defaults = {
   aliases = {
     sonnet = "claude-3-5-sonnet-latest",
-    gpt = "gpt-4o-2024-11-20",
-    o1 = "o1-preview",
-    mini = "o1-mini",
-    flash = "gemini-2.0-flash-exp",
-    think = "gemini-2.0-flash-thinking-exp-1219",
   },
-  default = "claude",
+  default = "sonnet",
 }
 
 local settings = vim.deepcopy(defaults)

@@ -119,8 +119,17 @@ return {
       chat = 0.7,
     }
   },
+  ["gemini-2.0-flash-thinking-exp-01-21"] = {
+    max_tokens = 65536,
+    temperature = {
+      coding = 0.5,
+      chat = 1.0,
+    },
+    top_k = 64,
+    reasoning = true,
+  },
   ["gemini-2.0-flash-thinking-exp-1219"] = {
-    max_tokens = 8192,
+    max_tokens = 65536,
     temperature = {
       coding = 0.5,
       chat = 1.0,
