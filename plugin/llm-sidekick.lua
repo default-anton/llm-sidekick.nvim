@@ -280,19 +280,43 @@ local function add_file_content_to_prompt(prompt, file_paths)
   return prompt
 end
 
-local function replace_system_prompt(ask_buf)
+local function replace_system_prompt(ask_buf, opts)
   local model = ""
+  local model_line = nil
   local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
-  for _, line in ipairs(lines) do
+  for i, line in ipairs(lines) do
     local match = line:match("^MODEL:(.+)$")
     if match then
       model = vim.trim(match)
+      model_line = i
+      break
+    end
+  end
+
+  local original_model = model
+
+  local settings = require("llm-sidekick.settings")
+  for _, arg in ipairs(opts.fargs) do
+    if settings.has_model_for(arg) then
+      model = settings.get_model(arg)
       break
     end
   end
 
   if model == "" then
-    error("No model specified in the buffer")
+    error("No model specified in the buffer or arguments")
+  end
+
+  -- Update MODEL line if changed via fargs
+  if model ~= original_model then
+    local new_line = "MODEL: " .. model
+    if model_line then
+      -- Replace existing line
+      vim.api.nvim_buf_set_lines(ask_buf, model_line - 1, model_line, false, { new_line })
+    else
+      -- Insert new line at the top
+      vim.api.nvim_buf_set_lines(ask_buf, 0, 0, false, { new_line })
+    end
   end
 
   -- Find SYSTEM prompt start and first USER message
@@ -462,9 +486,20 @@ local ask_command = function(cmd_opts)
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
     else
-      vim.api.nvim_buf_create_user_command(buf, "C", function()
-        replace_system_prompt(buf)
-      end, { desc = "Replace the system prompt with a coding prompt" })
+      local function complete_mode(ArgLead, CmdLine, CursorPos)
+        local args = vim.split(CmdLine, "%s+")
+        local options = require("llm-sidekick.settings").get_aliases()
+        return vim.tbl_filter(function(item)
+          return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
+        end, options)
+      end
+
+      vim.api.nvim_buf_create_user_command(
+        buf,
+        "C",
+        function(opts) replace_system_prompt(buf, opts) end,
+        { desc = "Replace the system prompt with a coding prompt", complete = complete_mode, nargs = "?" }
+      )
     end
     open_buffer_in_mode(buf, open_mode)
     set_llm_sidekick_options()
