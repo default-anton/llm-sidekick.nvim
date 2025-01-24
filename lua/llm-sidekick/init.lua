@@ -185,12 +185,12 @@ function M.ask(prompt_bufnr)
     local lines = vim.split(chars, "\n")
     local success = pcall(function()
       if state == message_types.REASONING and not in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "<llm_sidekick_reasoning>", "" })
+        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "<llm_sidekick_thinking>", "" })
         in_reasoning_tag = true
       end
 
       if state == message_types.DATA and in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "</llm_sidekick_reasoning>", "", "" })
+        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "</llm_sidekick_thinking>", "", "" })
         in_reasoning_tag = false
       end
 

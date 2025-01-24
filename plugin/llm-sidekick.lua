@@ -358,8 +358,8 @@ local ask_command = function(cmd_opts)
       prompt = add_file_content_to_prompt(prompt, file_paths)
     end
 
-    -- NOTE: delete all <llm_sidekick_reasoning> tags
-    prompt = prompt:gsub("<llm_sidekick_reasoning>.-</llm_sidekick_reasoning>", "")
+    -- NOTE: delete all <llm_sidekick_thinking> tags
+    prompt = prompt:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
 
     local buf = vim.api.nvim_create_buf(true, true)
     vim.bo[buf].buftype = "nofile"
