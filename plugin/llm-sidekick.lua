@@ -279,6 +279,99 @@ local function add_file_content_to_prompt(prompt, file_paths)
   return prompt
 end
 
+local function replace_system_prompt(ask_buf)
+  local model = ""
+  local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
+  for _, line in ipairs(lines) do
+    local match = line:match("^MODEL:(.+)$")
+    if match then
+      model = vim.trim(match)
+      break
+    end
+  end
+
+  if model == "" then
+    error("No model specified in the buffer")
+  end
+
+  -- Find SYSTEM prompt start and first USER message
+  local system_start = nil
+  local user_start = nil
+  for i, line in ipairs(lines) do
+    if vim.startswith(line, "SYSTEM:") then
+      system_start = i
+      break
+    elseif vim.startswith(line, "USER:") then
+      user_start = i
+      break
+    end
+  end
+
+  -- Find SYSTEM prompt end (before USER:) if it exists
+  local system_end = nil
+  if system_start then
+    system_end = system_start
+    for i = system_start + 1, #lines do
+      if vim.startswith(lines[i], "USER:") then
+        system_end = i - 1
+        break
+      else
+        system_end = i
+      end
+    end
+  end
+
+  -- If no USER message found, can't proceed
+  if not user_start and not system_start then
+    error("No USER message found in buffer")
+  end
+
+  -- Generate new SYSTEM prompt with coding=true and include_modifications=true
+  local model_settings = llm_sidekick.get_default_model_settings(model)
+  local is_reasoning = model_settings.reasoning
+
+  local guidelines = vim.trim(current_project_config.guidelines or "")
+  if guidelines == "" then
+    guidelines = "No guidelines provided."
+  end
+
+  local args = {
+    os.date("%B %d, %Y"),
+    model_settings.reasoning and "" or prompts.reasoning,
+    guidelines,
+    vim.trim(current_project_config.technologies or ""),
+    vim.trim(prompts.modifications) -- include_modifications=true
+  }
+
+  if is_reasoning then
+    table.remove(args, 2) -- Remove reasoning instructions
+  end
+
+  local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
+  system_prompt = string.format(vim.trim(system_prompt), unpack(args))
+  system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
+  local adapted_system_prompt = adapt_system_prompt_for(model, system_prompt)
+  local new_system_lines = vim.split("SYSTEM: " .. adapted_system_prompt, "\n")
+
+  -- Replace or insert SYSTEM section
+  if system_start then
+    -- Replace existing SYSTEM section
+    vim.api.nvim_buf_set_lines(ask_buf, system_start - 1, system_end, false, new_system_lines)
+  else
+    -- Insert before first USER message
+    vim.api.nvim_buf_set_lines(ask_buf, user_start - 1, user_start - 1, false, new_system_lines)
+  end
+
+  -- Update buffer settings
+  vim.b[ask_buf].llm_sidekick_include_modifications = true
+  vim.b[ask_buf].llm_sidekick_auto_apply = false
+  file_editor.create_apply_modifications_command(ask_buf)
+
+  vim.api.nvim_buf_call(ask_buf, function()
+    fold_stuff(ask_buf)
+  end)
+end
+
 local ask_command = function(cmd_opts)
   return function(opts)
     local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
@@ -367,6 +460,10 @@ local ask_command = function(cmd_opts)
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
+    else
+      vim.api.nvim_buf_create_user_command(buf, "C", function()
+        replace_system_prompt(buf)
+      end, { desc = "Replace the system prompt with a coding prompt" })
     end
     open_buffer_in_mode(buf, open_mode)
     set_llm_sidekick_options()
@@ -543,44 +640,6 @@ local function get_content(opts, callback)
     local content = table.concat(lines, "\n")
 
     callback({ type = "text", content = content }, relative_path)
-  end
-end
-
--- TODO: Implement this
-local function replace_system_prompt(ask_buf, opts)
-  local model = ""
-  local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
-  for _, line in ipairs(lines) do
-    local match = line:match("^MODEL:(.+)$")
-    if match then
-      model = vim.trim(match)
-      break
-    end
-  end
-
-  if model == "" then
-    error("No model specified in the buffer")
-  end
-
-  -- Find SYSTEM prompt
-  local system_start = nil
-  for i, line in ipairs(lines) do
-    if vim.startswith(line, "SYSTEM:") then
-      system_start = i
-      break
-    end
-  end
-  if not system_start then
-    return
-  end
-
-  -- Find USER prompt
-  local user_start = nil
-  for i, line in ipairs(lines) do
-    if vim.startswith(line, "USER:") then
-      user_start = i
-      break
-    end
   end
 end
 
