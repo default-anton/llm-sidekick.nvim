@@ -207,6 +207,15 @@ COMMANDS                                                 *llm-sidekick-commands*
                     text, or press q to cancel. Works in both normal and
                     insert modes.
 
+                                                        *:C*
+:C [model]          Converts a buffer created by :Ask or :Chat into a :Code
+                    buffer by replacing the system prompt with one that includes
+                    file modification capabilities. Takes an optional model
+                    argument to switch to a different model while converting.
+                    Only available in buffers created by :Ask or :Chat commands.
+                    After conversion, :Apply and :ApplyAll commands become
+                    available in the buffer.
+
 ==============================================================================
 LICENSE                                                  *llm-sidekick-license*
 

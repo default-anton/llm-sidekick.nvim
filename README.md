@@ -195,6 +195,9 @@ Both commands handle file operations (create/modify/delete) and are only availab
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
 
+#### `:C [model]`
+Converts a buffer created by `:Ask` or `:Chat` into a `:Code` buffer by replacing the system prompt with one that includes file modification capabilities. Takes an optional model argument to switch to a different model while converting. After conversion, `:Apply` and `:ApplyAll` commands become available in the buffer.
+
 ## Keybindings
 
 Recommended keybindings for common operations:
