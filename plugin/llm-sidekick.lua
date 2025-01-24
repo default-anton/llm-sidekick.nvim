@@ -15,6 +15,7 @@ local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
+local utils = require "llm-sidekick.utils"
 local current_project_config = {}
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
@@ -497,77 +498,29 @@ local ask_command = function(cmd_opts)
   end
 end
 
-vim.api.nvim_create_user_command("Chat", ask_command({ coding = false, include_modifications = false }), {
-  range = true,
-  nargs = "*",
-  complete = function(ArgLead, CmdLine, CursorPos)
-    local args = vim.split(CmdLine, "%s+")
-    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
-    local options = {}
-    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
-      options = file_completions
-    end
-    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
-    vim.list_extend(options, OPEN_MODES)
-    return vim.tbl_filter(function(item)
-      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
-    end, options)
-  end,
-})
+vim.api.nvim_create_user_command(
+  "Chat",
+  ask_command({ coding = false, include_modifications = false }),
+  { range = true, nargs = "*", complete = utils.complete_command }
+)
 
-vim.api.nvim_create_user_command("Ask", ask_command({ coding = true, include_modifications = false }), {
-  range = true,
-  nargs = "*",
-  complete = function(ArgLead, CmdLine, CursorPos)
-    local args = vim.split(CmdLine, "%s+")
-    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
-    local options = {}
-    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
-      options = file_completions
-    end
-    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
-    vim.list_extend(options, OPEN_MODES)
-    return vim.tbl_filter(function(item)
-      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
-    end, options)
-  end,
-})
+vim.api.nvim_create_user_command(
+  "Ask",
+  ask_command({ coding = true, include_modifications = false }),
+  { range = true, nargs = "*", complete = utils.complete_command }
+)
 
-vim.api.nvim_create_user_command("Code", ask_command({ coding = true, include_modifications = true }), {
-  range = true,
-  nargs = "*",
-  complete = function(ArgLead, CmdLine, CursorPos)
-    local args = vim.split(CmdLine, "%s+")
-    local file_completions = vim.fn.getcompletion(ArgLead, 'file')
-    local options = {}
-    if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
-      options = file_completions
-    end
-    vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
-    vim.list_extend(options, OPEN_MODES)
-    return vim.tbl_filter(function(item)
-      return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
-    end, options)
-  end,
-})
+vim.api.nvim_create_user_command(
+  "Code",
+  ask_command({ coding = true, include_modifications = true }),
+  { range = true, nargs = "*", complete = utils.complete_command }
+)
 
-vim.api.nvim_create_user_command("Yolo", ask_command({ coding = true, include_modifications = true, auto_apply = true }),
-  {
-    range = true,
-    nargs = "*",
-    complete = function(ArgLead, CmdLine, CursorPos)
-      local args = vim.split(CmdLine, "%s+")
-      local file_completions = vim.fn.getcompletion(ArgLead, 'file')
-      local options = {}
-      if vim.trim(ArgLead) ~= "" and #file_completions > 0 then
-        options = file_completions
-      end
-      vim.list_extend(options, require("llm-sidekick.settings").get_aliases())
-      return vim.tbl_filter(function(item)
-        return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
-      end, options)
-    end,
-  })
+vim.api.nvim_create_user_command(
+  "Yolo",
+  ask_command({ coding = true, include_modifications = true, auto_apply = true }),
+  { range = true, nargs = "*", complete = utils.complete_command }
+)
 
 local function is_image_file(file_path)
   local extension = vim.fn.fnamemodify(file_path, ":e")
