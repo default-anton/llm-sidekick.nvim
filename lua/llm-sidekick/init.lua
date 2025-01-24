@@ -44,7 +44,10 @@ function M.parse_prompt(prompt)
       goto continue
     end
     if line:sub(1, 10) == "ASSISTANT:" then
-      options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
+      local content = line:sub(11)
+      -- NOTE: delete all <llm_sidekick_thinking> tags
+      content = content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
+      options.messages[#options.messages + 1] = { role = "assistant", content = content }
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
