@@ -1,6 +1,6 @@
 # llm-sidekick.nvim
 
-The missing code companion for Neovim. Fast, hackable, and stays out of your way.
+AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
 
 ## Features
 
