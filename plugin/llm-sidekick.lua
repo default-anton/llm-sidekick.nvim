@@ -216,15 +216,15 @@ end
 
 local function adapt_system_prompt_for(model, prompt)
   if vim.startswith(model, "gemini") then
-    return prompt:gsub("Claude", "Gemini"):gsub("Anthropic", "Google DeepMind")
+    return prompt:gsub("Claude", "Gemini"):gsub("Anthropic", "Google DeepMind"):gsub("claude_info", "gemini_info")
   end
 
   if vim.startswith(model, "o1") or vim.startswith(model, "gpt") then
-    return prompt:gsub("Claude", "GPT"):gsub("Anthropic", "OpenAI")
+    return prompt:gsub("Claude", "GPT"):gsub("Anthropic", "OpenAI"):gsub("claude_info", "gpt_info")
   end
 
   if vim.startswith(model, "deepseek") then
-    return prompt:gsub("Claude", "DeepSeek"):gsub("Anthropic", "DeepSeek AI")
+    return prompt:gsub("Claude", "DeepSeek"):gsub("Anthropic", "DeepSeek AI"):gsub("claude_info", "deepseek_info")
   end
 
   return prompt
