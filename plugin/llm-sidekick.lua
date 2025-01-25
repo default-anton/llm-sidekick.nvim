@@ -379,7 +379,7 @@ local function replace_system_prompt(ask_buf, opts)
   local new_system_lines = vim.split("SYSTEM: " .. adapted_system_prompt, "\n")
 
   -- Replace or insert SYSTEM section
-  if system_start then
+  if system_start and system_end then
     -- Replace existing SYSTEM section
     vim.api.nvim_buf_set_lines(ask_buf, system_start - 1, system_end, false, new_system_lines)
   else
