@@ -25,15 +25,8 @@ function openai:chat(messages, settings, callback)
   end
 
   if vim.startswith(data.model, "o1") then
-    data.messages = vim.tbl_filter(function(message) return message.role == "user" or message.role == "assistant" end,
-      messages)
     data.max_tokens = nil
     data.max_completion_tokens = settings.max_tokens
-    -- prepend the system prompt to the first message
-    local system_prompt = vim.tbl_filter(function(message) return message.role == "system" end, messages)[1]
-    if system_prompt then
-      data.messages[1].content = system_prompt.content .. "\n\n" .. data.messages[1].content
-    end
   end
 
   local curl = require("llm-sidekick.executables").get_curl_executable()

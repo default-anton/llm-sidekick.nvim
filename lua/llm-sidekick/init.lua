@@ -157,6 +157,16 @@ function M.ask(prompt_bufnr)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
 
+  local model_settings = M.get_default_model_settings(prompt.settings.model)
+  if model_settings.no_system_prompt then
+    -- prepend the system prompt to the first message
+    local system_prompt = vim.tbl_filter(function(m) return m.role == "system" end, prompt.messages)[1]
+    prompt.messages = vim.tbl_filter(function(m) return m.role ~= "system" end, prompt.messages)
+    if system_prompt then
+      prompt.messages[1].content = system_prompt.content .. "\n\n" .. prompt.messages[1].content
+    end
+  end
+
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", current_line })
 

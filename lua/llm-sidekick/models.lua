@@ -8,7 +8,11 @@ return {
   },
   ["deepseek-reasoner"] = {
     max_tokens = 8192,
-    temperature = nil, -- temperature is not supported
+    temperature = {
+      coding = 0.6,
+      chat = 0.6,
+    },
+    no_system_prompt = true,
     reasoning = true,
   },
   ["claude-3-5-sonnet-latest"] = {
@@ -57,16 +61,19 @@ return {
     max_tokens = 100000,
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    no_system_prompt = true,
   },
   ["o1-mini"] = {
     max_tokens = 65536,
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    no_system_prompt = true,
   },
   ["o1-preview"] = {
     max_tokens = 32768,
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    no_system_prompt = true,
   },
   ["gpt-4o"] = {
     max_tokens = 16384,
