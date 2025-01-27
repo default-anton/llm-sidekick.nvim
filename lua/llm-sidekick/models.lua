@@ -15,6 +15,15 @@ return {
     no_system_prompt = true,
     reasoning = true,
   },
+  ["groq.deepseek-r1-distill-llama-70b"] = {
+    max_tokens = 40960,
+    temperature = {
+      coding = 0.6,
+      chat = 0.6,
+    },
+    no_system_prompt = true,
+    reasoning = true,
+  },
   ["claude-3-5-sonnet-latest"] = {
     max_tokens = 8192,
     temperature = {
@@ -144,7 +153,7 @@ return {
     top_k = 64,
     reasoning = true,
   },
-  ["ollama-qwen2.5-coder:1.5b"] = {
+  ["ollama.qwen2.5-coder:1.5b"] = {
     max_tokens = 8192,
     temperature = {
       coding = 0.3,
@@ -152,4 +161,3 @@ return {
     }
   },
 }
-

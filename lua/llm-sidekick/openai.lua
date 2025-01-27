@@ -13,7 +13,7 @@ end
 function openai:chat(messages, settings, callback)
   callback = vim.schedule_wrap(callback)
   local data = {
-    model = vim.startswith(settings.model, "ollama-") and string.sub(settings.model, 8) or settings.model,
+    model = settings.model,
     stream = settings.stream,
     messages = messages,
     max_tokens = settings.max_tokens,

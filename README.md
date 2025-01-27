@@ -141,7 +141,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - Gemini 2.0 Flash Thinking Exp-01-21 `gemini-2.0-flash-thinking-exp-01-21`
 
 ### Ollama Models
-- `ollama-qwen2.5-coder:1.5b`
+- `ollama.qwen2.5-coder:1.5b`
 
 Each model is configured with specific token limits and temperature settings optimized for different use cases.
 
