@@ -45,8 +45,9 @@ function M.parse_prompt(prompt)
     end
     if line:sub(1, 10) == "ASSISTANT:" then
       local content = line:sub(11)
-      -- NOTE: delete all <llm_sidekick_thinking> tags
+      -- NOTE: delete all thinking tags
       content = content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
+      content = content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
       options.messages[#options.messages + 1] = { role = "assistant", content = content }
       goto continue
     end
