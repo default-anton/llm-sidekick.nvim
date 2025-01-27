@@ -5,7 +5,7 @@ function gemini.new(url)
   local api_key = require("llm-sidekick.settings").get_gemini_api_key()
 
   return setmetatable({
-      base_url = url or 'https://generativelanguage.googleapis.com/v1beta/models',
+      base_url = url or 'https://generativelanguage.googleapis.com/v1alpha/models',
       api_key = api_key
     },
     { __index = gemini }
@@ -60,7 +60,7 @@ function gemini:chat(messages, settings, callback)
       maxOutputTokens = settings.max_tokens,
       topK = require("llm-sidekick").get_models()[settings.model].top_k,
       topP = 0.95,
-      responseMimeType = "text/plain"
+      responseMimeType = "text/plain",
     },
     safetySettings = {
       { category = "HARM_CATEGORY_HARASSMENT",        threshold = "BLOCK_NONE" },
@@ -70,6 +70,13 @@ function gemini:chat(messages, settings, callback)
       { category = "HARM_CATEGORY_CIVIC_INTEGRITY",   threshold = "BLOCK_NONE" }
     }
   }
+
+  -- Include thoughts for thinking models
+  if string.find(settings.model, "thinking") then
+    data.generationConfig.thinkingConfig = {
+      includeThoughts = true
+    }
+  end
 
   if system_message then
     data.systemInstruction = {
@@ -107,7 +114,9 @@ function gemini:chat(messages, settings, callback)
       if ok and decoded and decoded.candidates and decoded.candidates[1] and
           decoded.candidates[1].content and decoded.candidates[1].content.parts then
         for _, part in ipairs(decoded.candidates[1].content.parts) do
-          if part.text then
+          if part.thought then
+            callback(message_types.REASONING, part.text)
+          else
             callback(message_types.DATA, part.text)
           end
         end
