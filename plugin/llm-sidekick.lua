@@ -8,6 +8,8 @@ vim.g.llm_sidekick_last_chat_buffer = nil
 
 local M = {}
 
+local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
+
 local fs = require "llm-sidekick.fs"
 local bedrock = require "llm-sidekick.bedrock"
 local markdown = require "llm-sidekick.markdown"
@@ -17,6 +19,7 @@ local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
 local utils = require "llm-sidekick.utils"
 local current_project_config = {}
+local current_project_config_mtime = 0
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
 local MODE_SHORTCUTS = {
@@ -26,7 +29,7 @@ local MODE_SHORTCUTS = {
 }
 
 local function load_project_config()
-  local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
+  project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
   if vim.fn.filereadable(project_config_path) == 1 then
     local ok, config = pcall(dofile, project_config_path)
     if not ok then
@@ -39,6 +42,11 @@ local function load_project_config()
       technologies = { config.technologies, "string", true },
     })
     current_project_config = config
+
+    local stats = vim.loop.fs_stat(project_config_path)
+    if stats then
+      current_project_config_mtime = stats.mtime.sec
+    end
   end
 end
 
@@ -399,6 +407,12 @@ end
 
 local ask_command = function(cmd_opts)
   return function(opts)
+    -- Check if `.llmsidekick.lua` has been modified and reload if necessary
+    local stats = vim.loop.fs_stat(project_config_path)
+    if stats and stats.mtime.sec > current_project_config_mtime then
+      load_project_config()
+    end
+
     local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
