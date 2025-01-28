@@ -227,6 +227,36 @@ vim.keymap.set('n', '<leader>ly', '<cmd>Yolo split %<CR>', { noremap = true, des
 vim.keymap.set('v', '<leader>ly', '<cmd>Yolo split<CR>', { noremap = true, desc = "Fast coding with LLM on selection. Automatically applies changes and closes the chat buffer" })
 ```
 
+## Telescope Integration
+
+If you are using [Telescope](https://github.com/nvim-telescope/telescope.nvim), you can easily add a custom action to include selected files directly into your chat buffer using the `:Add` command.
+
+To add a keybinding within Telescope to send the selected file to `llm-sidekick.nvim`, add the following to your Telescope configuration:
+
+```lua
+require("telescope").setup {
+  defaults = {
+    mappings = {
+      i = {
+        ["<C-a>"] = function()
+          local action_state = require("telescope.actions.state")
+          local selected_entry = action_state.get_selected_entry()
+          if selected_entry and selected_entry.path then
+            local filepath = selected_entry.path
+            vim.cmd('Add ' .. filepath)
+          else
+            vim.notify("No selection")
+          end
+          return true
+        end,
+      },
+    },
+  },
+}
+```
+
+This configuration adds `<C-a>` in Telescope's `insert` mode to execute the `:Add` command with the currently selected file path, allowing you to quickly add file content to your ongoing chat sessions.
+
 ## Project Configuration
 
 llm-sidekick.nvim can be configured per project to provide context-aware assistance.
