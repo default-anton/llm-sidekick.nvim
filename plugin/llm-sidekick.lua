@@ -781,7 +781,7 @@ vim.api.nvim_create_user_command("Add", function(opts)
     return
   end
 
-  get_content(opts, function(content_data, relative_path)
+  local function insert_content(content_data, relative_path)
     local snippet
     if content_data.type == "image" then
       snippet = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", content_data.path)
@@ -824,13 +824,24 @@ vim.api.nvim_create_user_command("Add", function(opts)
 
     local fragment_lines = vim.split(snippet, "\n")
     vim.api.nvim_buf_set_lines(ask_buf, insert_start, insert_end, false, fragment_lines)
-    vim.api.nvim_buf_call(ask_buf, function()
-      fold_stuff(ask_buf)
-    end)
+  end
+
+  if not opts.fargs or vim.tbl_isempty(opts.fargs) then
+    get_content(opts, insert_content)
+  else
+    for _, arg in ipairs(opts.fargs) do
+      local current_opts = vim.deepcopy(opts)
+      current_opts.args = arg
+      get_content(current_opts, insert_content)
+    end
+  end
+
+  vim.api.nvim_buf_call(ask_buf, function()
+    fold_stuff(ask_buf)
   end)
 end, {
   range = true,
-  nargs = "?",
+  nargs = "*",
   complete = "file"
 })
 
