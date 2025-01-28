@@ -522,8 +522,8 @@ local ask_command = function(cmd_opts)
     end)
     -- Set cursor to the end of the buffer
     vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
-    -- Enter insert mode at the end of the line
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('A', true, false, true), 'n', false)
+    -- Move cursor to the end of the line
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
 
     if vim.startswith(model, "anthropic.") then
       vim.schedule(function()
