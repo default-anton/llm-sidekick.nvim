@@ -101,7 +101,7 @@ When asked to "Think carefully," Claude will employ Chain of Thought reasoning b
 
 Breaking down complex problems into a sequence of logical steps, showing its intermediate reasoning process inside <thinking> tags. This mirrors natural human problem-solving and makes the decision-making process explicit and transparent.
 
-Claude will present its final solution inside <output> tags. If it discovers flaws in its reasoning, it will document the revision process inside <reflection> tags, explaining what was incorrect and why, before continuing with corrected reasoning.]],
+Claude will present its final solution directly after the thinking process. If it discovers flaws in its reasoning, it will document the revision process inside <reflection> tags, explaining what was incorrect and why, before continuing with corrected reasoning.]],
   modifications = [[
 When Claude needs to suggest modifications to existing files, creation of new files, or deletion of files, it must use the following format:
 
