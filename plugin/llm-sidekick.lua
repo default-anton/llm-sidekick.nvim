@@ -19,7 +19,6 @@ local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
 local utils = require "llm-sidekick.utils"
 local current_project_config = {}
-local current_project_config_mtime = 0
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
 local MODE_SHORTCUTS = {
@@ -42,11 +41,8 @@ local function load_project_config()
       technologies = { config.technologies, "string", true },
     })
     current_project_config = config
-
-    local stats = vim.loop.fs_stat(project_config_path)
-    if stats then
-      current_project_config_mtime = stats.mtime.sec
-    end
+  else
+    current_project_config = {}
   end
 end
 
@@ -289,6 +285,8 @@ local function add_file_content_to_prompt(prompt, file_paths)
 end
 
 local function replace_system_prompt(ask_buf, opts)
+  load_project_config()
+
   local model = ""
   local model_line = nil
   local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
@@ -407,11 +405,8 @@ end
 
 local ask_command = function(cmd_opts)
   return function(opts)
-    -- Check if `.llmsidekick.lua` has been modified and reload if necessary
-    local stats = vim.loop.fs_stat(project_config_path)
-    if stats and stats.mtime.sec > current_project_config_mtime then
-      load_project_config()
-    end
+    -- Always load project config
+    load_project_config()
 
     local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
     local model = parsed_args.model
