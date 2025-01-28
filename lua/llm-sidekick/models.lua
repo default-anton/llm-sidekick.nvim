@@ -16,7 +16,7 @@ return {
     reasoning = true,
   },
   ["groq.deepseek-r1-distill-llama-70b"] = {
-    max_tokens = 40960,
+    max_tokens = 15000,
     temperature = {
       coding = 0.6,
       chat = 0.6,
