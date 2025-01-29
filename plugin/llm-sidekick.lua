@@ -506,7 +506,7 @@ local ask_command = function(cmd_opts)
       vim.api.nvim_buf_create_user_command(
         buf,
         "C",
-        function(opts) replace_system_prompt(buf, opts) end,
+        function(buf_cmd_opts) replace_system_prompt(buf, buf_cmd_opts) end,
         { desc = "Replace the system prompt with a coding prompt", complete = complete_mode, nargs = "?" }
       )
     end
