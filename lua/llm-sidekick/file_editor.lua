@@ -424,4 +424,6 @@ return {
   create_apply_modifications_command = create_apply_modifications_command,
   apply_modifications = apply_modifications,
   find_and_parse_modification_blocks = find_and_parse_modification_blocks,
+  find_last_assistant_start_line = find_last_assistant_start_line,
+  find_assistant_end_line = find_assistant_end_line,
 }

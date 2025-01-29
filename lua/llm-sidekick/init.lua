@@ -181,11 +181,13 @@ function M.ask(prompt_bufnr)
     client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
   elseif vim.startswith(prompt.settings.model, "deepseek") then
     local api_key = require("llm-sidekick.settings").get_deepseek_api_key()
-    client = require "llm-sidekick.openai".new({ url = "https://api.deepseek.com/beta/chat/completions", api_key = api_key })
+    client = require "llm-sidekick.openai".new({ url = "https://api.deepseek.com/beta/chat/completions", api_key =
+    api_key })
   elseif vim.startswith(prompt.settings.model, "groq.") then
     prompt.settings.model = string.sub(prompt.settings.model, 6)
     local api_key = require("llm-sidekick.settings").get_groq_api_key()
-    client = require "llm-sidekick.openai".new({ url = "https://api.groq.com/openai/v1/chat/completions", api_key = api_key })
+    client = require "llm-sidekick.openai".new({ url = "https://api.groq.com/openai/v1/chat/completions", api_key =
+    api_key })
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
     client = require "llm-sidekick.bedrock".new()
   elseif vim.startswith(prompt.settings.model, "gemini") then
@@ -239,6 +241,32 @@ function M.ask(prompt_bufnr)
         pcall(function()
           vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
         end)
+      end
+
+      lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+      local file_editor = require("llm-sidekick.file_editor")
+      local assistant_start_line = file_editor.find_last_assistant_start_line(lines)
+      if assistant_start_line ~= -1 then
+        local assistant_end_line = file_editor.find_assistant_end_line(
+          assistant_start_line,
+          lines
+        )
+        local modification_blocks = file_editor.find_and_parse_modification_blocks(
+          prompt_bufnr,
+          assistant_start_line,
+          assistant_end_line
+        )
+        local diagnostic = require("llm-sidekick.diagnostic")
+        for _, block in ipairs(modification_blocks) do
+          diagnostic.add_diagnostic(
+            prompt_bufnr,
+            block.start_line,
+            block.end_line,
+            block.raw_block,
+            vim.diagnostic.severity.HINT,
+            "Suggested Change"
+          )
+        end
       end
     end
   end)
