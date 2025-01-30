@@ -284,6 +284,14 @@ local function add_file_content_to_prompt(prompt, file_paths)
   return prompt
 end
 
+local function get_modifications_prompt_for(model)
+  if model:lower():find("gemini") then
+    return prompts.gemini_modifications
+  end
+
+  return prompts.modifications
+end
+
 local function replace_system_prompt(ask_buf, opts)
   load_project_config()
 
@@ -371,7 +379,7 @@ local function replace_system_prompt(ask_buf, opts)
     model_settings.reasoning and "" or prompts.reasoning,
     guidelines,
     vim.trim(current_project_config.technologies or ""),
-    vim.trim(prompts.modifications) -- include_modifications=true
+    vim.trim(get_modifications_prompt_for(model)) -- include_modifications=true
   }
 
   if is_reasoning then
@@ -451,7 +459,7 @@ local ask_command = function(cmd_opts)
           model_settings.reasoning and "" or prompts.reasoning,
           guidelines,
           vim.trim(current_project_config.technologies or ""),
-          cmd_opts.include_modifications and vim.trim(prompts.modifications) or ""
+          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or ""
         }
         if is_reasoning then
           table.remove(args, 2) -- Remove reasoning instructionsk
@@ -466,7 +474,7 @@ local ask_command = function(cmd_opts)
           os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
-          cmd_opts.include_modifications and vim.trim(prompts.modifications) or "",
+          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or "",
         }
         local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
         system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")

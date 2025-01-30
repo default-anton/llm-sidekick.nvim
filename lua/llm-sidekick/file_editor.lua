@@ -260,6 +260,15 @@ local function apply_modification(chat_bufnr, block)
 end
 
 local function find_and_parse_modification_blocks(bufnr, start_search_line, end_search_line)
+  local model = ""
+  for _, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, 4, false)) do
+    local match = line:match("^MODEL:(.+)$")
+    if match then
+      model = vim.trim(match)
+      break
+    end
+  end
+
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_search_line - 1, end_search_line, false)
   for i = 1, #lines do
     lines[i] = lines[i]:gsub("^ASSISTANT:%s*", "")
@@ -270,6 +279,13 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
   local create_pattern = "(@([^\n]+)\n<create>\n?(.-)\n?</create>)"
   local modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
   local delete_pattern = "(@([^\n]+)\n<delete />)"
+
+  if model:lower():find("gemini") then
+    -- Gemini format patterns
+    create_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Create:%*%*\n```\n(.*)\n```)"
+    modify_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Find:%*%*\n```\n(.-)\n```\n%*%*Replace:%*%*\n```\n(.-)\n```)"
+    delete_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Delete:%*%*\n```\nN/A\n```)"
+  end
 
   local function find_block_start_line(block)
     local start_line = nil
