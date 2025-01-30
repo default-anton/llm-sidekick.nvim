@@ -10,7 +10,10 @@ function anthropic.new(url)
   )
 end
 
-function anthropic:chat(messages, settings, callback)
+function anthropic:chat(opts, callback)
+  local messages = opts.messages
+  local settings = opts.settings
+  local tools = opts.tools
   callback = vim.schedule_wrap(callback)
 
   local data = {

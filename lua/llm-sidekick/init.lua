@@ -114,7 +114,7 @@ function M.parse_prompt(prompt)
             media_type = mime_type,
           },
         }
-      elseif vim.startswith(model_name, "gpt") or model_name == "o1" or vim.startswith(model_name, "o3") then
+      elseif vim.startswith(model_name, "gpt") or model_name == "o1" then
         image = {
           type = "image_url",
           image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
@@ -151,6 +151,7 @@ function M.ask(prompt_bufnr)
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
+  prompt.tools = require("llm-sidekick.tools")
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
   prompt.settings.model = model_settings.name
@@ -204,7 +205,7 @@ function M.ask(prompt_bufnr)
 
   local in_reasoning_tag = false
 
-  client:chat(prompt.messages, prompt.settings, function(state, chars)
+  client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
       return
     end

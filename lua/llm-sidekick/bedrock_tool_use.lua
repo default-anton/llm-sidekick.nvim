@@ -64,11 +64,11 @@ function bedrock.start_web_server()
   }):start()
 end
 
-function bedrock:chat(opts, callback)
+function bedrock:chat(opts)
   local messages = opts.messages
-  local settings = opts.settings
   local tools = opts.tools
-  callback = vim.schedule_wrap(callback)
+  local settings = opts.settings
+  local callback = vim.schedule_wrap(opts.callback)
 
   local data = {
     model_id = settings.model,
@@ -76,6 +76,7 @@ function bedrock:chat(opts, callback)
       temperature = settings.temperature,
       max_tokens = settings.max_tokens,
       messages = messages,
+      tools = tools,
     },
   }
 
@@ -103,6 +104,8 @@ function bedrock:chat(opts, callback)
     self.url,
   }
 
+  local tool = nil
+
   Job:new({
     command = curl,
     args = args,
@@ -119,9 +122,24 @@ function bedrock:chat(opts, callback)
         return
       end
 
-      if decoded.type == "content_block_delta" then
-        if decoded.delta and decoded.delta.text then
+      if decoded.type == "content_block_start" then
+        if decoded.content_block and decoded.content_block.type == "tool_use" then
+          tool = {
+            id = decoded.content_block.id,
+            name = decoded.content_block.name,
+            partial_json = ""
+          }
+        else
+          tool = nil
+        end
+      elseif decoded.type == "content_block_stop" then
+        tool = nil
+      elseif decoded.type == "content_block_delta" then
+        if decoded.delta.type == "text_delta" and decoded.delta.text then
           callback(message_types.DATA, decoded.delta.text)
+        elseif decoded.delta.type == "input_json_delta" and decoded.delta.partial_json then
+          tool.partial_json = tool.partial_json .. decoded.delta.partial_json
+          callback(message_types.DATA, decoded.delta.partial_json)
         end
       elseif decoded.type == "message_delta" then
         if decoded.delta and decoded.delta.stop_reason then

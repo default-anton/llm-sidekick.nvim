@@ -10,7 +10,10 @@ function openai.new(opts)
   )
 end
 
-function openai:chat(messages, settings, callback)
+function openai:chat(opts, callback)
+  local messages = opts.messages
+  local settings = opts.settings
+  local tools = opts.tools
   callback = vim.schedule_wrap(callback)
   local data = {
     model = settings.model,
@@ -87,9 +90,24 @@ function openai:chat(messages, settings, callback)
       end)
     end,
     on_exit = function(j, return_val)
+      if j:result() and not vim.tbl_isempty(j:result()) then
+        vim.schedule(function()
+          local ok, res = pcall(vim.json.decode, table.concat(j:result(), "\n"))
+          if ok and res and res.error then
+            vim.notify("Error: " .. res.error.message, vim.log.levels.ERROR)
+          end
+        end)
+      end
+
       if return_val ~= 0 then
         vim.schedule(function()
-          vim.api.nvim_err_writeln("Error: API request failed with exit code " .. return_val)
+          if j:result() and not vim.tbl_isempty(j:result()) then
+            vim.notify("Error: " .. table.concat(j:result(), "\n"), vim.log.levels.ERROR)
+          end
+
+          if j:stderr_result() and not vim.tbl_isempty(j:stderr_result()) then
+            vim.notify("Error: " .. table.concat(j:stderr_result(), "\n"), vim.log.levels.ERROR)
+          end
         end)
         return
       end

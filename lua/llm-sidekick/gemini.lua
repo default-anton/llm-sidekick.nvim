@@ -12,7 +12,10 @@ function gemini.new(url)
   )
 end
 
-function gemini:chat(messages, settings, callback)
+function gemini:chat(opts, callback)
+  local messages = opts.messages
+  local settings = opts.settings
+  local tools = opts.tools
   callback = vim.schedule_wrap(callback)
 
   local system_message = nil
