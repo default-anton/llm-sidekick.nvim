@@ -282,9 +282,9 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
 
   if model:lower():find("gemini") then
     -- Gemini format patterns
-    create_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Create:%*%*\n```\n(.*)\n```)"
-    modify_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Find:%*%*\n```\n(.-)\n```\n%*%*Replace:%*%*\n```\n(.-)\n```)"
-    delete_pattern = "(%*%*File Path:%*%*\n```\n([^\n]+)\n```\n%*%*Delete:%*%*\n```\nN/A\n```)"
+    create_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Create:%*%*\n```%w*\n(.-)\n```)"
+    modify_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
+    delete_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Delete:%*%*\n```%w*\nN/A\n```)"
   end
 
   local function find_block_start_line(block)
