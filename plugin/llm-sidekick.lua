@@ -10,6 +10,7 @@ local M = {}
 
 local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
+local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
 local bedrock = require "llm-sidekick.bedrock"
 local markdown = require "llm-sidekick.markdown"
@@ -87,7 +88,6 @@ local function open_buffer_in_mode(buf, mode)
 end
 
 local function parse_ask_args(args, auto_apply)
-  local settings = require("llm-sidekick.settings")
   local parsed = {
     model = settings.get_model(),
     open_mode = "current",
@@ -221,15 +221,11 @@ end
 
 local function adapt_system_prompt_for(model, prompt)
   if vim.startswith(model, "gemini") then
-    return prompt:gsub("Claude", "Gemini"):gsub("Anthropic", "Google DeepMind"):gsub("claude_info", "gemini_info")
+    return prompt:gsub("Claude", "Gemini"):gsub("claude_info", "gemini_info")
   end
 
-  if vim.startswith(model, "o1") or vim.startswith(model, "gpt") then
-    return prompt:gsub("Claude", "GPT"):gsub("Anthropic", "OpenAI"):gsub("claude_info", "gpt_info")
-  end
-
-  if vim.startswith(model, "deepseek") then
-    return prompt:gsub("Claude", "DeepSeek"):gsub("Anthropic", "DeepSeek AI"):gsub("claude_info", "deepseek_info")
+  if vim.startswith(model, "o1") or vim.startswith(model, "o3") or vim.startswith(model, "gpt") or vim.startswith(model, "deepseek") then
+    return prompt:gsub("Claude", "Sidekick"):gsub("claude_info", "sidekick_info")
   end
 
   return prompt
@@ -309,7 +305,6 @@ local function replace_system_prompt(ask_buf, opts)
 
   local original_model = model
 
-  local settings = require("llm-sidekick.settings")
   for _, arg in ipairs(opts.fargs) do
     if settings.has_model_for(arg) then
       model = settings.get_model(arg)
@@ -366,7 +361,8 @@ local function replace_system_prompt(ask_buf, opts)
   end
 
   -- Generate new SYSTEM prompt with coding=true and include_modifications=true
-  local model_settings = llm_sidekick.get_default_model_settings(model)
+  local model_settings = settings.get_model_settings(model)
+  local model_name = model_settings.name
   local is_reasoning = model_settings.reasoning
 
   local guidelines = vim.trim(current_project_config.guidelines or "")
@@ -379,7 +375,7 @@ local function replace_system_prompt(ask_buf, opts)
     model_settings.reasoning and "" or prompts.reasoning,
     guidelines,
     vim.trim(current_project_config.technologies or ""),
-    vim.trim(get_modifications_prompt_for(model)) -- include_modifications=true
+    vim.trim(get_modifications_prompt_for(model_name)) -- include_modifications=true
   }
 
   if is_reasoning then
@@ -389,7 +385,7 @@ local function replace_system_prompt(ask_buf, opts)
   local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
   system_prompt = string.format(vim.trim(system_prompt), unpack(args))
   system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-  local adapted_system_prompt = adapt_system_prompt_for(model, system_prompt)
+  local adapted_system_prompt = adapt_system_prompt_for(model_name, system_prompt)
   local new_system_lines = vim.split("SYSTEM: " .. adapted_system_prompt, "\n")
 
   -- Replace or insert SYSTEM section
@@ -428,23 +424,23 @@ local ask_command = function(cmd_opts)
       range_end = opts.line2
     end
 
-    local model_settings = llm_sidekick.get_default_model_settings(model)
+    local model_settings = settings.get_model_settings(model)
     local is_reasoning = model_settings.reasoning
 
-    local settings = {
+    local prompt_settings = {
       model = model,
       max_tokens = model_settings.max_tokens,
     }
 
     if model_settings.temperature then
-      settings.temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat
+      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat
     end
 
     local prompt = ""
     if is_llm_sidekick_chat_file(0) and not vim.b.is_llm_sidekick_chat then
       prompt = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
     else
-      for key, value in pairs(settings) do
+      for key, value in pairs(prompt_settings) do
         prompt = prompt .. key:upper() .. ": " .. value .. "\n"
       end
 
@@ -505,7 +501,7 @@ local ask_command = function(cmd_opts)
     else
       local function complete_mode(ArgLead, CmdLine, CursorPos)
         local args = vim.split(CmdLine, "%s+")
-        local options = require("llm-sidekick.settings").get_aliases()
+        local options = settings.get_aliases()
         return vim.tbl_filter(function(item)
           return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
         end, options)

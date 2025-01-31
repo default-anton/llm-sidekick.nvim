@@ -58,7 +58,7 @@ function gemini:chat(messages, settings, callback)
     generationConfig = {
       temperature = settings.temperature,
       maxOutputTokens = settings.max_tokens,
-      topK = require("llm-sidekick").get_models()[settings.model].top_k,
+      topK = require("llm-sidekick.settings").get_model_settings(settings.model).top_k,
       topP = 0.95,
       responseMimeType = "text/plain",
     },

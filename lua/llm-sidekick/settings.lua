@@ -1,13 +1,22 @@
+local MODELS = require "llm-sidekick.models"
+
 local M = {}
 
-local defaults = {
+local settings = {
   aliases = {
     sonnet = "claude-3-5-sonnet-latest",
   },
   default = "sonnet",
+  models = vim.deepcopy(MODELS),
 }
 
-local settings = vim.deepcopy(defaults)
+function M.get_models()
+  return settings.models
+end
+
+function M.get_model_settings(model)
+  return settings.models[model] or error("Model not found: " .. model)
+end
 
 function M.setup(opts)
   if opts == nil then
@@ -16,7 +25,10 @@ function M.setup(opts)
     vim.validate({
       aliases = { opts.aliases, "table", true },
       default = { opts.default, "string" },
+      models = { opts.models, "table", true },
     })
+
+    opts.models = vim.tbl_deep_extend("force", settings.models, opts.models or {})
 
     settings = opts
   end
@@ -27,7 +39,7 @@ function M.setup(opts)
   end
 
   -- Validate all models
-  local models = vim.tbl_keys(require("llm-sidekick").get_models())
+  local models = vim.tbl_keys(M.get_models())
   for alias, model in pairs(settings.aliases) do
     if not vim.tbl_contains(models, model) then
       vim.notify(

@@ -24,7 +24,11 @@ function openai:chat(messages, settings, callback)
     data.response_format = settings.response_format
   end
 
-  if vim.startswith(data.model, "o1") then
+  if settings.reasoning_effort then
+    data.reasoning_effort = settings.reasoning_effort
+  end
+
+  if vim.startswith(data.model, "o1") or vim.startswith(data.model, "o3") then
     data.max_tokens = nil
     data.max_completion_tokens = settings.max_tokens
   end

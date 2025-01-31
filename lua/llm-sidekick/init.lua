@@ -1,19 +1,11 @@
 local message_types = require "llm-sidekick.message_types"
 local fs = require "llm-sidekick.fs"
-local MODELS = require "llm-sidekick.models"
+local settings = require "llm-sidekick.settings"
 
 local M = {}
 
 function M.setup(opts)
-  require("llm-sidekick.settings").setup(opts or {})
-end
-
-function M.get_models()
-  return MODELS
-end
-
-function M.get_default_model_settings(model)
-  return MODELS[model] or error("Model not found: " .. model)
+  settings.setup(opts or {})
 end
 
 local DEFAULT_SETTTINGS = {
@@ -79,6 +71,8 @@ function M.parse_prompt(prompt)
     ::continue::
   end
 
+  local model_name = settings.get_model_settings(options.settings.model).name
+
   for _, message in ipairs(options.messages) do
     message.content = vim.trim(message.content)
   end
@@ -111,7 +105,7 @@ function M.parse_prompt(prompt)
       local mime_type = vim.fn.systemlist({ "file", "--mime-type", "--brief", image_path })[1]
 
       local image
-      if vim.startswith(options.settings.model, "claude") or vim.startswith(options.settings.model, "anthropic.claude") then
+      if vim.startswith(model_name, "claude") or vim.startswith(model_name, "anthropic.claude") then
         image = {
           type = "image",
           source = {
@@ -120,12 +114,12 @@ function M.parse_prompt(prompt)
             media_type = mime_type,
           },
         }
-      elseif vim.startswith(options.settings.model, "gpt") or options.settings.model == "o1" then
+      elseif vim.startswith(model_name, "gpt") or model_name == "o1" or vim.startswith(model_name, "o3") then
         image = {
           type = "image_url",
           image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
         }
-      elseif vim.startswith(options.settings.model, "gemini") then
+      elseif vim.startswith(model_name, "gemini") then
         image = {
           type = "image",
           inlineData = {
@@ -158,7 +152,13 @@ function M.ask(prompt_bufnr)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
 
-  local model_settings = M.get_default_model_settings(prompt.settings.model)
+  local model_settings = settings.get_model_settings(prompt.settings.model)
+  prompt.settings.model = model_settings.name
+
+  if model_settings.reasoning_effort then
+    prompt.settings.reasoning_effort = model_settings.reasoning_effort
+  end
+
   if model_settings.no_system_prompt then
     -- prepend the system prompt to the first message
     local system_prompt = vim.tbl_filter(function(m) return m.role == "system" end, prompt.messages)[1]
@@ -174,20 +174,26 @@ function M.ask(prompt_bufnr)
   local client
   if vim.startswith(prompt.settings.model, "claude-") then
     client = require "llm-sidekick.anthropic".new()
-  elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "gpt-") then
+  elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "o3") or vim.startswith(prompt.settings.model, "gpt-") then
     client = require "llm-sidekick.openai".new({ api_key = require("llm-sidekick.settings").get_openai_api_key() })
   elseif vim.startswith(prompt.settings.model, "ollama.") then
     prompt.settings.model = string.sub(prompt.settings.model, 8)
     client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
   elseif vim.startswith(prompt.settings.model, "deepseek") then
     local api_key = require("llm-sidekick.settings").get_deepseek_api_key()
-    client = require "llm-sidekick.openai".new({ url = "https://api.deepseek.com/beta/chat/completions", api_key =
-    api_key })
+    client = require "llm-sidekick.openai".new({
+      url = "https://api.deepseek.com/beta/chat/completions",
+      api_key =
+          api_key
+    })
   elseif vim.startswith(prompt.settings.model, "groq.") then
     prompt.settings.model = string.sub(prompt.settings.model, 6)
     local api_key = require("llm-sidekick.settings").get_groq_api_key()
-    client = require "llm-sidekick.openai".new({ url = "https://api.groq.com/openai/v1/chat/completions", api_key =
-    api_key })
+    client = require "llm-sidekick.openai".new({
+      url = "https://api.groq.com/openai/v1/chat/completions",
+      api_key =
+          api_key
+    })
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
     client = require "llm-sidekick.bedrock".new()
   elseif vim.startswith(prompt.settings.model, "gemini") then
