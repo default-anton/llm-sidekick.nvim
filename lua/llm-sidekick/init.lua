@@ -261,7 +261,7 @@ function M.ask(prompt_bufnr)
           diagnostic.add_diagnostic(
             prompt_bufnr,
             block.start_line,
-            block.end_line,
+            block.start_line,
             block.raw_block,
             vim.diagnostic.severity.HINT,
             "Suggested Change"

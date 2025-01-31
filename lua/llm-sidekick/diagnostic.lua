@@ -40,7 +40,7 @@ local function prune_stale(bufnr)
     local mod_block = mod_block_hashes[d.user_data.mod_block_sha256]
     if mod_block ~= nil then
       d.lnum = mod_block.start_line - 1
-      d.end_lnum = mod_block.end_line - 1
+      d.end_lnum = mod_block.start_line - 1
 
       return true
     end
