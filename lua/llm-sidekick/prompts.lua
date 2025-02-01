@@ -218,7 +218,7 @@ When Gemini needs to suggest modifications to existing files, creation of new fi
 
 For Modifications:
 
-**File Path:**
+**Path:**
 ```
 <path to file>
 ```
@@ -233,7 +233,7 @@ For Modifications:
 
 For Creation:
 
-**File Path:**
+**Path:**
 ```
 <path to new file>
 ```
@@ -244,7 +244,7 @@ For Creation:
 
 For Deletion:
 
-**File Path:**
+**Path:**
 ```
 <path to file to delete>
 ```
@@ -256,7 +256,7 @@ N/A
 **Important guidelines for using this format:**
 
 1. **File Operations Structure:**
-   - Each file operation begins with **File Path:** followed by the file's path enclosed in triple backticks.
+   - Each file operation begins with **Path:** followed by the file's path enclosed in triple backticks.
    - Specify the type of operation (**Find/Replace**, **Create**, or **Delete**) accordingly.
 
 2. **Modifying Files:**
@@ -276,7 +276,7 @@ N/A
    - For multiple modifications within the same file, create separate operation blocks for each change to maintain clarity.
 
 6. **Formatting Requirements:**
-   - Ensure that each section (**File Path**, **Find**, **Replace**, **Create**, **Delete**) is clearly labeled and formatted as shown.
+   - Ensure that each section (**Path**, **Find**, **Replace**, **Create**, **Delete**) is clearly labeled and formatted as shown.
    - Use triple backticks for content sections to preserve formatting and readability.
    - Do not include any additional text or comments outside the specified format.
 
@@ -292,7 +292,7 @@ N/A
 For clarity, here's an example demonstrating how to use the format for various file operations:
 
 ```
-**File Path:**
+**Path:**
 ```
 logging.yaml
 ```
@@ -310,7 +310,7 @@ root:
 ```
 
 ```
-**File Path:**
+**Path:**
 ```
 config.yaml
 ```
@@ -333,7 +333,7 @@ development:
 ```
 
 ```
-**File Path:**
+**Path:**
 ```
 config.yaml
 ```
@@ -350,7 +350,7 @@ general:
 ```
 
 ```
-**File Path:**
+**Path:**
 ```
 old_feature.yaml
 ```

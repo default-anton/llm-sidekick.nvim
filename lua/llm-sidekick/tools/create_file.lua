@@ -39,7 +39,7 @@ return {
     local create_suggestion = {
       "",
       "",
-      "**File Path:**",
+      "**Path:**",
       "```",
       "",
     }

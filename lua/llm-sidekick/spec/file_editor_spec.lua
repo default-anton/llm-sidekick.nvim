@@ -508,4 +508,178 @@ describe("apply_modifications", function()
     local content = Path:new(file_path):read()
     assert.equals(expected_content .. "\n", content)
   end)
+
+  it("should create a new file using Gemini format", function()
+    local file_path = test_dir:joinpath('gemini_new_file.txt'):absolute()
+    local replace_content = "Gemini file creation test.\nWith multiple lines."
+
+    assert.is_false(Path:new(file_path):exists())
+
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "ASSISTANT: @" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "**Path:**",
+      "```txt",
+      file_path,
+      "```",
+      "**Create:**",
+      "```txt",
+      "Gemini file creation test.",
+      "With multiple lines.",
+      "```",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    file_editor.apply_modifications(chatbuf, true)
+
+    assert.is_true(Path:new(file_path):exists())
+    local content = Path:new(file_path):read()
+    assert.equals(replace_content .. "\n", content)
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully created file"))
+  end)
+
+  it("should modify an existing file using Gemini format", function()
+    local file_path = test_dir:joinpath('gemini_modify.txt'):absolute()
+    local original_content = "Alpha\nBeta\nGamma"
+    local search_text = "Beta"
+    local replace_text = "Delta"
+
+    Path:new(file_path):write(original_content, 'w')
+    assert.is_true(Path:new(file_path):exists())
+
+    local bufnr = vim.api.nvim_create_buf(true, true)
+
+    local mod_block = {
+      "ASSISTANT: @" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "**Path:**",
+      "```txt",
+      file_path,
+      "```",
+      "**Find:**",
+      "```txt",
+      search_text,
+      "```",
+      "**Replace:**",
+      "```txt",
+      replace_text,
+      "```",
+    }
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, mod_block)
+
+    file_editor.apply_modifications(bufnr, true)
+
+    local expected_content = "Alpha\nDelta\nGamma"
+    local content = Path:new(file_path):read()
+    assert.equals(expected_content .. "\n", content)
+
+    local diagnostics = vim.diagnostic.get(bufnr, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully updated file"))
+  end)
+
+  it("should delete a file using Gemini format", function()
+    local file_path = test_dir:joinpath('gemini_delete.txt'):absolute()
+
+    Path:new(file_path):write('', 'w')
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "ASSISTANT: @" .. test_dir:joinpath('new_file.txt'):absolute(),
+      "**Path:**",
+      "```txt",
+      file_path,
+      "```",
+      "**Delete:**",
+      "```txt",
+      "N/A",
+      "```",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    file_editor.apply_modifications(chatbuf, true)
+    assert.is_false(Path:new(file_path):exists())
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(1, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully deleted file"))
+  end)
+
+  it("should handle multiple file operations using Gemini format", function()
+    local file1_path = test_dir:joinpath('gemini_multi_create.txt'):absolute()
+    local file2_path = test_dir:joinpath('gemini_multi_modify.txt'):absolute()
+    local file3_path = test_dir:joinpath('gemini_multi_delete.txt'):absolute()
+
+    local create_content = "This is a new file created by Gemini format."
+    local original_content = "Initial content.\nTo be modified."
+    local search_text = "To be modified."
+    local replace_text = "Modified content."
+
+    Path:new(file2_path):write(original_content, 'w')
+    Path:new(file3_path):write('', 'w')
+
+    assert.is_false(Path:new(file1_path):exists())
+    assert.is_true(Path:new(file2_path):exists())
+    assert.is_true(Path:new(file3_path):exists())
+
+    local chatbuf = vim.api.nvim_create_buf(true, true)
+    local mod_block = {
+      "ASSISTANT:",
+      "**Path:**",
+      "```txt",
+      file1_path,
+      "```",
+      "**Create:**",
+      "```txt",
+      create_content,
+      "```",
+      "**Path:**",
+      "```txt",
+      file2_path,
+      "```",
+      "**Find:**",
+      "```txt",
+      search_text,
+      "```",
+      "**Replace:**",
+      "```txt",
+      replace_text,
+      "```",
+      "**Path:**",
+      "```txt",
+      file3_path,
+      "```",
+      "**Delete:**",
+      "```txt",
+      "N/A",
+      "```",
+    }
+    vim.api.nvim_buf_set_lines(chatbuf, 0, -1, false, mod_block)
+
+    file_editor.apply_modifications(chatbuf, true)
+
+    -- Verify file1 was created
+    assert.is_true(Path:new(file1_path):exists())
+    local content1 = Path:new(file1_path):read()
+    assert.equals(create_content .. "\n", content1)
+
+    -- Verify file2 was modified
+    local expected_content = "Initial content.\nModified content."
+    local content2 = Path:new(file2_path):read()
+    assert.equals(expected_content .. "\n", content2)
+
+    -- Verify file3 was deleted
+    assert.is_false(Path:new(file3_path):exists())
+
+    local diagnostics = vim.diagnostic.get(chatbuf, { severity = vim.diagnostic.severity.INFO })
+    assert.is_not_nil(diagnostics)
+    assert.equals(3, #diagnostics)
+    assert.is_not_nil(diagnostics[1].message:match("Successfully created file"))
+    assert.is_not_nil(diagnostics[2].message:match("Successfully updated file"))
+    assert.is_not_nil(diagnostics[3].message:match("Successfully deleted file"))
+  end)
 end)

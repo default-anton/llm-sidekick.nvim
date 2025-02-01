@@ -271,10 +271,10 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
   local default_modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
   local default_delete_pattern = "(@([^\n]+)\n<delete />)"
 
-  local gemini_create_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Create:%*%*\n```%w*\n(.-)\n```)"
+  local gemini_create_pattern = "(%*%*Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Create:%*%*\n```%w*\n(.-)\n```)"
   local gemini_modify_pattern =
-  "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
-  local gemini_delete_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Delete:%*%*\n```%w*\nN/A\n```)"
+  "(%*%*Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
+  local gemini_delete_pattern = "(%*%*Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Delete:%*%*\n```%w*\nN/A\n```)"
 
   -- First, use default format patterns; if no blocks found then fall back to gemini format.
 
