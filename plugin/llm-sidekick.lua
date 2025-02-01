@@ -197,7 +197,6 @@ local function is_llm_sidekick_chat_file(bufnr)
 
   local required_keywords = {
     ["MODEL:"] = false,
-    ["TEMPERATURE:"] = false,
     ["MAX_TOKENS:"] = false
   }
 
