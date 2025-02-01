@@ -260,15 +260,6 @@ local function apply_modification(chat_bufnr, block)
 end
 
 local function find_and_parse_modification_blocks(bufnr, start_search_line, end_search_line)
-  local model = ""
-  for _, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, 4, false)) do
-    local match = line:match("^MODEL:(.+)$")
-    if match then
-      model = vim.trim(match)
-      break
-    end
-  end
-
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_search_line - 1, end_search_line, false)
   for i = 1, #lines do
     lines[i] = lines[i]:gsub("^ASSISTANT:%s*", "")
@@ -276,16 +267,16 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
   local content = table.concat(lines, "\n")
 
   local blocks = {}
-  local create_pattern = "(@([^\n]+)\n<create>\n?(.-)\n?</create>)"
-  local modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
-  local delete_pattern = "(@([^\n]+)\n<delete />)"
+  local default_create_pattern = "(@([^\n]+)\n<create>\n?(.-)\n?</create>)"
+  local default_modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
+  local default_delete_pattern = "(@([^\n]+)\n<delete />)"
 
-  if model:lower():find("gemini") then
-    -- Gemini format patterns
-    create_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Create:%*%*\n```%w*\n(.-)\n```)"
-    modify_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
-    delete_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Delete:%*%*\n```%w*\nN/A\n```)"
-  end
+  local gemini_create_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Create:%*%*\n```%w*\n(.-)\n```)"
+  local gemini_modify_pattern =
+  "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
+  local gemini_delete_pattern = "(%*%*File Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Delete:%*%*\n```%w*\nN/A\n```)"
+
+  -- First, use default format patterns; if no blocks found then fall back to gemini format.
 
   local function find_block_start_line(block)
     local start_line = nil
@@ -309,8 +300,10 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
     return start_line
   end
 
-  -- First, handle create blocks
-  for block, file_path, create_content in content:gmatch(create_pattern) do
+  -- First, handle create blocks using default pattern
+  local create_found = false
+  for block, file_path, create_content in content:gmatch(default_create_pattern) do
+    create_found = true
     local abs_path = vim.fn.fnamemodify(file_path, ":p")
     local cwd = vim.fn.getcwd()
     if not vim.startswith(abs_path, cwd) then
@@ -330,8 +323,33 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
     end
   end
 
-  -- Handle modify blocks
-  for block, file_path, search_content, replace_content in content:gmatch(modify_pattern) do
+  -- If no default create blocks are found, fall back to Geminiformat
+  if not create_found then
+    for block, file_path, create_content in content:gmatch(gemini_create_pattern) do
+      local abs_path = vim.fn.fnamemodify(file_path, ":p")
+      local cwd = vim.fn.getcwd()
+      if not vim.startswith(abs_path, cwd) then
+        vim.api.nvim_err_writeln(string.format("The file path '%s' must be within the current working directory '%s'",
+          abs_path, cwd))
+      else
+        local start_line = find_block_start_line(block)
+
+        table.insert(blocks, {
+          type = "create",
+          file_path = file_path,
+          replace = create_content,
+          start_line = start_line,
+          end_line = start_line + #vim.split(block, "\n"),
+          raw_block = block,
+        })
+      end
+    end
+  end
+
+  -- Handle modify blocks using default pattern
+  local modify_found = false
+  for block, file_path, search_content, replace_content in content:gmatch(default_modify_pattern) do
+    modify_found = true
     local abs_path = vim.fn.fnamemodify(file_path, ":p")
     local cwd = vim.fn.getcwd()
     if not vim.startswith(abs_path, cwd) then
@@ -352,8 +370,34 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
     end
   end
 
-  -- Then, handle delete blocks
-  for block, file_path in content:gmatch(delete_pattern) do
+  -- If no default modify blocks are found, try gemini format
+  if not modify_found then
+    for block, file_path, search_content, replace_content in content:gmatch(gemini_modify_pattern) do
+      local abs_path = vim.fn.fnamemodify(file_path, ":p")
+      local cwd = vim.fn.getcwd()
+      if not vim.startswith(abs_path, cwd) then
+        vim.api.nvim_err_writeln(string.format("The file path '%s' must be within the current working directory '%s'",
+          abs_path, cwd))
+      else
+        local start_line = find_block_start_line(block)
+
+        table.insert(blocks, {
+          type = "update",
+          file_path = file_path,
+          search = search_content,
+          replace = replace_content,
+          start_line = start_line,
+          end_line = start_line + #vim.split(block, "\n"),
+          raw_block = block,
+        })
+      end
+    end
+  end
+
+  -- Then, handle delete blocks using default pattern
+  local delete_found = false
+  for block, file_path in content:gmatch(default_delete_pattern) do
+    delete_found = true
     local abs_path = vim.fn.fnamemodify(file_path, ":p")
     local cwd = vim.fn.getcwd()
     if not vim.startswith(abs_path, cwd) then
@@ -369,6 +413,28 @@ local function find_and_parse_modification_blocks(bufnr, start_search_line, end_
         end_line = start_line + #vim.split(block, "\n"),
         raw_block = block,
       })
+    end
+  end
+
+  -- If no default delete blocks are found, attempt using gemini format
+  if not delete_found then
+    for block, file_path in content:gmatch(gemini_delete_pattern) do
+      local abs_path = vim.fn.fnamemodify(file_path, ":p")
+      local cwd = vim.fn.getcwd()
+      if not vim.startswith(abs_path, cwd) then
+        vim.api.nvim_err_writeln(string.format("The file path '%s' must be within the current working directory '%s'",
+          abs_path, cwd))
+      else
+        local start_line = find_block_start_line(block)
+
+        table.insert(blocks, {
+          type = "delete",
+          file_path = file_path,
+          start_line = start_line,
+          end_line = start_line + #vim.split(block, "\n"),
+          raw_block = block,
+        })
+      end
     end
   end
 
