@@ -207,17 +207,23 @@ function M.ask(prompt_bufnr)
 
   local in_reasoning_tag = false
 
+  local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1]
+  vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(0), #last_line })
+  vim.api.nvim_paste("", false, 1)
+
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
       return
     end
 
     if state == message_types.ERROR then
+      vim.api.nvim_paste("", false, 3)
       vim.notify(chars, vim.log.levels.ERROR)
       return
     end
 
     if state == message_types.ERROR_MAX_TOKENS then
+      vim.api.nvim_paste("", false, 3)
       vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
       return
     end
@@ -255,24 +261,18 @@ function M.ask(prompt_bufnr)
       return
     end
 
-    local lines = vim.split(chars, "\n")
     local success = pcall(function()
       if state == message_types.REASONING and not in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "<llm_sidekick_thinking>", "" })
+        vim.api.nvim_paste("\n\n<llm_sidekick_thinking>\n", false, 2)
         in_reasoning_tag = true
       end
 
       if state == message_types.DATA and in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "</llm_sidekick_thinking>", "", "" })
+        vim.api.nvim_paste("\n</llm_sidekick_thinking>\n\n", false, 2)
         in_reasoning_tag = false
       end
 
-      local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1]
-      local new_last_line = last_line .. lines[1]
-      vim.api.nvim_buf_set_lines(prompt_bufnr, -2, -1, false, { new_last_line })
-      if #lines > 1 then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, vim.list_slice(lines, 2))
-      end
+      vim.api.nvim_paste(chars, false, 2)
     end)
 
     if not success then
@@ -280,6 +280,10 @@ function M.ask(prompt_bufnr)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
+      pcall(function()
+        vim.api.nvim_paste("", false, 3)
+      end)
+
       if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
         require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
         pcall(function()

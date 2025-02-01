@@ -38,52 +38,43 @@ return {
 
     local create_suggestion = {
       "",
+      "",
       "**File Path:**",
       "```",
       "",
-      "```",
-      "**Create:**",
-      "```",
-      "```",
-      "",
     }
-
-    vim.api.nvim_buf_set_lines(0, -1, -1, false, create_suggestion)
+    vim.api.nvim_paste(table.concat(create_suggestion, "\n"), false, 2)
   end,
   delta = function(tool_call)
-    if tool_call.input.path then
-      vim.api.nvim_buf_set_lines(0, tool_call.state.file_path_lnum - 1, tool_call.state.file_path_lnum, false,
-        { tool_call.input.path })
+    local path_written = tool_call.state.path_written or 0
+    local content_written = tool_call.state.content_written or 0
+
+    if tool_call.input.path and path_written < #tool_call.input.path then
+      vim.api.nvim_paste(tool_call.input.path:sub(path_written + 1), false, 2)
+      tool_call.state.path_written = #tool_call.input.path
     end
 
-    if tool_call.input.content and tool_call.input.content ~= "" then
-      if not tool_call.state.first_content then
+    if tool_call.input.content and content_written < #tool_call.input.content then
+      if content_written == 0 then
         local language = markdown.filename_to_language(tool_call.input.path)
-
-        vim.api.nvim_buf_set_lines(
-          0,
-          tool_call.state.create_lnum - 1,
-          tool_call.state.create_lnum,
-          false,
-          { "```" .. language }
-        )
-        vim.api.nvim_buf_set_lines(
-          0,
-          tool_call.state.create_lnum,
-          tool_call.state.create_lnum,
-          false,
-          { tool_call.input.content }
-        )
-        tool_call.state.first_content = true
+        local create_suggestion = {
+          "",
+          "```",
+          "**Create:**",
+          "```" .. language,
+          ""
+        }
+        vim.api.nvim_paste(table.concat(create_suggestion, "\n") .. tool_call.input.content, false, 2)
+        tool_call.state.content_written = #tool_call.input.content
         return
       end
 
-      local lines = vim.split(tool_call.input.content, "\n")
-      lines[#lines + 1] = "```"
-      vim.api.nvim_buf_set_lines(0, tool_call.state.create_lnum, -1, false, lines)
+      vim.api.nvim_paste(tool_call.input.content:sub(content_written + 1), false, 2)
+      tool_call.state.content_written = #tool_call.input.content
     end
   end,
   stop = function(_)
+    vim.api.nvim_paste("\n```\n", false, 2)
   end,
   callback = function(tool_call)
     -- tool.input
