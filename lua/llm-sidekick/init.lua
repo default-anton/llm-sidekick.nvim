@@ -1,4 +1,5 @@
 local message_types = require "llm-sidekick.message_types"
+local sjson = require "llm-sidekick.sjson"
 local fs = require "llm-sidekick.fs"
 local settings = require "llm-sidekick.settings"
 
@@ -151,7 +152,8 @@ function M.ask(prompt_bufnr)
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
-  prompt.tools = require("llm-sidekick.tools")
+  local tools = require("llm-sidekick.tools")
+  prompt.tools = vim.tbl_map(function(tool) return tool.spec end, tools)
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
   prompt.settings.model = model_settings.name
@@ -196,7 +198,7 @@ function M.ask(prompt_bufnr)
           api_key
     })
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
-    client = require "llm-sidekick.bedrock".new()
+    client = require "llm-sidekick.bedrock_tool_use".new()
   elseif vim.startswith(prompt.settings.model, "gemini") then
     client = require "llm-sidekick.gemini".new()
   else
@@ -207,6 +209,49 @@ function M.ask(prompt_bufnr)
 
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
+      return
+    end
+
+    if state == message_types.ERROR then
+      vim.notify(chars, vim.log.levels.ERROR)
+      return
+    end
+
+    if state == message_types.ERROR_MAX_TOKENS then
+      vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
+      return
+    end
+
+    if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
+      local tool_call = chars
+      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, tools)
+      if #found_tools == 0 then
+        vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
+        return
+      end
+      if #found_tools > 1 then
+        vim.notify("Multiple tools found with the same name: " .. tool_call.name, vim.log.levels.ERROR)
+        return
+      end
+
+      local tool = found_tools[1]
+      vim.api.nvim_buf_call(prompt_bufnr, function()
+        if state == message_types.TOOL_START then
+          if tool.start then
+            tool.start(tool_call)
+          end
+        elseif state == message_types.TOOL_DELTA then
+          if tool.delta then
+            tool_call = vim.tbl_extend("keep", {}, tool_call)
+            tool_call.input = sjson.decode(tool_call.input)
+            tool.delta(tool_call)
+          end
+        elseif state == message_types.TOOL_STOP then
+          if tool.stop then
+            tool.stop(tool_call)
+          end
+        end
+      end)
       return
     end
 

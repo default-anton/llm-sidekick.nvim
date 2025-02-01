@@ -39,6 +39,35 @@ local function get_markdown(url, callback)
   }):start()
 end
 
+local extension_to_language = {
+  lua = "lua",
+  py = "python",
+  js = "javascript",
+  ts = "typescript",
+  c = "c",
+  cpp = "cpp",
+  java = "java",
+  rb = "ruby",
+  go = "go",
+  rs = "rust",
+  sh = "bash",
+  html = "html",
+  css = "css",
+  md = "markdown",
+  json = "json",
+  xml = "xml",
+  yml = "yaml",
+  yaml = "yaml",
+  php = "php",
+  -- Add more mappings as required
+}
+
+local function filename_to_language(filename)
+  local extension = filename:match("^.+%.(%w+)$")
+  return extension_to_language[extension] or "txt"
+end
+
 return {
-  get_markdown = get_markdown
+  get_markdown = get_markdown,
+  filename_to_language = filename_to_language,
 }

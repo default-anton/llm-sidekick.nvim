@@ -46,6 +46,7 @@ return {
   ["anthropic.claude-3-5-sonnet-20241022-v2:0"] = {
     name = "anthropic.claude-3-5-sonnet-20241022-v2:0",
     max_tokens = 8192,
+    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -53,6 +54,7 @@ return {
   },
   ["anthropic.claude-3-5-sonnet-20240620-v1:0"] = {
     name = "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    tools = true,
     max_tokens = 4096,
     temperature = {
       coding = 0.3,
@@ -62,6 +64,7 @@ return {
   ["anthropic.claude-3-5-haiku-20241022-v1:0"] = {
     name = "anthropic.claude-3-5-haiku-20241022-v1:0",
     max_tokens = 8192,
+    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -70,6 +73,7 @@ return {
   ["anthropic.claude-3-haiku-20240307-v1:0"] = {
     name = "anthropic.claude-3-haiku-20240307-v1:0",
     max_tokens = 4096,
+    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,

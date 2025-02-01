@@ -1,7 +1,10 @@
 return {
   DATA = "data",
   REASONING = "reasoning",
-  PARTIAL_FUNCTION_CALL = "partial_function_call",
-  FUNCTION_CALL = "function_call",
+  TOOL_START = "tool_start",
+  TOOL_DELTA = "tool_delta",
+  TOOL_STOP = "tool_stop",
   DONE = "done",
+  ERROR = "error",
+  ERROR_MAX_TOKENS = "error_max_tokens",
 }

@@ -375,7 +375,7 @@ local function replace_system_prompt(ask_buf, opts)
     model_settings.reasoning and "" or prompts.reasoning,
     guidelines,
     vim.trim(current_project_config.technologies or ""),
-    vim.trim(get_modifications_prompt_for(model_name)) -- include_modifications=true
+    not model_settings.tools and vim.trim(get_modifications_prompt_for(model_name)) or "" -- include_modifications=true
   }
 
   if is_reasoning then
@@ -433,7 +433,8 @@ local ask_command = function(cmd_opts)
     }
 
     if model_settings.temperature then
-      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat
+      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or
+      model_settings.temperature.chat
     end
 
     local prompt = ""
@@ -455,7 +456,7 @@ local ask_command = function(cmd_opts)
           model_settings.reasoning and "" or prompts.reasoning,
           guidelines,
           vim.trim(current_project_config.technologies or ""),
-          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or ""
+          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or ""
         }
         if is_reasoning then
           table.remove(args, 2) -- Remove reasoning instructionsk
@@ -470,7 +471,7 @@ local ask_command = function(cmd_opts)
           os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
-          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or "",
+          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or "",
         }
         local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
         system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")

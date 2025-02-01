@@ -1,7 +1,7 @@
----Parses and completes partial JSON strings into Lua tables.
+---Decodes and completes partial JSON strings into Lua tables.
 ---
----The `SJSON` module provides a `parse` function that aims to robustly
----parse JSON strings, even if they are incomplete or contain extra
+---The `SJSON` module provides a `decode` function that aims to robustly
+---decode JSON strings, even if they are incomplete or contain extra
 ---whitespace. It attempts to complete partial JSON structures to provide
 ---a valid Lua table representation of the JSON data.
 ---
@@ -14,7 +14,7 @@
 ---  - Gracefully handles invalid JSON input by returning an empty table.
 local SJSON = {}
 
-function SJSON.parse(json_string)
+function SJSON.decode(json_string)
   if not json_string then
     return {} -- Handle nil or empty input
   end
@@ -147,7 +147,7 @@ function SJSON.parse(json_string)
     completed_json = "{" .. completed_json .. "}"
   end
 
-  -- Final attempt to parse
+  -- Final attempt to decode
   ok, result = pcall(vim.json.decode, completed_json, opts)
   if ok then
     return result

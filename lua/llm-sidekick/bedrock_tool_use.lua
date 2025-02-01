@@ -64,11 +64,11 @@ function bedrock.start_web_server()
   }):start()
 end
 
-function bedrock:chat(opts)
+function bedrock:chat(opts, callback)
   local messages = opts.messages
-  local tools = opts.tools
   local settings = opts.settings
-  local callback = vim.schedule_wrap(opts.callback)
+  local tools = opts.tools
+  callback = vim.schedule_wrap(callback)
 
   local data = {
     model_id = settings.model,
@@ -127,29 +127,35 @@ function bedrock:chat(opts)
           tool = {
             id = decoded.content_block.id,
             name = decoded.content_block.name,
-            partial_json = ""
+            input = "",
+            state = {},
           }
+          callback(message_types.TOOL_START, tool)
         else
           tool = nil
         end
       elseif decoded.type == "content_block_stop" then
-        tool = nil
+        if tool then
+          callback(message_types.TOOL_STOP, tool)
+          tool = nil
+        end
       elseif decoded.type == "content_block_delta" then
         if decoded.delta.type == "text_delta" and decoded.delta.text then
           callback(message_types.DATA, decoded.delta.text)
         elseif decoded.delta.type == "input_json_delta" and decoded.delta.partial_json then
-          tool.partial_json = tool.partial_json .. decoded.delta.partial_json
-          callback(message_types.DATA, decoded.delta.partial_json)
+          tool.input = tool.input .. decoded.delta.partial_json
+          callback(message_types.TOOL_DELTA, tool)
         end
       elseif decoded.type == "message_delta" then
         if decoded.delta and decoded.delta.stop_reason then
-          callback(message_types.DONE, "")
+          if decoded.delta.stop_reason == "max_tokens" then
+            callback(message_types.ERROR_MAX_TOKENS, "")
+          else
+            callback(message_types.DONE, "")
+          end
         end
       elseif decoded.error then
-        callback(message_types.DONE, "")
-        vim.schedule(function()
-          vim.api.nvim_err_writeln("Error: " .. decoded.error)
-        end)
+        callback(message_types.ERROR, decoded.error.message)
       end
     end,
     on_stderr = function(_, text)
