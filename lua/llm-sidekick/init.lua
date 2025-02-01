@@ -149,6 +149,20 @@ function M.parse_prompt(prompt)
 end
 
 function M.ask(prompt_bufnr)
+  -- Set up a buffer-local autocmd to block manual typing during LLM response.
+  local block_input_au = vim.api.nvim_create_autocmd("InsertCharPre", {
+    buffer = prompt_bufnr,
+    callback = function()
+      -- Set v:char to an empty string to prevent the character from being inserted
+      vim.v.char = ""
+    end,
+  })
+
+  local function cleanup()
+    -- Remove the autocmd that blocks manual typing
+    vim.api.nvim_del_autocmd(block_input_au)
+  end
+
   local function paste_at_end(text, phase)
     local line_count = vim.api.nvim_buf_line_count(prompt_bufnr)
     local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1] or ""
@@ -222,12 +236,14 @@ function M.ask(prompt_bufnr)
     end
 
     if state == message_types.ERROR then
+      cleanup()
       paste_at_end("", 3)
-      vim.notify(chars, vim.log.levels.ERROR)
+      vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
       return
     end
 
     if state == message_types.ERROR_MAX_TOKENS then
+      cleanup()
       paste_at_end("", 3)
       vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
       return
@@ -285,6 +301,8 @@ function M.ask(prompt_bufnr)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
+      cleanup()
+
       if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
         require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
         pcall(function()
