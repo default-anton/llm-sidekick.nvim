@@ -32,11 +32,7 @@ local spec = {
 
 return {
   spec = spec,
-  start = function(tool_call)
-    local line_count = vim.api.nvim_buf_line_count(0)
-    tool_call.state.file_path_lnum = line_count + 4
-    tool_call.state.create_lnum = line_count + 7
-
+  start = function(_)
     chat.paste_at_end("\n\n**Path:**\n```\n")
   end,
   delta = function(tool_call)
