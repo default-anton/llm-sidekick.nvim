@@ -1,4 +1,5 @@
 local markdown = require("llm-sidekick.markdown")
+local chat = require("llm-sidekick.chat")
 
 local spec = {
   name = "create_file",
@@ -36,45 +37,31 @@ return {
     tool_call.state.file_path_lnum = line_count + 4
     tool_call.state.create_lnum = line_count + 7
 
-    local create_suggestion = {
-      "",
-      "",
-      "**Path:**",
-      "```",
-      "",
-    }
-    vim.api.nvim_paste(table.concat(create_suggestion, "\n"), false, 2)
+    chat.paste_at_end("\n\n**Path:**\n```\n")
   end,
   delta = function(tool_call)
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
 
     if tool_call.input.path and path_written < #tool_call.input.path then
-      vim.api.nvim_paste(tool_call.input.path:sub(path_written + 1), false, 2)
+      chat.paste_at_end(tool_call.input.path:sub(path_written + 1))
       tool_call.state.path_written = #tool_call.input.path
     end
 
     if tool_call.input.content and content_written < #tool_call.input.content then
       if content_written == 0 then
         local language = markdown.filename_to_language(tool_call.input.path)
-        local create_suggestion = {
-          "",
-          "```",
-          "**Create:**",
-          "```" .. language,
-          ""
-        }
-        vim.api.nvim_paste(table.concat(create_suggestion, "\n") .. tool_call.input.content, false, 2)
+        chat.paste_at_end(string.format("\n```\n**Create:**\n```%s\n", language))
         tool_call.state.content_written = #tool_call.input.content
         return
       end
 
-      vim.api.nvim_paste(tool_call.input.content:sub(content_written + 1), false, 2)
+      chat.paste_at_end(tool_call.input.content:sub(content_written + 1))
       tool_call.state.content_written = #tool_call.input.content
     end
   end,
   stop = function(_)
-    vim.api.nvim_paste("\n```\n", false, 2)
+    chat.paste_at_end("\n```\n")
   end,
   callback = function(tool_call)
     -- tool.input

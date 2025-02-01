@@ -262,23 +262,21 @@ function M.ask(prompt_bufnr)
       end
 
       local tool = found_tools[1]
-      vim.api.nvim_buf_call(prompt_bufnr, function()
-        if state == message_types.TOOL_START then
-          if tool.start then
-            tool.start(tool_call)
-          end
-        elseif state == message_types.TOOL_DELTA then
-          if tool.delta then
-            tool_call = vim.tbl_extend("keep", {}, tool_call)
-            tool_call.input = sjson.decode(tool_call.input)
-            tool.delta(tool_call)
-          end
-        elseif state == message_types.TOOL_STOP then
-          if tool.stop then
-            tool.stop(tool_call)
-          end
+      if state == message_types.TOOL_START then
+        if tool.start then
+          tool.start(tool_call)
         end
-      end)
+      elseif state == message_types.TOOL_DELTA then
+        if tool.delta then
+          tool_call = vim.tbl_extend("keep", {}, tool_call)
+          tool_call.input = sjson.decode(tool_call.input)
+          tool.delta(tool_call)
+        end
+      elseif state == message_types.TOOL_STOP then
+        if tool.stop then
+          tool.stop(tool_call)
+        end
+      end
       return
     end
 
