@@ -149,6 +149,13 @@ function M.parse_prompt(prompt)
 end
 
 function M.ask(prompt_bufnr)
+  local function paste_at_end(text, phase)
+    local line_count = vim.api.nvim_buf_line_count(prompt_bufnr)
+    local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1] or ""
+    vim.api.nvim_win_set_cursor(0, { line_count, #last_line })
+    vim.api.nvim_paste(text, false, phase)
+  end
+
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
@@ -207,9 +214,7 @@ function M.ask(prompt_bufnr)
 
   local in_reasoning_tag = false
 
-  local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1]
-  vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(0), #last_line })
-  vim.api.nvim_paste("", false, 1)
+  paste_at_end("", 1)
 
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
@@ -217,13 +222,13 @@ function M.ask(prompt_bufnr)
     end
 
     if state == message_types.ERROR then
-      vim.api.nvim_paste("", false, 3)
+      paste_at_end("", 3)
       vim.notify(chars, vim.log.levels.ERROR)
       return
     end
 
     if state == message_types.ERROR_MAX_TOKENS then
-      vim.api.nvim_paste("", false, 3)
+      paste_at_end("", 3)
       vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
       return
     end
@@ -263,16 +268,16 @@ function M.ask(prompt_bufnr)
 
     local success = pcall(function()
       if state == message_types.REASONING and not in_reasoning_tag then
-        vim.api.nvim_paste("\n\n<llm_sidekick_thinking>\n", false, 2)
+        paste_at_end("\n\n<llm_sidekick_thinking>\n", 2)
         in_reasoning_tag = true
       end
 
       if state == message_types.DATA and in_reasoning_tag then
-        vim.api.nvim_paste("\n</llm_sidekick_thinking>\n\n", false, 2)
+        paste_at_end("\n</llm_sidekick_thinking>\n\n", 2)
         in_reasoning_tag = false
       end
 
-      vim.api.nvim_paste(chars, false, 2)
+      paste_at_end(chars, 2)
     end)
 
     if not success then
@@ -280,13 +285,10 @@ function M.ask(prompt_bufnr)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
-      pcall(function()
-        vim.api.nvim_paste("", false, 3)
-      end)
-
       if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
         require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
         pcall(function()
+          paste_at_end("", 3)
           vim.api.nvim_win_close(0, true)
 
           if vim.api.nvim_buf_is_valid(prompt_bufnr) then
@@ -295,11 +297,11 @@ function M.ask(prompt_bufnr)
         end)
       else
         pcall(function()
-          vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
+          paste_at_end("\n\nUSER: ", 3)
         end)
       end
 
-      lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+      local lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")
       local assistant_start_line = file_editor.find_last_assistant_start_line(lines)
       if assistant_start_line ~= -1 then
