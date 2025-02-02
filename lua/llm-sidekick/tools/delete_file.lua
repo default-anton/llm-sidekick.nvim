@@ -32,9 +32,9 @@ return {
   delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
 
-    if opts.parameters.path and path_written < #opts.parameters.path then
-      chat.paste_at_end(opts.parameters.path:sub(path_written + 1), opts.buffer)
-      tool_call.state.path_written = #opts.parameters.path
+    if tool_call.parameters.path and path_written < #tool_call.parameters.path then
+      chat.paste_at_end(tool_call.parameters.path:sub(path_written + 1), opts.buffer)
+      tool_call.state.path_written = #tool_call.parameters.path
     end
   end,
   stop = function(_, opts)

@@ -43,18 +43,18 @@ return {
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
 
-    if opts.parameters.path and path_written < #opts.parameters.path then
-      chat.paste_at_end(opts.parameters.path:sub(path_written + 1), opts.buffer)
-      tool_call.state.path_written = #opts.parameters.path
+    if tool_call.parameters.path and path_written < #tool_call.parameters.path then
+      chat.paste_at_end(tool_call.parameters.path:sub(path_written + 1), opts.buffer)
+      tool_call.state.path_written = #tool_call.parameters.path
     end
 
-    if opts.parameters.content and content_written < #opts.parameters.content then
+    if tool_call.parameters.content and content_written < #tool_call.parameters.content then
       if content_written == 0 then
-        local language = markdown.filename_to_language(opts.parameters.path)
+        local language = markdown.filename_to_language(tool_call.parameters.path)
         chat.paste_at_end(string.format("\n```\n**Create:**\n```%s\n", language), opts.buffer)
       end
-      chat.paste_at_end(opts.parameters.content:sub(content_written + 1), opts.buffer)
-      tool_call.state.content_written = #opts.parameters.content
+      chat.paste_at_end(tool_call.parameters.content:sub(content_written + 1), opts.buffer)
+      tool_call.state.content_written = #tool_call.parameters.content
     end
   end,
   stop = function(_, opts)

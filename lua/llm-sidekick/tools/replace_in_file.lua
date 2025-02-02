@@ -55,27 +55,27 @@ return {
     local find_written = tool_call.state.find_written or 0
     local replace_written = tool_call.state.replace_written or 0
 
-    if opts.parameters.path and path_written < #opts.parameters.path then
-      chat.paste_at_end(opts.parameters.path:sub(path_written + 1), opts.buffer)
-      tool_call.state.path_written = #opts.parameters.path
+    if tool_call.parameters.path and path_written < #tool_call.parameters.path then
+      chat.paste_at_end(tool_call.parameters.path:sub(path_written + 1), opts.buffer)
+      tool_call.state.path_written = #tool_call.parameters.path
     end
 
-    if opts.parameters.find and find_written < #opts.parameters.find then
+    if tool_call.parameters.find and find_written < #tool_call.parameters.find then
       if find_written == 0 then
-        local language = markdown.filename_to_language(opts.parameters.path)
+        local language = markdown.filename_to_language(tool_call.parameters.path)
         chat.paste_at_end(string.format("\n```\n**Find:**\n```%s\n", language), opts.buffer)
       end
-      chat.paste_at_end(opts.parameters.find:sub(find_written + 1), opts.buffer)
-      tool_call.state.find_written = #opts.parameters.find
+      chat.paste_at_end(tool_call.parameters.find:sub(find_written + 1), opts.buffer)
+      tool_call.state.find_written = #tool_call.parameters.find
     end
 
-    if opts.parameters.replace and replace_written < #opts.parameters.replace then
+    if tool_call.parameters.replace and replace_written < #tool_call.parameters.replace then
       if replace_written == 0 then
-        local language = markdown.filename_to_language(opts.parameters.path)
+        local language = markdown.filename_to_language(tool_call.parameters.path)
         chat.paste_at_end(string.format("\n```\n**Replace:**\n```%s\n", language), opts.buffer)
       end
-      chat.paste_at_end(opts.parameters.replace:sub(replace_written + 1), opts.buffer)
-      tool_call.state.replace_written = #opts.parameters.replace
+      chat.paste_at_end(tool_call.parameters.replace:sub(replace_written + 1), opts.buffer)
+      tool_call.state.replace_written = #tool_call.parameters.replace
     end
   end,
   stop = function(_, opts)

@@ -248,7 +248,8 @@ function M.ask(prompt_buffer)
 
     if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
       local tool_call = chars
-      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, tools.file_operations)
+      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end,
+        tools.file_operations)
       if #found_tools == 0 then
         vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
         return
@@ -265,17 +266,13 @@ function M.ask(prompt_buffer)
         end
       elseif state == message_types.TOOL_DELTA then
         if tool.delta then
-          tool.delta(tool_call, {
-            parameters = sjson.decode(tool_call.parameters),
-            buffer = prompt_buffer,
-          })
+          tool_call.parameters = sjson.decode(tool_call.parameters)
+          tool.delta(tool_call, { buffer = prompt_buffer })
         end
       elseif state == message_types.TOOL_STOP then
         if tool.stop then
-          tool.stop(tool_call, {
-            parameters = sjson.decode(tool_call.parameters),
-            buffer = prompt_buffer,
-          })
+          tool_call.parameters = sjson.decode(tool_call.parameters)
+          tool.stop(tool_call, { buffer = prompt_buffer })
         end
       end
       return
