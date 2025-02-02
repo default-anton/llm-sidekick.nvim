@@ -33,15 +33,15 @@ function SJSON.decode(json_string)
   local in_string = false
   local escaped = false
 
-  for i = 1, #completed_json do
-    local char = completed_json:sub(i, i)
-
-    if char == '\\' then
+  local len = #completed_json
+  for i = 1, len do
+    local byte = completed_json:byte(i)
+    if byte == 92 then -- backslash (\)
       escaped = not escaped
     else
-      if char == '"' and not escaped then
+      if byte == 34 and not escaped then -- double quote (")
         if not in_string then
-          table.insert(stack, char)
+          table.insert(stack, '"')
         else
           if stack[#stack] == '"' then
             table.remove(stack)
@@ -49,13 +49,17 @@ function SJSON.decode(json_string)
         end
         in_string = not in_string
       elseif not in_string then
-        if char == '{' or char == '[' then
-          table.insert(stack, char)
-        elseif char == '}' then
+        if byte == 123 or byte == 91 then -- '{' or '['
+          if byte == 123 then
+            table.insert(stack, '{')
+          else
+            table.insert(stack, '[')
+          end
+        elseif byte == 125 then -- '}'
           if stack[#stack] == '{' then
             table.remove(stack)
           end
-        elseif char == ']' then
+        elseif byte == 93 then -- ']'
           if stack[#stack] == '[' then
             table.remove(stack)
           end
