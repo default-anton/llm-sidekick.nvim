@@ -189,11 +189,16 @@ function M.ask(prompt_buffer)
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
+  local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
+
   local client
   if vim.startswith(prompt.settings.model, "claude-") then
     client = require "llm-sidekick.anthropic".new()
   elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "o3") or vim.startswith(prompt.settings.model, "gpt-") then
-    client = require "llm-sidekick.openai".new({ api_key = require("llm-sidekick.settings").get_openai_api_key() })
+    client = require "llm-sidekick.openai".new({
+      api_key = require("llm-sidekick.settings").get_openai_api_key(),
+      include_modifications = include_modifications,
+    })
   elseif vim.startswith(prompt.settings.model, "ollama.") then
     prompt.settings.model = string.sub(prompt.settings.model, 8)
     client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
@@ -213,7 +218,9 @@ function M.ask(prompt_buffer)
           api_key
     })
   elseif vim.startswith(prompt.settings.model, "anthropic.") then
-    client = require "llm-sidekick.bedrock_tool_use".new()
+    client = require "llm-sidekick.bedrock_tool_use".new({
+      include_modifications = include_modifications,
+    })
   elseif vim.startswith(prompt.settings.model, "gemini") then
     client = require "llm-sidekick.gemini".new()
   else

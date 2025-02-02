@@ -2,8 +2,12 @@ local message_types = require("llm-sidekick.message_types")
 local Job = require("plenary.job")
 local bedrock = {}
 
-function bedrock.new(url)
-  return setmetatable({ url = url or 'http://localhost:5500/invoke' },
+function bedrock.new(opts)
+  return setmetatable(
+    {
+      url = opts.url or 'http://localhost:5500/invoke',
+      include_modifications = opts.include_modifications,
+    },
     { __index = bedrock }
   )
 end
@@ -67,7 +71,6 @@ end
 function bedrock:chat(opts, callback)
   local messages = opts.messages
   local settings = opts.settings
-  local tools = opts.tools
   callback = vim.schedule_wrap(callback)
 
   local data = {
@@ -76,9 +79,12 @@ function bedrock:chat(opts, callback)
       temperature = settings.temperature,
       max_tokens = settings.max_tokens,
       messages = messages,
-      tools = tools,
     },
   }
+
+  if self.include_modifications then
+    data.body.tools = opts.tools
+  end
 
   local us_west_2_models = { "anthropic.claude-3-5-sonnet-20241022-v2:0", "anthropic.claude-3-5-haiku-20241022-v1:0" }
   if vim.tbl_contains(us_west_2_models, settings.model) then
@@ -144,7 +150,7 @@ function bedrock:chat(opts, callback)
           callback(message_types.DATA, decoded.delta.text)
         elseif decoded.delta.type == "input_json_delta" and decoded.delta.partial_json then
           tool.parameters = tool.parameters .. decoded.delta.partial_json
-          callback(message_types.TOOL_DELTA, tool)
+          callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool))
         end
       elseif decoded.type == "message_delta" then
         if decoded.delta and decoded.delta.stop_reason then

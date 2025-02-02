@@ -109,6 +109,7 @@ return {
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    tools = true,
     no_system_prompt = true,
   },
   ["o3-mini-medium"] = {
