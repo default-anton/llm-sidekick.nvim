@@ -168,7 +168,7 @@ function M.ask(prompt_buffer)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
   local tools = require("llm-sidekick.tools")
-  prompt.tools = vim.tbl_map(function(tool) return tool.spec end, tools)
+  prompt.tools = tools.file_operations
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
   prompt.settings.model = model_settings.name
@@ -248,7 +248,7 @@ function M.ask(prompt_buffer)
 
     if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
       local tool_call = chars
-      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, tools)
+      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, tools.file_operations)
       if #found_tools == 0 then
         vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
         return

@@ -83,7 +83,7 @@ function bedrock:chat(opts, callback)
   }
 
   if self.include_modifications then
-    data.body.tools = opts.tools
+    data.body.tools = vim.tbl_map(function(tool) return tool.spec end, opts.tools)
   end
 
   local us_west_2_models = { "anthropic.claude-3-5-sonnet-20241022-v2:0", "anthropic.claude-3-5-haiku-20241022-v1:0" }
@@ -99,14 +99,26 @@ function bedrock:chat(opts, callback)
     end
   end
 
+  local body = vim.json.encode(data)
+  if data.tools then
+    for _, tool in ipairs(opts.tools) do
+      local unordered_json = vim.json.encode(tool.spec)
+      local ordered_json = tool.spec_json
+      if body:find(unordered_json, 1, true) then
+        body = body:gsub(unordered_json, ordered_json, 1)
+      else
+        error("Failed to find tool in request body")
+      end
+    end
+  end
+
   local curl = require("llm-sidekick.executables").get_curl_executable()
-  local json_data = vim.json.encode(data)
   local args = {
     '-s',
     '--no-buffer',
     '-H', 'Content-Type: application/json',
     '-H', 'anthropic-version: bedrock-2023-05-31',
-    '-d', json_data,
+    '-d', body,
     self.url,
   }
 

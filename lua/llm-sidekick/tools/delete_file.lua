@@ -1,29 +1,31 @@
+local sjson = require("llm-sidekick.sjson")
 local chat = require("llm-sidekick.chat")
 
-local spec = {
-  name = "delete_file",
-  description = [[
-      Deletes the file at the given path.
+local description = vim.json.encode([[
+Deletes the file at the given path.
 
-      Technical details:
-      - Supports both relative and absolute file paths.
-      - Will not delete directories, only files.
-    ]],
-  input_schema = {
-    type = "object",
-    properties = {
-      path = {
-        type = "string",
-        description =
-        "Path to the file to delete. Accepts relative (from CWD) or absolute paths. Use forward slashes even on Windows. Examples: 'docs/old_report.txt', '/home/user/temp_files/outdated.txt', 'C:/Users/name/trash/temp.log'"
+Technical details:
+- Supports both relative and absolute file paths.
+- Will not delete directories, only files.]])
+
+local spec_json = [[{
+  "name": "delete_file",
+  "description": ]] .. description .. [[,
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Path to the file to delete. Accepts relative (from CWD) or absolute paths. Use forward slashes even on Windows. Examples: 'docs/old_report.txt', '/home/user/temp_files/outdated.txt', 'C:/Users/name/trash/temp.log'"
       }
     },
-    required = { "path" }
+    "required": [ "path" ]
   }
-}
+}]]
 
 return {
-  spec = spec,
+  spec_json = spec_json,
+  spec = sjson.decode(spec_json),
   start = function(_, opts)
     chat.paste_at_end("\n\n**Path:**\n```\n", opts.buffer)
   end,

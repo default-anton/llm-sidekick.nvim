@@ -149,6 +149,7 @@ return {
       coding = 0.3,
       chat = 0.7,
     },
+    tools = true,
   },
   ["gpt-4o-2024-11-20"] = {
     name = "gpt-4o-2024-11-20",
@@ -157,6 +158,7 @@ return {
       coding = 0.3,
       chat = 0.7,
     },
+    tools = true,
   },
   ["gpt-4o-2024-08-06"] = {
     name = "gpt-4o-2024-08-06",
@@ -165,6 +167,7 @@ return {
       coding = 0.3,
       chat = 0.7,
     },
+    tools = true,
   },
   ["gpt-4o-2024-05-13"] = {
     name = "gpt-4o-2024-05-13",

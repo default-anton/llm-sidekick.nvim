@@ -1,4 +1,5 @@
 local message_types = require("llm-sidekick.message_types")
+local sjson = require("llm-sidekick.sjson")
 local openai = {}
 
 function openai.new(opts)
@@ -24,7 +25,8 @@ function openai:chat(opts, callback)
   }
 
   if self.include_modifications then
-    data.tools = require("llm-sidekick.tools.openai").convert_spec(opts.tools)
+    local o = require("llm-sidekick.tools.openai")
+    data.tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools)
   end
 
   if settings.response_format then
@@ -40,18 +42,34 @@ function openai:chat(opts, callback)
     data.max_completion_tokens = settings.max_tokens
   end
 
+  local body = vim.json.encode(data)
+  if data.tools then
+    for i, tool in ipairs(opts.tools) do
+      local unordered_json = vim.json.encode(data.tools[i])
+      local ordered_json = tool.spec_json
+      if body:find(unordered_json, 1, true) then
+        body = body:gsub(unordered_json, ordered_json, 1)
+      else
+        error("Failed to find tool in request body")
+      end
+    end
+  end
+
   local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {
     '-s',
     '--no-buffer',
     '-H', 'Content-Type: application/json',
-    '-d', vim.json.encode(data),
+    '-d', body,
   }
+
   if self.api_key then
     table.insert(args, '-H')
     table.insert(args, 'Authorization: Bearer ' .. self.api_key)
   end
   table.insert(args, self.url)
+
+  local tool = nil
 
   require('plenary.job'):new({
     command = curl,
@@ -71,17 +89,43 @@ function openai:chat(opts, callback)
         return
       end
 
-      local ok, decoded = pcall(vim.json.decode, line)
+      local ok, decoded = pcall(sjson.decode, line)
       if ok and decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].delta then
         local reasoning_content = decoded.choices[1].delta.reasoning_content
-        if reasoning_content and reasoning_content ~= "" and vim.NIL ~= reasoning_content then
+        if reasoning_content and reasoning_content ~= "" then
           callback(message_types.REASONING, reasoning_content)
         end
 
         local content = decoded.choices[1].delta.content
-        if content and content ~= "" and vim.NIL ~= content then
+        if content and content ~= "" then
           callback(message_types.DATA, content)
         end
+
+        local tool_calls = decoded.choices[1].delta.tool_calls
+        if tool_calls and tool_calls[1] and tool_calls[1]["function"] then
+          local function_data = tool_calls[1]["function"]
+          if function_data.name and function_data.name ~= "" then
+            if tool == nil then
+              tool = {
+                id = function_data.id,
+                name = function_data.name,
+                parameters = "",
+                state = {},
+              }
+              callback(message_types.TOOL_START, tool)
+            end
+          end
+
+          if tool and function_data.arguments and function_data.arguments ~= "" then
+            tool.parameters = tool.parameters .. function_data.arguments
+            callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool))
+          end
+        end
+      end
+
+      if decoded.choices[1].finish_reason == "tool_calls" then
+        callback(message_types.TOOL_STOP, tool)
+        tool = nil
       end
     end,
     on_stderr = function(_, text)
@@ -96,7 +140,7 @@ function openai:chat(opts, callback)
     on_exit = function(j, return_val)
       if j:result() and not vim.tbl_isempty(j:result()) then
         vim.schedule(function()
-          local ok, res = pcall(vim.json.decode, table.concat(j:result(), "\n"))
+          local ok, res = pcall(sjson.decode, table.concat(j:result(), "\n"))
           if ok and res and res.error then
             vim.notify("Error: " .. res.error.message, vim.log.levels.ERROR)
           end
@@ -121,7 +165,7 @@ function openai:chat(opts, callback)
       end
 
       local result = table.concat(j:result(), "\n")
-      local ok, decoded = pcall(vim.json.decode, result)
+      local ok, decoded = pcall(sjson.decode, result)
       if not ok or not decoded or not decoded.choices or not decoded.choices[1] or not decoded.choices[1].message then
         vim.schedule(function()
           vim.api.nvim_err_writeln("Error: Failed to parse API response: " .. result)
@@ -130,7 +174,7 @@ function openai:chat(opts, callback)
       end
 
       local reasoning_content = decoded.choices[1].message.reasoning_content
-      if reasoning_content and reasoning_content ~= "" and vim.NIL ~= reasoning_content then
+      if reasoning_content and reasoning_content ~= "" then
         callback(message_types.REASONING, reasoning_content)
       end
 
