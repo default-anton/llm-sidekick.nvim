@@ -1,3 +1,4 @@
+-- Tool for creating/overwriting files with streaming content display
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
 local sjson = require("llm-sidekick.sjson")
@@ -36,22 +37,38 @@ local spec_json = [[{
 return {
   spec_json = spec_json,
   spec = sjson.decode(spec_json),
-  start = function(_, opts)
-    chat.paste_at_end("\n\n**Path:**\n```\n", opts.buffer)
+  -- Initialize the streaming display with markdown formatting
+  start = function(tool_call, opts)
+    chat.paste_at_end("\n\n**Path:**\n```\n<path will be determined...>\n```\n**Create:**\n```txt", opts.buffer)
+
+    -- Store the starting line number for later updates
+    local lines = vim.api.nvim_buf_line_count(opts.buffer)
+    tool_call.state.path_line = lines - 3
+    tool_call.state.content_start_line = lines + 1
   end,
+  -- Handle incremental updates for streaming file path and content
   delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
 
+    local update_language = function()
+      local language = markdown.filename_to_language(tool_call.parameters.path)
+      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.content_start_line - 2,
+        tool_call.state.content_start_line - 1, false,
+        { "```" .. language })
+    end
+
     if tool_call.parameters.path and path_written < #tool_call.parameters.path then
-      chat.paste_at_end(tool_call.parameters.path:sub(path_written + 1), opts.buffer)
+      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.path_line - 1, tool_call.state.path_line, false,
+        { tool_call.parameters.path })
+
+      update_language()
       tool_call.state.path_written = #tool_call.parameters.path
     end
 
     if tool_call.parameters.content and content_written < #tool_call.parameters.content then
-      if content_written == 0 then
-        local language = markdown.filename_to_language(tool_call.parameters.path)
-        chat.paste_at_end(string.format("\n```\n**Create:**\n```%s\n", language), opts.buffer)
+      if content_written == 0 and #tool_call.parameters.path > 0 then
+        update_language()
       end
       chat.paste_at_end(tool_call.parameters.content:sub(content_written + 1), opts.buffer)
       tool_call.state.content_written = #tool_call.parameters.content
@@ -60,6 +77,7 @@ return {
   stop = function(_, opts)
     chat.paste_at_end("\n```\n", opts.buffer)
   end,
+  -- Execute the actual file creation (TODO: implement file writing logic)
   callback = function(tool_call)
     -- tool.parameters
   end
