@@ -32,34 +32,31 @@ local spec = {
 
 return {
   spec = spec,
-  start = function(_)
-    chat.paste_at_end("\n\n**Path:**\n```\n")
+  start = function(_, opts)
+    chat.paste_at_end("\n\n**Path:**\n```\n", opts.buffer)
   end,
-  delta = function(tool_call)
+  delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
 
-    if tool_call.input.path and path_written < #tool_call.input.path then
-      chat.paste_at_end(tool_call.input.path:sub(path_written + 1))
-      tool_call.state.path_written = #tool_call.input.path
+    if opts.parameters.path and path_written < #opts.parameters.path then
+      chat.paste_at_end(opts.parameters.path:sub(path_written + 1), opts.buffer)
+      tool_call.state.path_written = #opts.parameters.path
     end
 
-    if tool_call.input.content and content_written < #tool_call.input.content then
+    if opts.parameters.content and content_written < #opts.parameters.content then
       if content_written == 0 then
-        local language = markdown.filename_to_language(tool_call.input.path)
-        chat.paste_at_end(string.format("\n```\n**Create:**\n```%s\n", language))
-        tool_call.state.content_written = #tool_call.input.content
-        return
+        local language = markdown.filename_to_language(opts.parameters.path)
+        chat.paste_at_end(string.format("\n```\n**Create:**\n```%s\n", language), opts.buffer)
       end
-
-      chat.paste_at_end(tool_call.input.content:sub(content_written + 1))
-      tool_call.state.content_written = #tool_call.input.content
+      chat.paste_at_end(opts.parameters.content:sub(content_written + 1), opts.buffer)
+      tool_call.state.content_written = #opts.parameters.content
     end
   end,
-  stop = function(_)
-    chat.paste_at_end("\n```\n")
+  stop = function(_, opts)
+    chat.paste_at_end("\n```\n", opts.buffer)
   end,
   callback = function(tool_call)
-    -- tool.input
+    -- tool.parameters
   end
 }

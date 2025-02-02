@@ -127,7 +127,7 @@ function bedrock:chat(opts, callback)
           tool = {
             id = decoded.content_block.id,
             name = decoded.content_block.name,
-            input = "",
+            parameters = "",
             state = {},
           }
           callback(message_types.TOOL_START, tool)
@@ -143,7 +143,7 @@ function bedrock:chat(opts, callback)
         if decoded.delta.type == "text_delta" and decoded.delta.text then
           callback(message_types.DATA, decoded.delta.text)
         elseif decoded.delta.type == "input_json_delta" and decoded.delta.partial_json then
-          tool.input = tool.input .. decoded.delta.partial_json
+          tool.parameters = tool.parameters .. decoded.delta.partial_json
           callback(message_types.TOOL_DELTA, tool)
         end
       elseif decoded.type == "message_delta" then

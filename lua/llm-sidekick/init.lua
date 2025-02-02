@@ -1,9 +1,10 @@
+local chat          = require "llm-sidekick.chat"
 local message_types = require "llm-sidekick.message_types"
-local sjson = require "llm-sidekick.sjson"
-local fs = require "llm-sidekick.fs"
-local settings = require "llm-sidekick.settings"
+local sjson         = require "llm-sidekick.sjson"
+local fs            = require "llm-sidekick.fs"
+local settings      = require "llm-sidekick.settings"
 
-local M = {}
+local M             = {}
 
 function M.setup(opts)
   settings.setup(opts or {})
@@ -148,10 +149,10 @@ function M.parse_prompt(prompt)
   return options
 end
 
-function M.ask(prompt_bufnr)
+function M.ask(prompt_buffer)
   -- Set up a buffer-local autocmd to block manual typing during LLM response.
   local block_input_au = vim.api.nvim_create_autocmd("InsertCharPre", {
-    buffer = prompt_bufnr,
+    buffer = prompt_buffer,
     callback = function()
       -- Set v:char to an empty string to prevent the character from being inserted
       vim.v.char = ""
@@ -163,14 +164,7 @@ function M.ask(prompt_bufnr)
     vim.api.nvim_del_autocmd(block_input_au)
   end
 
-  local function paste_at_end(text, phase)
-    local line_count = vim.api.nvim_buf_line_count(prompt_bufnr)
-    local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1] or ""
-    vim.api.nvim_win_set_cursor(0, { line_count, #last_line })
-    vim.api.nvim_paste(text, false, phase)
-  end
-
-  local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+  local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
   local tools = require("llm-sidekick.tools")
@@ -193,7 +187,7 @@ function M.ask(prompt_bufnr)
   end
 
   local current_line = "ASSISTANT: "
-  vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", current_line })
+  vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
   local client
   if vim.startswith(prompt.settings.model, "claude-") then
@@ -228,23 +222,19 @@ function M.ask(prompt_bufnr)
 
   local in_reasoning_tag = false
 
-  paste_at_end("", 1)
-
   client:chat(prompt, function(state, chars)
-    if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
+    if not vim.api.nvim_buf_is_valid(prompt_buffer) then
       return
     end
 
     if state == message_types.ERROR then
       cleanup()
-      paste_at_end("", 3)
       vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
       return
     end
 
     if state == message_types.ERROR_MAX_TOKENS then
       cleanup()
-      paste_at_end("", 3)
       vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
       return
     end
@@ -264,17 +254,21 @@ function M.ask(prompt_bufnr)
       local tool = found_tools[1]
       if state == message_types.TOOL_START then
         if tool.start then
-          tool.start(tool_call)
+          tool.start(tool_call, { buffer = prompt_buffer })
         end
       elseif state == message_types.TOOL_DELTA then
         if tool.delta then
-          tool_call = vim.tbl_extend("keep", {}, tool_call)
-          tool_call.input = sjson.decode(tool_call.input)
-          tool.delta(tool_call)
+          tool.delta(tool_call, {
+            parameters = sjson.decode(tool_call.parameters),
+            buffer = prompt_buffer,
+          })
         end
       elseif state == message_types.TOOL_STOP then
         if tool.stop then
-          tool.stop(tool_call)
+          tool.stop(tool_call, {
+            parameters = sjson.decode(tool_call.parameters),
+            buffer = prompt_buffer,
+          })
         end
       end
       return
@@ -282,42 +276,41 @@ function M.ask(prompt_bufnr)
 
     local success = pcall(function()
       if state == message_types.REASONING and not in_reasoning_tag then
-        paste_at_end("\n\n<llm_sidekick_thinking>\n", 2)
+        chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
         in_reasoning_tag = true
       end
 
       if state == message_types.DATA and in_reasoning_tag then
-        paste_at_end("\n</llm_sidekick_thinking>\n\n", 2)
+        chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
         in_reasoning_tag = false
       end
 
-      paste_at_end(chars, 2)
+      chat.paste_at_end(chars, prompt_buffer)
     end)
 
     if not success then
       return
     end
 
-    if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
+    if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
-        require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
+      if vim.b[prompt_buffer].llm_sidekick_auto_apply then
+        require("llm-sidekick.file_editor").apply_modifications(prompt_buffer, true)
         pcall(function()
-          paste_at_end("", 3)
           vim.api.nvim_win_close(0, true)
 
-          if vim.api.nvim_buf_is_valid(prompt_bufnr) then
-            vim.api.nvim_buf_delete(prompt_bufnr, { force = true })
+          if vim.api.nvim_buf_is_valid(prompt_buffer) then
+            vim.api.nvim_buf_delete(prompt_buffer, { force = true })
           end
         end)
       else
         pcall(function()
-          paste_at_end("\n\nUSER: ", 3)
+          chat.paste_at_end("\n\nUSER: ", prompt_buffer)
         end)
       end
 
-      local lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+      local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")
       local assistant_start_line = file_editor.find_last_assistant_start_line(lines)
       if assistant_start_line ~= -1 then
@@ -326,14 +319,14 @@ function M.ask(prompt_bufnr)
           lines
         )
         local modification_blocks = file_editor.find_and_parse_modification_blocks(
-          prompt_bufnr,
+          prompt_buffer,
           assistant_start_line,
           assistant_end_line
         )
         local diagnostic = require("llm-sidekick.diagnostic")
         for _, block in ipairs(modification_blocks) do
           diagnostic.add_diagnostic(
-            prompt_bufnr,
+            prompt_buffer,
             block.start_line,
             block.start_line,
             block.raw_block,

@@ -43,39 +43,41 @@ local spec = {
 
 return {
   spec = spec,
-  start = function(_)
-    chat.paste_at_end("\n\n**Path:**\n```\n")
+  start = function(_, opts)
+    chat.paste_at_end("\n\n**Path:**\n```\n", opts.buffer)
   end,
-  delta = function(tool_call)
+  delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
     local find_written = tool_call.state.find_written or 0
     local replace_written = tool_call.state.replace_written or 0
 
-    if tool_call.input.path and path_written < #tool_call.input.path then
-      chat.paste_at_end(tool_call.input.path:sub(path_written + 1))
-      tool_call.state.path_written = #tool_call.input.path
+    if opts.parameters.path and path_written < #opts.parameters.path then
+      chat.paste_at_end(opts.parameters.path:sub(path_written + 1), opts.buffer)
+      tool_call.state.path_written = #opts.parameters.path
     end
 
-    if tool_call.input.find and find_written < #tool_call.input.find then
+    if opts.parameters.find and find_written < #opts.parameters.find then
       if find_written == 0 then
-        chat.paste_at_end("\n```\n**Find:**\n```\n")
+        local language = markdown.filename_to_language(opts.parameters.path)
+        chat.paste_at_end(string.format("\n```\n**Find:**\n```%s\n", language), opts.buffer)
       end
-      chat.paste_at_end(tool_call.input.find:sub(find_written + 1))
-      tool_call.state.find_written = #tool_call.input.find
+      chat.paste_at_end(opts.parameters.find:sub(find_written + 1), opts.buffer)
+      tool_call.state.find_written = #opts.parameters.find
     end
 
-    if tool_call.input.replace and replace_written < #tool_call.input.replace then
+    if opts.parameters.replace and replace_written < #opts.parameters.replace then
       if replace_written == 0 then
-        chat.paste_at_end("\n```\n**Replace:**\n```\n")
+        local language = markdown.filename_to_language(opts.parameters.path)
+        chat.paste_at_end(string.format("\n```\n**Replace:**\n```%s\n", language), opts.buffer)
       end
-      chat.paste_at_end(tool_call.input.replace:sub(replace_written + 1))
-      tool_call.state.replace_written = #tool_call.input.replace
+      chat.paste_at_end(opts.parameters.replace:sub(replace_written + 1), opts.buffer)
+      tool_call.state.replace_written = #opts.parameters.replace
     end
   end,
-  stop = function(_)
-    chat.paste_at_end("\n```\n")
+  stop = function(_, opts)
+    chat.paste_at_end("\n```\n", opts.buffer)
   end,
   callback = function(tool)
-    -- tool.input
+    -- tool.parameters
   end,
 }
