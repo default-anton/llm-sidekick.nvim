@@ -104,16 +104,18 @@ function openai:chat(opts, callback)
         local tool_calls = decoded.choices[1].delta.tool_calls
         if tool_calls and tool_calls[1] and tool_calls[1]["function"] then
           local function_data = tool_calls[1]["function"]
-          if function_data.name and function_data.name ~= "" then
-            if tool == nil then
-              tool = {
-                id = function_data.id,
-                name = function_data.name,
-                parameters = "",
-                state = {},
-              }
-              callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
+          if tool_calls[1].id then
+            if tool then
+              callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
             end
+
+            tool = {
+              id = tool_calls[1].id,
+              name = function_data.name,
+              parameters = "",
+              state = {},
+            }
+            callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
           end
 
           if tool and function_data.arguments and function_data.arguments ~= "" then
