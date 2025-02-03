@@ -511,7 +511,7 @@ local ask_command = function(cmd_opts)
       local tool_utils = require 'llm-sidekick.tools.utils'
       vim.keymap.set(
         'n',
-        '<leader>a',
+        '<leader>aa',
         function() tool_utils.run_tool_at_cursor({ buffer = buf }) end,
         { buffer = buf, desc = "Accept and run the tool at the cursor" }
       )

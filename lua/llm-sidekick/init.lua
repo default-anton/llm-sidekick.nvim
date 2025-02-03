@@ -284,7 +284,7 @@ function M.ask(prompt_buffer)
           prompt_buffer,
           line_num,
           vim.diagnostic.severity.HINT,
-          string.format("→ %s (<leader>a)", tool.spec.name)
+          string.format("→ %s (<leader>aa)", tool.spec.name)
         )
       elseif state == message_types.TOOL_DELTA then
         if tool.delta then
@@ -312,7 +312,7 @@ function M.ask(prompt_buffer)
           prompt_buffer,
           lnum,
           vim.diagnostic.severity.HINT,
-          string.format("→ %s (<leader>a)", tool.spec.name)
+          string.format("→ %s (<leader>aa)", tool.spec.name)
         )
 
         chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
