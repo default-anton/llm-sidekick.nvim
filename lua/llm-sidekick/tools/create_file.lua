@@ -2,6 +2,7 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
 local sjson = require("llm-sidekick.sjson")
+local signs = require("llm-sidekick.signs")
 
 local description = vim.json.encode([[
 Creates or overwrites a file with specified content at the given path. Use this for generating new files or completely replacing existing ones with new content.
@@ -66,6 +67,12 @@ return {
     if tool_call.parameters.content and content_written < #tool_call.parameters.content then
       chat.paste_at_end(tool_call.parameters.content:sub(content_written + 1), opts.buffer)
       tool_call.state.content_written = #tool_call.parameters.content
+
+      -- Place signs for the find section
+      local content_end_line = tool_call.state.content_start_line + select(2, tool_call.parameters.content:gsub("\n", ""))
+      local sign_group = string.format("%s-create_file-content", tool_call.id)
+      signs.clear(opts.buffer, sign_group)
+      signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     end
   end,
   stop = function(tool_call, opts)

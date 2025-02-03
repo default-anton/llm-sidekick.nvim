@@ -7,14 +7,14 @@ vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 
 -- Define signs for LLM Sidekick
-vim.fn.sign_define("llm_sidekick_green", {
+vim.fn.sign_define("llm_sidekick_red", {
   text = "▎",
   texthl = "DiffDelete",
   linehl = "DiffDelete",
   numhl = "DiffDelete"
 })
 
-vim.fn.sign_define("llm_sidekick_red", {
+vim.fn.sign_define("llm_sidekick_green", {
   text = "▎",
   texthl = "DiffAdd",
   linehl = "DiffAdd",

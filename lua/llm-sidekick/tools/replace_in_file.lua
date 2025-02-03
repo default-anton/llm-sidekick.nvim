@@ -141,9 +141,9 @@ return {
       -- Place signs for the find section
       find_start_line = tool_call.state.find_start_line
       local find_end_line = find_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
-      local sign_group = string.format("%s-find", tool_call.id)
+      local sign_group = string.format("%s-replace_in_file-find", tool_call.id)
       signs.clear(opts.buffer, sign_group)
-      signs.place(opts.buffer, sign_group, find_start_line, find_end_line, "llm_sidekick_green")
+      signs.place(opts.buffer, sign_group, find_start_line, find_end_line, "llm_sidekick_red")
     end
 
     if tool_call.parameters.replace and replace_written < #tool_call.parameters.replace then
@@ -175,9 +175,9 @@ return {
         replace_start_line = replace_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
       end
       local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
-      local sign_group = string.format("%s-replace", tool_call.id)
+      local sign_group = string.format("%s-replace_in_file-replace", tool_call.id)
       signs.clear(opts.buffer, sign_group)
-      signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_red")
+      signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_green")
     end
   end,
   run = function(tool_call, opts)
