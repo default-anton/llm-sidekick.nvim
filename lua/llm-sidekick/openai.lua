@@ -125,7 +125,7 @@ function openai:chat(opts, callback)
         end
       end
 
-      if decoded.choices[1].finish_reason == "tool_calls" then
+      if decoded.choices and decoded.choices and decoded.choices[1].finish_reason == "tool_calls" then
         callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
         tool = nil
       end
