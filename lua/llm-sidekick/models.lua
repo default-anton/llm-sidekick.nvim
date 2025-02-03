@@ -30,6 +30,7 @@ return {
   ["claude-3-5-sonnet-latest"] = {
     name = "claude-3-5-sonnet-latest",
     max_tokens = 8192,
+    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -38,6 +39,7 @@ return {
   ["claude-3-5-haiku-latest"] = {
     name = "claude-3-5-haiku-latest",
     max_tokens = 8192,
+    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -118,6 +120,7 @@ return {
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    tools = true,
     no_system_prompt = true,
   },
   ["o3-mini-high"] = {
@@ -126,6 +129,7 @@ return {
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil, -- temperature is not supported
     reasoning = true,
+    tools = true,
     no_system_prompt = true,
   },
   ["o1-mini"] = {
