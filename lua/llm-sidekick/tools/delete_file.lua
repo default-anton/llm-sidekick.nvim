@@ -27,10 +27,11 @@ return {
   spec_json = spec_json,
   spec = sjson.decode(spec_json),
   start = function(tool_call, opts)
-    chat.paste_at_end("\n\n**Path:**\n```\n<path will be determined...>\n```\n**Delete:**\n```\nN/A\n```\n", opts.buffer)
+    chat.paste_at_end("\n\n**Path:**\n```\n<path will be determined...>", opts.buffer)
     -- Store the line number where path will be updated
-    local lines = vim.api.nvim_buf_line_count(opts.buffer)
-    tool_call.state.path_line = lines - 6
+    tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
+
+    chat.paste_at_end("\n```\n**Delete:**\n```\nN/A\n```\n", opts.buffer)
   end,
   delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
