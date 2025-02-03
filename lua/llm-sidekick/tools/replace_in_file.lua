@@ -4,19 +4,23 @@ local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
 local description = vim.json.encode([[
-Replaces specific content in a file with exact matching. Use this to make precise modifications to existing files.
+Make targeted edits to specific parts of an existing file without overwriting the entire file.
+
+When to Use:
+- Small, localized changes like updating a few lines, function implementations, changing variable names, modifying a section of text, etc.
+- Targeted improvements where only specific portions of the file’s content needs to be altered.
+- Especially useful for long files where much of the file will remain unchanged.
+
+Default to **replace_in_file** for most changes. It's the safer, more precise option that minimizes potential issues.
 
 Technical details:
 - Performs literal string replacement (no regex)
 - Case-sensitive, exact character-for-character matching
-- Works with any text file encoding
 - Replaces only the first match
 - Whitespace, newlines, indentation, and comments must match exactly
 - For multiple changes to the same file, call this tool multiple times
 - Prefer small, targeted replacements over large block changes
-- Target the minimum unique code segment needed for each change
-- Direct file modification - make sure you mean it
-- Won't work on binary files]])
+- Target the minimum unique code segment needed for each change]])
 
 local spec_json = [[{
   "name": "replace_in_file",

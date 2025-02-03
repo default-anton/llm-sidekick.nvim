@@ -7,7 +7,16 @@ local signs = require("llm-sidekick.signs")
 local description = vim.json.encode([[
 Creates or overwrites a file with specified content at the given path. Use this for generating new files or completely replacing existing ones with new content.
 
-Technical details:
+When to Use:
+- Initial file creation, such as when scaffolding a new project.  
+- Overwriting large boilerplate files where you want to replace the entire content at once.
+- When the complexity or number of changes would make replace_in_file unwieldy or error-prone.
+- When you need to completely restructure a file's content or change its fundamental organization.
+
+When to Avoid:
+- If you only need to make small changes to an existing file, consider using replace_in_file instead to avoid unnecessarily rewriting the entire file.
+
+Technical Details:
 - Creates parent directories automatically if they don't exist
 - Overwrites existing files completely (no append mode)
 - Content is written exactly as provided - no automatic formatting
