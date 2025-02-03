@@ -39,7 +39,7 @@ return {
   spec = sjson.decode(spec_json),
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)
-    chat.paste_at_end("\n\n**Path:**\n```\n<path will be determined...>", opts.buffer)
+    chat.paste_at_end("**Path:**\n```\n<path will be determined...>", opts.buffer)
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
@@ -75,8 +75,32 @@ return {
       chat.paste_at_end("```\n", opts.buffer)
     end
   end,
-  -- Execute the actual file creation (TODO: implement file writing logic)
-  callback = function(tool_call)
-    -- tool.parameters
+  -- Execute the actual file creation
+  run = function(tool_call, opts)
+    local path = tool_call.parameters.path
+    local content = tool_call.parameters.content
+
+    local dir = vim.fn.fnamemodify(path, ":h")
+    if vim.fn.isdirectory(dir) == 0 then
+      local success = vim.fn.mkdir(dir, "p")
+      if success == 0 then
+        error(string.format("Failed to create directory: %s", dir))
+      end
+    end
+
+    local buf = vim.fn.bufnr(path, true)
+    vim.fn.bufload(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(content, "\n"))
+    local ok, err = pcall(function()
+      vim.api.nvim_buf_call(buf, function()
+        vim.cmd("write")
+      end)
+    end)
+
+    if not ok then
+      error(string.format("Failed to write to file: %s", err))
+    end
+
+    return true
   end
 }

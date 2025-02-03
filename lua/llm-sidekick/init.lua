@@ -3,6 +3,8 @@ local message_types = require "llm-sidekick.message_types"
 local sjson         = require "llm-sidekick.sjson"
 local fs            = require "llm-sidekick.fs"
 local settings      = require "llm-sidekick.settings"
+local diagnostic    = require("llm-sidekick.diagnostic")
+local tool_utils    = require("llm-sidekick.tools.utils")
 
 local M             = {}
 
@@ -234,6 +236,8 @@ function M.ask(prompt_buffer)
       return
     end
 
+    local success = true
+    -- local success, err = pcall(function()
     if state == message_types.ERROR then
       cleanup()
       vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
@@ -248,51 +252,90 @@ function M.ask(prompt_buffer)
 
     if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
       local tool_call = chars
-      local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end,
-        tools.file_operations)
-      if #found_tools == 0 then
+      local tool = tool_utils.find_tool_for_tool_call(tool_call)
+
+      if not tool then
         vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
         return
       end
-      if #found_tools > 1 then
-        vim.notify("Multiple tools found with the same name: " .. tool_call.name, vim.log.levels.ERROR)
-        return
-      end
 
-      local tool = found_tools[1]
       if state == message_types.TOOL_START then
+        chat.paste_at_end(
+          string.format("\n\n<llm_sidekick_tool id=\"%s\" name=\"%s\">\n", tool_call.id, tool_call.name),
+          prompt_buffer
+        )
+
+        local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
+
+        tool_call.parameters = sjson.decode(tool_call.parameters)
+        tool_utils.add_tool_call_to_buffer({
+          buffer = prompt_buffer,
+          tool_call = tool_call,
+          lnum = line_num,
+          result = nil,
+        })
+
         if tool.start then
           tool.start(tool_call, { buffer = prompt_buffer })
         end
+
+        diagnostic.add_tool_call(
+          tool_call,
+          prompt_buffer,
+          line_num,
+          vim.diagnostic.severity.HINT,
+          string.format("→ %s (<leader>a)", tool.spec.name)
+        )
       elseif state == message_types.TOOL_DELTA then
         if tool.delta then
           tool_call.parameters = sjson.decode(tool_call.parameters)
           tool.delta(tool_call, { buffer = prompt_buffer })
         end
       elseif state == message_types.TOOL_STOP then
+        tool_call.parameters = sjson.decode(tool_call.parameters)
+
         if tool.stop then
-          tool_call.parameters = sjson.decode(tool_call.parameters)
           tool.stop(tool_call, { buffer = prompt_buffer })
         end
+
+        local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,
+          vim.b[prompt_buffer].llm_sidekick_tool_calls)[1].lnum
+
+        tool_utils.update_tool_call_in_buffer({
+          buffer = prompt_buffer,
+          tool_call = tool_call,
+          result = nil,
+        })
+
+        diagnostic.add_tool_call(
+          tool_call,
+          prompt_buffer,
+          lnum,
+          vim.diagnostic.severity.HINT,
+          string.format("→ %s (<leader>a)", tool.spec.name)
+        )
+
+        chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
       end
+
       return
     end
 
-    local success = pcall(function()
-      if state == message_types.REASONING and not in_reasoning_tag then
-        chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
-        in_reasoning_tag = true
-      end
+    if state == message_types.REASONING and not in_reasoning_tag then
+      chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
+      in_reasoning_tag = true
+    end
 
-      if state == message_types.DATA and in_reasoning_tag then
-        chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
-        in_reasoning_tag = false
-      end
+    if state == message_types.DATA and in_reasoning_tag then
+      chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
+      in_reasoning_tag = false
+    end
 
-      chat.paste_at_end(chars, prompt_buffer)
-    end)
+    chat.paste_at_end(chars, prompt_buffer)
+    -- end)
 
     if not success then
+      vim.notify(err, vim.log.levels.ERROR)
       return
     end
 
@@ -327,7 +370,6 @@ function M.ask(prompt_buffer)
           assistant_start_line,
           assistant_end_line
         )
-        local diagnostic = require("llm-sidekick.diagnostic")
         for _, block in ipairs(modification_blocks) do
           diagnostic.add_diagnostic(
             prompt_buffer,

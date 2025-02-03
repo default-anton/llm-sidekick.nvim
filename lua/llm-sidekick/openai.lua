@@ -112,7 +112,7 @@ function openai:chat(opts, callback)
                 parameters = "",
                 state = {},
               }
-              callback(message_types.TOOL_START, tool)
+              callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
             end
           end
 
@@ -124,7 +124,7 @@ function openai:chat(opts, callback)
       end
 
       if decoded.choices[1].finish_reason == "tool_calls" then
-        callback(message_types.TOOL_STOP, tool)
+        callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
         tool = nil
       end
     end,

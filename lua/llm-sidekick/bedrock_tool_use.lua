@@ -148,13 +148,13 @@ function bedrock:chat(opts, callback)
             parameters = "",
             state = {},
           }
-          callback(message_types.TOOL_START, tool)
+          callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
         else
           tool = nil
         end
       elseif decoded.type == "content_block_stop" then
         if tool then
-          callback(message_types.TOOL_STOP, tool)
+          callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
           tool = nil
         end
       elseif decoded.type == "content_block_delta" then

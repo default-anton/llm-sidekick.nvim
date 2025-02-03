@@ -3,7 +3,7 @@ if vim.g.loaded_llm_sidekick == 1 then
 end
 
 vim.g.loaded_llm_sidekick = 1
-vim.g.llm_sidekick_diagnostic_ns = vim.api.nvim_create_namespace('llm-sidekick')
+vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 
 local M = {}
@@ -128,6 +128,14 @@ local function set_llm_sidekick_options()
   vim.opt_local.textwidth = 0
   vim.opt_local.scrollbind = false
   vim.opt_local.signcolumn = "no"
+
+  -- Set up syntax concealing
+  vim.opt_local.conceallevel = 3
+  vim.opt_local.concealcursor = "nvic"
+  vim.cmd([[
+    syntax match LlmSidekickToolStart /^<llm_sidekick_tool\s\+.*>$/ conceal cchar=""
+    syntax match LlmSidekickToolEnd /^<\/llm_sidekick_tool>$/ conceal cchar=""
+  ]])
 end
 
 -- Function to fold all editor context tags in a given buffer
@@ -433,7 +441,7 @@ local ask_command = function(cmd_opts)
 
     if model_settings.temperature then
       prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or
-      model_settings.temperature.chat
+          model_settings.temperature.chat
     end
 
     local prompt = ""
@@ -455,7 +463,8 @@ local ask_command = function(cmd_opts)
           model_settings.reasoning and "" or prompts.reasoning,
           guidelines,
           vim.trim(current_project_config.technologies or ""),
-          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or ""
+          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or
+          ""
         }
         if is_reasoning then
           table.remove(args, 2) -- Remove reasoning instructionsk
@@ -470,7 +479,8 @@ local ask_command = function(cmd_opts)
           os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
-          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or "",
+          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or
+          "",
         }
         local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
         system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
@@ -498,6 +508,13 @@ local ask_command = function(cmd_opts)
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
+      local tool_utils = require 'llm-sidekick.tools.utils'
+      vim.keymap.set(
+        'n',
+        '<leader>a',
+        function() tool_utils.run_tool_at_cursor({ buffer = buf }) end,
+        { buffer = buf, desc = "Accept and run the tool at the cursor" }
+      )
     else
       local function complete_mode(ArgLead, CmdLine, CursorPos)
         local args = vim.split(CmdLine, "%s+")

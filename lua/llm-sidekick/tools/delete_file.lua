@@ -27,7 +27,7 @@ return {
   spec_json = spec_json,
   spec = sjson.decode(spec_json),
   start = function(tool_call, opts)
-    chat.paste_at_end("\n\n**Path:**\n```\n<path will be determined...>", opts.buffer)
+    chat.paste_at_end("**Path:**\n```\n<path will be determined...>", opts.buffer)
     -- Store the line number where path will be updated
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
@@ -42,10 +42,30 @@ return {
       tool_call.state.path_written = #tool_call.parameters.path
     end
   end,
-  stop = function(_, opts)
-    -- Nothing additional needed for stop since format is already complete
-  end,
-  callback = function(tool)
-    -- tool.input
+  run = function(tool_call, opts)
+    local path = tool_call.parameters.path
+
+    -- Check if file exists first
+    local ftype = vim.fn.getftype(path)
+    if ftype == '' then
+      return true
+    end
+
+    if ftype ~= 'file' then
+      error(string.format("Path is not a file: %s", path))
+    end
+
+    local ok, err = vim.loop.fs_unlink(path)
+    if not ok then
+      error(string.format("Failed to delete file '%s': %s", path, err))
+    end
+
+    -- Close the buffer if it's open
+    local deleted_file_buffer = vim.fn.bufnr(path)
+    if deleted_file_buffer ~= -1 then
+      vim.api.nvim_buf_delete(deleted_file_buffer, { force = true })
+    end
+
+    return true
   end
 }
