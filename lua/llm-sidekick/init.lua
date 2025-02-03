@@ -260,8 +260,14 @@ function M.ask(prompt_buffer)
       end
 
       if state == message_types.TOOL_START then
+        local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+        local needs_newlines = last_line and vim.trim(last_line) ~= ""
         chat.paste_at_end(
-          string.format("\n\n<llm_sidekick_tool id=\"%s\" name=\"%s\">\n", tool_call.id, tool_call.name),
+          string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
+            needs_newlines and "\n\n" or "",
+            tool_call.id,
+            tool_call.name
+          ),
           prompt_buffer
         )
 
@@ -296,6 +302,12 @@ function M.ask(prompt_buffer)
 
         if tool.stop then
           tool.stop(tool_call, { buffer = prompt_buffer })
+        end
+
+        local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+        local needs_newline = last_line and vim.trim(last_line) ~= ""
+        if needs_newline then
+          chat.paste_at_end("\n", prompt_buffer)
         end
 
         local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,

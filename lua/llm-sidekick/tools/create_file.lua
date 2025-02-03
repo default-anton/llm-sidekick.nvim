@@ -39,11 +39,11 @@ return {
   spec = sjson.decode(spec_json),
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)
-    chat.paste_at_end("**Path:**\n```\n<path will be determined...>", opts.buffer)
+    chat.paste_at_end("**Create:** `<path will be determined...>`", opts.buffer)
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```\n**Create:**\n```txt\n", opts.buffer)
+    chat.paste_at_end("\n```txt\n", opts.buffer)
     tool_call.state.content_start_line = vim.api.nvim_buf_line_count(opts.buffer)
   end,
   -- Handle incremental updates for streaming file path and content
@@ -53,7 +53,7 @@ return {
 
     if tool_call.parameters.path and path_written < #tool_call.parameters.path then
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.path_line - 1, tool_call.state.path_line, false,
-        { tool_call.parameters.path })
+        { string.format("**Create:** `%s`", tool_call.parameters.path) })
       tool_call.state.path_written = #tool_call.parameters.path
 
       -- Update the language for syntax highlighting
@@ -70,9 +70,9 @@ return {
   end,
   stop = function(tool_call, opts)
     if #tool_call.parameters.content > 0 then
-      chat.paste_at_end("\n```\n", opts.buffer)
+      chat.paste_at_end("\n```", opts.buffer)
     else
-      chat.paste_at_end("```\n", opts.buffer)
+      chat.paste_at_end("```", opts.buffer)
     end
   end,
   -- Execute the actual file creation
