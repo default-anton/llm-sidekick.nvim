@@ -393,7 +393,6 @@ local function replace_system_prompt(ask_buf, opts)
   end
 
   local args = {
-    os.date("%B %d, %Y"),
     model_settings.reasoning and "" or prompts.reasoning,
     guidelines,
     vim.trim(current_project_config.technologies or ""),
@@ -401,7 +400,7 @@ local function replace_system_prompt(ask_buf, opts)
   }
 
   if is_reasoning then
-    table.remove(args, 2) -- Remove reasoning instructions
+    table.remove(args, 1) -- Remove reasoning instructions
   end
 
   local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
@@ -474,7 +473,6 @@ local ask_command = function(cmd_opts)
 
       if cmd_opts.coding then
         local args = {
-          os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           guidelines,
           vim.trim(current_project_config.technologies or ""),
@@ -482,7 +480,7 @@ local ask_command = function(cmd_opts)
           ""
         }
         if is_reasoning then
-          table.remove(args, 2) -- Remove reasoning instructionsk
+          table.remove(args, 1) -- Remove reasoning instructionsk
         end
 
         local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
@@ -491,7 +489,6 @@ local ask_command = function(cmd_opts)
         prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
       elseif not is_reasoning then
         local args = {
-          os.date("%B %d, %Y"),
           model_settings.reasoning and "" or prompts.reasoning,
           vim.trim(guidelines),
           cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or
