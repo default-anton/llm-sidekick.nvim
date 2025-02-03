@@ -44,6 +44,51 @@ local spec_json = [[{
   }
 }]]
 
+local function find_min_indentation(lines)
+  local min_indent = math.huge
+  for _, line in ipairs(lines) do
+    -- Skip empty lines when calculating min indent
+    if line:match("^%s*$") then
+      goto continue
+    end
+    local indent = vim.fn.strdisplaywidth(line:match("^%s*"))
+    min_indent = math.min(min_indent, indent)
+    ::continue::
+  end
+  return min_indent
+end
+
+local function find_max_indentation(lines)
+  local max_indent = 0
+  for _, line in ipairs(lines) do
+    -- Skip empty lines when calculating max indent
+    if line:match("^%s*$") then
+      goto continue
+    end
+    local indent = vim.fn.strdisplaywidth(line:match("^%s*"))
+    max_indent = math.max(max_indent, indent)
+    ::continue::
+  end
+  return max_indent
+end
+
+local function dedent_lines(lines, min_indent)
+  local indent_pattern = "^" .. string.rep(" ", min_indent)
+  local dedented_lines = {}
+  -- Remove minimum indentation from all lines
+  for _, line in ipairs(lines) do
+    if line:match("^%s*$") then
+      -- Preserve empty lines
+      table.insert(dedented_lines, line)
+    else
+      local dedented = line:gsub(indent_pattern, "")
+      table.insert(dedented_lines, dedented)
+    end
+  end
+
+  return dedented_lines
+end
+
 return {
   spec_json = spec_json,
   spec = sjson.decode(spec_json),
@@ -128,10 +173,113 @@ return {
       tool_call.state.replace_written = #tool_call.parameters.replace
     end
   end,
-  stop = function(_, opts)
-    -- Nothing additional needed for stop since format is already complete
-  end,
-  run = function(tool)
-    -- tool.parameters
+  run = function(tool_call, opts)
+    local path = tool_call.parameters.path
+    local replace = tool_call.parameters.replace
+    local buf = vim.fn.bufnr(path)
+    if buf == -1 then
+      buf = vim.fn.bufadd(path)
+      if buf == 0 then
+        error(string.format("Failed to open file: %s", path))
+      end
+    end
+    vim.fn.bufload(buf)
+    local content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    local content = table.concat(content_lines, "\n")
+
+    -- Find the exact string match
+    local original_search = tool_call.parameters.find
+    local original_search_lines = vim.split(original_search, "\n")
+    local original_search_min_indent = find_min_indentation(original_search_lines)
+    local max_indent = find_max_indentation(content_lines)
+
+    local start_pos, end_pos = content:find(original_search, 1, true)
+    local adjusted_search = original_search
+    local adjusted_search_lines = original_search_lines
+    local adjusted_search_min_indent = original_search_min_indent
+
+    -- Try dedenting up to the max indent
+    if not start_pos then
+      local max_dedent = math.min(original_search_min_indent, max_indent)
+      for dedent = 1, max_dedent do
+        adjusted_search_lines = dedent_lines(original_search_lines, dedent)
+        adjusted_search = table.concat(adjusted_search_lines, "\n")
+        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
+        start_pos, end_pos = content:find(adjusted_search, 1, true)
+        if start_pos then
+          break
+        end
+      end
+    end
+
+    -- Try indenting up to the max indent
+    if not start_pos then
+      for indent = 1, max_indent do
+        adjusted_search_lines = {}
+        for _, line in ipairs(original_search_lines) do
+          if line:match("^%s*$") then
+            table.insert(adjusted_search_lines, line)
+          else
+            table.insert(adjusted_search_lines, string.rep(" ", indent) .. line)
+          end
+        end
+        adjusted_search = table.concat(adjusted_search_lines, "\n")
+        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
+        start_pos, end_pos = content:find(adjusted_search, 1, true)
+        if start_pos then
+          break
+        end
+      end
+    end
+
+    if not start_pos then
+      error(string.format("Could not find the exact match in file: %s", path))
+    end
+
+    -- match the indentation of the search pattern
+    local replace_lines = vim.split(replace, "\n")
+    local replace_min_indent = find_min_indentation(replace_lines)
+    local indent_diff = adjusted_search_min_indent - replace_min_indent
+    if indent_diff ~= 0 then
+      if indent_diff > 0 then
+        -- Add indentation to match original
+        for i, line in ipairs(replace_lines) do
+          replace_lines[i] = string.rep(" ", indent_diff) .. line
+        end
+      else
+        -- Remove excess indentation
+        local remove_spaces = -indent_diff
+        local indent_pattern = "^" .. string.rep(" ", remove_spaces)
+        for i, line in ipairs(replace_lines) do
+          replace_lines[i] = line:gsub(indent_pattern, "", 1)
+        end
+      end
+      replace = table.concat(replace_lines, "\n")
+    end
+
+    -- Perform the substitution
+    local modified_content = content:sub(1, start_pos - 1) .. replace .. content:sub(end_pos + 1)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(modified_content, "\n"))
+    local ok, err = pcall(function()
+      vim.api.nvim_buf_call(buf, function()
+        vim.cmd('write')
+      end)
+    end)
+
+    if not ok then
+      error(string.format("Failed to write to file: %s", err))
+    end
+
+    -- Refresh any open windows displaying this file
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      local win_buf = vim.api.nvim_win_get_buf(win)
+      if vim.api.nvim_buf_get_name(win_buf) == path then
+        vim.api.nvim_win_call(win, function()
+          vim.cmd('checktime')
+        end)
+      end
+    end
+
+    return true
   end,
 }
