@@ -515,6 +515,12 @@ local ask_command = function(cmd_opts)
         function() tool_utils.run_tool_at_cursor({ buffer = buf }) end,
         { buffer = buf, desc = "Accept and run the tool at the cursor" }
       )
+      vim.keymap.set(
+        'n',
+        '<leader>A',
+        function() tool_utils.run_all_tools({ buffer = buf }) end,
+        { buffer = buf, desc = "Accept and run all tools in the chat" }
+      )
     else
       local function complete_mode(ArgLead, CmdLine, CursorPos)
         local args = vim.split(CmdLine, "%s+")
