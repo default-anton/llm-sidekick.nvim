@@ -1,6 +1,7 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
 local sjson = require("llm-sidekick.sjson")
+local signs = require("llm-sidekick.signs")
 
 local description = vim.json.encode([[
 Replaces specific content in a file with exact matching. Use this to make precise modifications to existing files.
@@ -93,17 +94,17 @@ return {
   spec_json = spec_json,
   spec = sjson.decode(spec_json),
   start = function(tool_call, opts)
-    chat.paste_at_end("**Path:**\n```\n<path will be determined...>", opts.buffer)
+    chat.paste_at_end("**Path:** `<path will be determined...>", opts.buffer)
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```\n**Find:**\n```txt\n<find will be determined...>", opts.buffer)
+    chat.paste_at_end("\n```txt\n<find will be determined...>", opts.buffer)
     tool_call.state.find_start_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```\n**Replace:**\n```txt\n<replace will be determined...>", opts.buffer)
+    chat.paste_at_end("\n\n<replace will be determined...>", opts.buffer)
     tool_call.state.replace_start_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```\n", opts.buffer)
+    chat.paste_at_end("\n```", opts.buffer)
   end,
   delta = function(tool_call, opts)
     local path_written = tool_call.state.path_written or 0
@@ -112,24 +113,13 @@ return {
 
     if tool_call.parameters.path and path_written < #tool_call.parameters.path then
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.path_line - 1, tool_call.state.path_line, false,
-        { tool_call.parameters.path })
+        { string.format("**Path:** `%s`", tool_call.parameters.path) })
       tool_call.state.path_written = #tool_call.parameters.path
 
       -- Update the language for syntax highlighting
       local language = markdown.filename_to_language(tool_call.parameters.path)
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.find_start_line - 2, tool_call.state.find_start_line - 1,
         false, { "```" .. language })
-
-      local replace_start_line = tool_call.state.replace_start_line
-
-      if find_written > 0 then
-        -- Add the number of lines from the find section
-        local find_lines = select(2, tool_call.parameters.find:gsub("\n", "")) + 1
-        replace_start_line = replace_start_line + find_lines
-      end
-
-      vim.api.nvim_buf_set_lines(opts.buffer, replace_start_line - 2, replace_start_line - 1, false,
-        { "```" .. language })
     end
 
     if tool_call.parameters.find and find_written < #tool_call.parameters.find then
@@ -147,6 +137,13 @@ return {
 
       chat.paste_at_line(tool_call.parameters.find:sub(find_written + 1), find_start_line, opts.buffer)
       tool_call.state.find_written = #tool_call.parameters.find
+
+      -- Place signs for the find section
+      find_start_line = tool_call.state.find_start_line
+      local find_end_line = find_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
+      local sign_group = string.format("%s-find", tool_call.id)
+      signs.clear(opts.buffer, sign_group)
+      signs.place(opts.buffer, sign_group, find_start_line, find_end_line, "llm_sidekick_green")
     end
 
     if tool_call.parameters.replace and replace_written < #tool_call.parameters.replace then
@@ -171,6 +168,16 @@ return {
 
       chat.paste_at_line(tool_call.parameters.replace:sub(replace_written + 1), replace_start_line, opts.buffer)
       tool_call.state.replace_written = #tool_call.parameters.replace
+
+      -- Place signs for both find and replace sections
+      replace_start_line = tool_call.state.replace_start_line
+      if find_written > 0 then
+        replace_start_line = replace_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
+      end
+      local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
+      local sign_group = string.format("%s-replace", tool_call.id)
+      signs.clear(opts.buffer, sign_group)
+      signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_red")
     end
   end,
   run = function(tool_call, opts)
