@@ -10,7 +10,6 @@ Creates or overwrites a file with specified content. IMPORTANT: Always provide t
 When to Use:
 - Creating new files or completely replacing existing ones
 - Generating boilerplate or scaffolding new projects
-- When multiple file changes would make replace_in_file impractical
 - Restructuring entire file content
 
 When to Avoid:
@@ -19,9 +18,7 @@ When to Avoid:
 Technical Details:
 - Paths are relative to current working directory
 - Creates parent directories automatically
-- Overwrites files completely (no append mode)
-- Content is written exactly as provided without formatting
-- Requires complete file content - partial updates not supported]])
+- Overwrites files completely (no append mode)]])
 
 local spec_json = [[{
   "name": "create_or_replace_file",

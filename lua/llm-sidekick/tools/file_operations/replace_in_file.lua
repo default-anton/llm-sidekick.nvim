@@ -10,12 +10,14 @@ Critical Requirements:
 - Content to find must match EXACTLY (character-by-character, including whitespace and comments)
 - Only the first match will be replaced
 - Each search must be unique enough to match only the intended section
+- For large changes, make multiple replace_in_file calls instead of one big replacement
 
 Best Practices:
 - Break large changes into multiple smaller, focused replacements
 - Include just enough context to ensure unique matches
 - Keep replacements small and targeted
 - Use complete lines only, never partial lines
+- Make multiple tool calls for complex changes rather than one large replacement
 
 Technical Constraints:
 - No regex support - literal text matching only
