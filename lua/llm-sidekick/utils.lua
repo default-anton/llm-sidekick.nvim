@@ -1,6 +1,6 @@
 local M = {}
 
-local function complete_command(ArgLead, CmdLine, CursorPos)
+M.complete_command = function(ArgLead, CmdLine, CursorPos)
   local args = vim.split(CmdLine, "%s+")
   local file_completions = vim.fn.getcompletion(ArgLead, 'file')
   local options = {}
@@ -14,6 +14,17 @@ local function complete_command(ArgLead, CmdLine, CursorPos)
   end, options)
 end
 
-M.complete_command = complete_command
+M.get_os_name = function()
+  local os_name = vim.loop.os_uname().sysname
+  if os_name == "Darwin" then
+    return "macOS"
+  elseif os_name == "Linux" then
+    return "Linux"
+  elseif os_name == "Windows_NT" then
+    return "Windows"
+  else
+    return os_name
+  end
+end
 
 return M

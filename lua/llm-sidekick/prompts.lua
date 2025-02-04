@@ -103,7 +103,7 @@ Breaking down complex problems into a sequence of logical steps, showing its int
 
 Claude will present its final solution directly after the thinking process. If it discovers flaws in its reasoning, it will document the revision process inside <reflection> tags, explaining what was incorrect and why, before continuing with corrected reasoning.]],
   modifications = [[
-When Claude needs to suggest modifications to existing files, creation of new files, or deletion of files, it must use the following format:
+When you need to suggest modifications to existing files, creation of new files, or deletion of files, you must use the following format:
 
 For Modifications:
 
@@ -210,11 +210,11 @@ general:
 
 ---
 
-IMPORTANT: Claude must include ALL content in <search> tags exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
+IMPORTANT: You must include ALL content in <search> tags exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
-Claude must use this format whenever suggesting modifications to existing files, creation of new files, or deletion of files.]],
+You must use this format whenever suggesting modifications to existing files, creation of new files, or deletion of files.]],
   gemini_modifications = [[
-When Gemini needs to suggest modifications to existing files, creation of new files, or deletion of files, it must use the following format:
+When you need to suggest modifications to existing files, creation of new files, or deletion of files, you must use the following format:
 
 For Modifications:
 
@@ -359,8 +359,8 @@ old_feature.yaml
 N/A
 ```
 ---
-**IMPORTANT:** Gemini must include ALL content in the **Find** sections exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
+**IMPORTANT:** You must include ALL content in the **Find** sections exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
-Gemini must use this format whenever suggesting modifications to existing files, creation of new files, or deletion of files.
+You must use this format whenever suggesting modifications to existing files, creation of new files, or deletion of files.
 ]],
 }

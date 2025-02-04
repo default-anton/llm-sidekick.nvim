@@ -31,8 +31,8 @@ local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
 local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
-local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
+local prompts_v2 = require "llm-sidekick.prompts_v2"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
@@ -388,29 +388,40 @@ local function replace_system_prompt(ask_buf, opts)
   -- Generate new SYSTEM prompt with coding=true and include_modifications=true
   local model_settings = settings.get_model_settings(model)
   local model_name = model_settings.name
-  local is_reasoning = model_settings.reasoning
+
+  local system_prompt = prompts_v2.system_prompt({
+    os_name = utils.get_os_name(),
+    shell = vim.o.shell or "bash",
+    cwd = vim.fn.getcwd(),
+  })
 
   local guidelines = vim.trim(current_project_config.guidelines or "")
-  if guidelines == "" then
-    guidelines = "No guidelines provided."
+  local technologies = vim.trim(current_project_config.technologies or "")
+
+  if guidelines ~= "" or technologies ~= "" then
+    system_prompt = system_prompt .. [[
+
+---
+
+User's Custom Instructions:
+The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
   end
 
-  local args = {
-    model_settings.reasoning and "" or prompts.reasoning,
-    guidelines,
-    vim.trim(current_project_config.technologies or ""),
-    not model_settings.tools and vim.trim(get_modifications_prompt_for(model_name)) or "" -- include_modifications=true
-  }
-
-  if is_reasoning then
-    table.remove(args, 1) -- Remove reasoning instructions
+  if guidelines ~= "" then
+    system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
   end
 
-  local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
-  system_prompt = string.format(vim.trim(system_prompt), unpack(args))
-  system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-  local adapted_system_prompt = adapt_system_prompt_for(model_name, system_prompt)
-  local new_system_lines = vim.split("SYSTEM: " .. adapted_system_prompt, "\n")
+  if technologies ~= "" then
+    system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
+  end
+
+  if not model_settings.tools then
+    system_prompt = system_prompt .. "\n\n" .. vim.trim(get_modifications_prompt_for(model_name))
+  end
+
+  system_prompt = vim.trim(system_prompt)
+
+  local new_system_lines = vim.split("SYSTEM: " .. system_prompt, "\n")
 
   -- Replace or insert SYSTEM section
   if system_start and system_end then
@@ -469,38 +480,39 @@ local ask_command = function(cmd_opts)
         prompt = prompt .. key:upper() .. ": " .. value .. "\n"
       end
 
+      local system_prompt = prompts_v2.system_prompt({
+        os_name = utils.get_os_name(),
+        shell = vim.o.shell or "bash",
+        cwd = vim.fn.getcwd(),
+      })
+
       local guidelines = vim.trim(current_project_config.guidelines or "")
-      if guidelines == "" then
-        guidelines = "No guidelines provided."
+      local technologies = vim.trim(current_project_config.technologies or "")
+
+      if guidelines ~= "" or technologies ~= "" then
+        system_prompt = system_prompt .. [[
+
+---
+
+User's Custom Instructions:
+The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
       end
 
-      if cmd_opts.coding then
-        local args = {
-          model_settings.reasoning and "" or prompts.reasoning,
-          guidelines,
-          vim.trim(current_project_config.technologies or ""),
-          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or
-          ""
-        }
-        if is_reasoning then
-          table.remove(args, 1) -- Remove reasoning instructionsk
-        end
-
-        local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
-        system_prompt = string.format(vim.trim(system_prompt), unpack(args))
-        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
-      elseif not is_reasoning then
-        local args = {
-          model_settings.reasoning and "" or prompts.reasoning,
-          vim.trim(guidelines),
-          cmd_opts.include_modifications and not model_settings.tools and vim.trim(get_modifications_prompt_for(model)) or
-          "",
-        }
-        local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
-        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
+      if guidelines ~= "" then
+        system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
       end
+
+      if technologies ~= "" then
+        system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
+      end
+
+      if not model_settings.tools then
+        system_prompt = system_prompt .. "\n\n" .. vim.trim(get_modifications_prompt_for(model_settings.name))
+      end
+
+      system_prompt = vim.trim(system_prompt)
+
+      prompt = prompt .. "SYSTEM: " .. system_prompt
 
       prompt = prompt .. "\nUSER: "
       if opts.range == 2 then
