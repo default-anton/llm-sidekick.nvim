@@ -6,6 +6,12 @@ vim.g.loaded_llm_sidekick = 1
 vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 
+local litellm = require "llm-sidekick.litellm"
+-- Start the web server when the plugin loads
+vim.schedule(function()
+  litellm.start_web_server(1993)
+end)
+
 -- Define signs for LLM Sidekick
 vim.fn.sign_define("llm_sidekick_red", {
   text = "▎",
@@ -21,13 +27,10 @@ vim.fn.sign_define("llm_sidekick_green", {
   numhl = "DiffAdd"
 })
 
-local M = {}
-
 local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
 local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
-local litellm = require "llm-sidekick.litellm"
 local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
@@ -891,4 +894,51 @@ end, {
   complete = "file"
 })
 
-return M
+-- LLM Sidekick server management commands
+vim.api.nvim_create_user_command("LlmSidekick", function(opts)
+  local action = opts.args
+  local port = 1993
+
+  if action == "start" then
+    if litellm.is_server_ready(port) then
+      vim.notify("LLM Sidekick server is already running", vim.log.levels.INFO)
+      return
+    end
+    litellm.start_web_server(port)
+    if vim.wait(10000, function() return litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server started successfully", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to start LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  elseif action == "stop" then
+    litellm.stop_web_server(port)
+    if vim.wait(10000, function() return not litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server stopped", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to stop LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  elseif action == "restart" then
+    litellm.stop_web_server(port)
+    if not vim.wait(10000, function() return not litellm.is_server_ready(port) end) then
+      vim.notify("Failed to stop LLM Sidekick server", vim.log.levels.ERROR)
+      return
+    end
+    litellm.start_web_server(port)
+    if vim.wait(10000, function() return litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server restarted successfully", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to restart LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  else
+    vim.notify("Invalid action. Use 'start', 'stop', or 'restart'", vim.log.levels.ERROR)
+  end
+end, {
+  nargs = 1,
+  complete = function(ArgLead, CmdLine, CursorPos)
+    local actions = { "start", "stop", "restart" }
+    return vim.tbl_filter(function(action)
+      return vim.startswith(action, ArgLead)
+    end, actions)
+  end,
+  desc = "Manage LLM Sidekick server (start|stop|restart)"
+})
