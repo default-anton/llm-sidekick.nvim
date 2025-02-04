@@ -115,12 +115,13 @@ return {
   end,
   delta = function(tool_call, opts)
     tool_call.parameters.path = vim.trim(tool_call.parameters.path or "")
+    tool_call.parameters.find = tool_call.parameters.find or ""
+    tool_call.parameters.replace = tool_call.parameters.replace or ""
+    tool_call.state.path_written = tool_call.state.path_written or 0
+    tool_call.state.find_written = tool_call.state.find_written or 0
+    tool_call.state.replace_written = tool_call.state.replace_written or 0
 
-    local path_written = tool_call.state.path_written or 0
-    local find_written = tool_call.state.find_written or 0
-    local replace_written = tool_call.state.replace_written or 0
-
-    if tool_call.parameters.path and path_written < #tool_call.parameters.path then
+    if tool_call.parameters.path and tool_call.state.path_written < #tool_call.parameters.path then
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.path_line - 1, tool_call.state.path_line, false,
         { string.format("**Path:** `%s`", tool_call.parameters.path) })
       tool_call.state.path_written = #tool_call.parameters.path
@@ -131,9 +132,9 @@ return {
         false, { "```" .. language })
     end
 
-    if tool_call.parameters.find and find_written < #tool_call.parameters.find then
+    if tool_call.parameters.find and tool_call.state.find_written < #tool_call.parameters.find then
       local find_start_line = tool_call.state.find_start_line
-      local written = tool_call.parameters.find:sub(1, find_written)
+      local written = tool_call.parameters.find:sub(1, tool_call.state.find_written)
 
       if #written > 0 then
         -- Add the number of lines already written
@@ -144,7 +145,7 @@ return {
         vim.api.nvim_buf_set_lines(opts.buffer, find_start_line - 1, find_start_line, false, { "" })
       end
 
-      chat.paste_at_line(tool_call.parameters.find:sub(find_written + 1), find_start_line, opts.buffer)
+      chat.paste_at_line(tool_call.parameters.find:sub(tool_call.state.find_written + 1), find_start_line, opts.buffer)
       tool_call.state.find_written = #tool_call.parameters.find
 
       -- Place signs for the find section
@@ -155,16 +156,16 @@ return {
       signs.place(opts.buffer, sign_group, find_start_line, find_end_line, "llm_sidekick_red")
     end
 
-    if tool_call.parameters.replace and replace_written < #tool_call.parameters.replace then
+    if tool_call.parameters.replace and tool_call.state.replace_written < #tool_call.parameters.replace then
       local replace_start_line = tool_call.state.replace_start_line
 
-      if find_written > 0 then
+      if tool_call.state.find_written > 0 then
         -- Add the number of lines from the find section
         local find_lines = select(2, tool_call.parameters.find:gsub("\n", ""))
         replace_start_line = replace_start_line + find_lines
       end
 
-      local written = tool_call.parameters.replace:sub(1, replace_written)
+      local written = tool_call.parameters.replace:sub(1, tool_call.state.replace_written)
 
       if #written > 0 then
         -- Add the number of lines already written
@@ -175,12 +176,13 @@ return {
         vim.api.nvim_buf_set_lines(opts.buffer, replace_start_line - 1, replace_start_line, false, { "" })
       end
 
-      chat.paste_at_line(tool_call.parameters.replace:sub(replace_written + 1), replace_start_line, opts.buffer)
+      chat.paste_at_line(tool_call.parameters.replace:sub(tool_call.state.replace_written + 1), replace_start_line,
+        opts.buffer)
       tool_call.state.replace_written = #tool_call.parameters.replace
 
       -- Place signs for both find and replace sections
       replace_start_line = tool_call.state.replace_start_line
-      if find_written > 0 then
+      if tool_call.state.find_written > 0 then
         replace_start_line = replace_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
       end
       local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
