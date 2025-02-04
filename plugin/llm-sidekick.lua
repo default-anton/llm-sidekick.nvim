@@ -637,10 +637,16 @@ local function get_content(opts, callback)
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(vim.trim(opts.args))
+    -- Convert GitHub blob URLs to raw URLs
+    file_path = file_path:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
+      "https://raw.githubusercontent.com/%1/%2/%3/%4")
     if file_path:match("^https?://") then
-      markdown.get_markdown(file_path, function(markdown_content)
-        callback({ type = "text", content = markdown_content }, file_path)
-      end)
+      local content = require('llm-sidekick.http').get(file_path)
+      if content then
+        callback({ type = "text", content = content }, file_path)
+      else
+        error(string.format("Failed to fetch content from '%s'", file_path))
+      end
       return
     end
     if vim.fn.isdirectory(file_path) == 1 then
