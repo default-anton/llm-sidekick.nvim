@@ -27,7 +27,7 @@ local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
 local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
-local bedrock = require "llm-sidekick.bedrock"
+local litellm = require "llm-sidekick.litellm"
 local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
@@ -579,11 +579,9 @@ local ask_command = function(cmd_opts)
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
     end
 
-    if vim.startswith(model, "anthropic.") then
-      vim.schedule(function()
-        bedrock.start_web_server()
-      end)
-    end
+    vim.schedule(function()
+      litellm.start_web_server(1993)
+    end)
   end
 end
 

@@ -75,8 +75,6 @@ function M.parse_prompt(prompt)
     ::continue::
   end
 
-  local model_name = settings.get_model_settings(options.settings.model).name
-
   for _, message in ipairs(options.messages) do
     message.content = vim.trim(message.content)
   end
@@ -108,33 +106,10 @@ function M.parse_prompt(prompt)
       text = text:gsub("<llm_sidekick_image>" .. vim.pesc(image_path) .. "</llm_sidekick_image>", "")
       local mime_type = vim.fn.systemlist({ "file", "--mime-type", "--brief", image_path })[1]
 
-      local image
-      if vim.startswith(model_name, "claude") or vim.startswith(model_name, "anthropic.claude") then
-        image = {
-          type = "image",
-          source = {
-            data = base64_image,
-            type = "base64",
-            media_type = mime_type,
-          },
-        }
-      elseif vim.startswith(model_name, "gpt") or model_name == "o1" then
-        image = {
-          type = "image_url",
-          image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
-        }
-      elseif vim.startswith(model_name, "gemini") then
-        image = {
-          type = "image",
-          inlineData = {
-            data = base64_image,
-            mimeType = mime_type,
-          },
-        }
-      else
-        vim.api.nvim_err_writeln("Model does not support images: " .. options.settings.model)
-        return options
-      end
+      local image = {
+        type = "image_url",
+        image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
+      }
 
       options.messages[#options.messages] = {
         role = "user",
@@ -169,6 +144,7 @@ function M.ask(prompt_buffer)
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt)
+
   local tools = require("llm-sidekick.tools")
   prompt.tools = tools.file_operations
 
@@ -177,6 +153,11 @@ function M.ask(prompt_buffer)
 
   if model_settings.reasoning_effort then
     prompt.settings.reasoning_effort = model_settings.reasoning_effort
+  end
+
+  if model_settings.use_max_completion_tokens then
+    prompt.settings.max_completion_tokens = prompt.settings.max_tokens
+    prompt.settings.max_tokens = nil
   end
 
   if model_settings.no_system_prompt then
@@ -193,41 +174,10 @@ function M.ask(prompt_buffer)
 
   local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
 
-  local client
-  if vim.startswith(prompt.settings.model, "claude-") then
-    client = require "llm-sidekick.anthropic".new()
-  elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "o3") or vim.startswith(prompt.settings.model, "gpt-") then
-    client = require "llm-sidekick.openai".new({
-      api_key = require("llm-sidekick.settings").get_openai_api_key(),
-      include_modifications = include_modifications,
-    })
-  elseif vim.startswith(prompt.settings.model, "ollama.") then
-    prompt.settings.model = string.sub(prompt.settings.model, 8)
-    client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
-  elseif vim.startswith(prompt.settings.model, "deepseek") then
-    local api_key = require("llm-sidekick.settings").get_deepseek_api_key()
-    client = require "llm-sidekick.openai".new({
-      url = "https://api.deepseek.com/beta/chat/completions",
-      api_key =
-          api_key
-    })
-  elseif vim.startswith(prompt.settings.model, "groq.") then
-    prompt.settings.model = string.sub(prompt.settings.model, 6)
-    local api_key = require("llm-sidekick.settings").get_groq_api_key()
-    client = require "llm-sidekick.openai".new({
-      url = "https://api.groq.com/openai/v1/chat/completions",
-      api_key =
-          api_key
-    })
-  elseif vim.startswith(prompt.settings.model, "anthropic.") then
-    client = require "llm-sidekick.bedrock_tool_use".new({
-      include_modifications = include_modifications,
-    })
-  elseif vim.startswith(prompt.settings.model, "gemini") then
-    client = require "llm-sidekick.gemini".new()
-  else
-    error("Model not supported: " .. prompt.settings.model)
-  end
+  local client = require "llm-sidekick.openai".new({
+    url = "http://localhost:1993/v1/chat/completions",
+    include_modifications = include_modifications,
+  })
 
   local in_reasoning_tag = false
 

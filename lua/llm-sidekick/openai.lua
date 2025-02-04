@@ -21,6 +21,7 @@ function openai:chat(opts, callback)
     stream = settings.stream,
     messages = messages,
     max_tokens = settings.max_tokens,
+    max_completion_tokens = settings.max_completion_tokens,
     temperature = settings.temperature,
   }
 
@@ -35,11 +36,6 @@ function openai:chat(opts, callback)
 
   if settings.reasoning_effort then
     data.reasoning_effort = settings.reasoning_effort
-  end
-
-  if vim.startswith(data.model, "o1") or vim.startswith(data.model, "o3") then
-    data.max_tokens = nil
-    data.max_completion_tokens = settings.max_tokens
   end
 
   local body = vim.json.encode(data)
@@ -114,6 +110,7 @@ function openai:chat(opts, callback)
               name = function_data.name,
               parameters = "",
               state = {},
+              provider_tool_call = tool_calls[1],
             }
             callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
           end
