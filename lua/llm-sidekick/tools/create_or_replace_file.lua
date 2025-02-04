@@ -5,25 +5,26 @@ local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
 local description = vim.json.encode([[
-Creates or overwrites a file with specified content at the given path. Use this for generating new files or completely replacing existing ones with new content.
+Creates or overwrites a file with specified content. IMPORTANT: Always provide the complete intended content - partial updates are not supported.
 
 When to Use:
-- Initial file creation, such as when scaffolding a new project.
-- Overwriting large boilerplate files where you want to replace the entire content at once.
-- When the complexity or number of changes would make replace_in_file unwieldy or error-prone.
-- When you need to completely restructure a file's content or change its fundamental organization.
+- Creating new files or completely replacing existing ones
+- Generating boilerplate or scaffolding new projects
+- When multiple file changes would make replace_in_file impractical
+- Restructuring entire file content
 
 When to Avoid:
-- If you only need to make small changes to an existing file, consider using replace_in_file instead to avoid unnecessarily rewriting the entire file.
+- For small, targeted changes use replace_in_file instead
 
 Technical Details:
-- Creates parent directories automatically if they don't exist
-- Overwrites existing files completely (no append mode)
-- Content is written exactly as provided - no automatic formatting
-- Won't work on binary files]])
+- Paths are relative to current working directory
+- Creates parent directories automatically
+- Overwrites files completely (no append mode)
+- Content is written exactly as provided without formatting
+- Requires complete file content - partial updates not supported]])
 
 local spec_json = [[{
-  "name": "create_file",
+  "name": "create_or_replace_file",
   "description": ]] .. description .. [[,
   "input_schema": {
     "type": "object",
@@ -58,7 +59,7 @@ return {
   end,
   -- Handle incremental updates for streaming file path and content
   delta = function(tool_call, opts)
-    tool_call.parameters.path = vim.trim(tool_call.parameters.path)
+    tool_call.parameters.path = vim.trim(tool_call.parameters.path or "")
 
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
@@ -81,7 +82,7 @@ return {
 
       -- Place signs for the find section
       local content_end_line = tool_call.state.content_start_line + select(2, tool_call.parameters.content:gsub("\n", ""))
-      local sign_group = string.format("%s-create_file-content", tool_call.id)
+      local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.clear(opts.buffer, sign_group)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     end
@@ -95,7 +96,7 @@ return {
   end,
   -- Execute the actual file creation
   run = function(tool_call, opts)
-    local path = vim.trim(tool_call.parameters.path)
+    local path = vim.trim(tool_call.parameters.path or "")
     local content = tool_call.parameters.content
 
     local dir = vim.fn.fnamemodify(path, ":h")

@@ -111,7 +111,7 @@ return {
     chat.paste_at_end("\n```", opts.buffer)
   end,
   delta = function(tool_call, opts)
-    tool_call.parameters.path = vim.trim(tool_call.parameters.path)
+    tool_call.parameters.path = vim.trim(tool_call.parameters.path or "")
 
     local path_written = tool_call.state.path_written or 0
     local find_written = tool_call.state.find_written or 0
@@ -187,7 +187,7 @@ return {
     end
   end,
   run = function(tool_call, opts)
-    local path = vim.trim(tool_call.parameters.path)
+    local path = vim.trim(tool_call.parameters.path or "")
     local replace = tool_call.parameters.replace
     local buf = vim.fn.bufnr(path)
     if buf == -1 then
