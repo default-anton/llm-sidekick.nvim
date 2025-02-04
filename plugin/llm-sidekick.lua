@@ -132,10 +132,6 @@ local function parse_ask_args(args, auto_apply)
     end
   end
 
-  if auto_apply then
-    parsed.open_mode = "split"
-  end
-
   return parsed
 end
 
