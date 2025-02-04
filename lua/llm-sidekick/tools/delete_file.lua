@@ -32,6 +32,8 @@ return {
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
   end,
   delta = function(tool_call, opts)
+    tool_call.parameters.path = vim.trim(tool_call.parameters.path)
+
     local path_written = tool_call.state.path_written or 0
 
     if tool_call.parameters.path and path_written < #tool_call.parameters.path then
@@ -41,7 +43,7 @@ return {
     end
   end,
   run = function(tool_call, opts)
-    local path = tool_call.parameters.path
+    local path = vim.trim(tool_call.parameters.path)
 
     -- Check if file exists first
     local ftype = vim.fn.getftype(path)

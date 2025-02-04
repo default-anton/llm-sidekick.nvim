@@ -8,7 +8,7 @@ local description = vim.json.encode([[
 Creates or overwrites a file with specified content at the given path. Use this for generating new files or completely replacing existing ones with new content.
 
 When to Use:
-- Initial file creation, such as when scaffolding a new project.  
+- Initial file creation, such as when scaffolding a new project.
 - Overwriting large boilerplate files where you want to replace the entire content at once.
 - When the complexity or number of changes would make replace_in_file unwieldy or error-prone.
 - When you need to completely restructure a file's content or change its fundamental organization.
@@ -58,6 +58,8 @@ return {
   end,
   -- Handle incremental updates for streaming file path and content
   delta = function(tool_call, opts)
+    tool_call.parameters.path = vim.trim(tool_call.parameters.path)
+
     local path_written = tool_call.state.path_written or 0
     local content_written = tool_call.state.content_written or 0
 
@@ -93,7 +95,7 @@ return {
   end,
   -- Execute the actual file creation
   run = function(tool_call, opts)
-    local path = tool_call.parameters.path
+    local path = vim.trim(tool_call.parameters.path)
     local content = tool_call.parameters.content
 
     local dir = vim.fn.fnamemodify(path, ":h")
