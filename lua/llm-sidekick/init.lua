@@ -303,20 +303,9 @@ function M.ask(prompt_buffer)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      if vim.b[prompt_buffer].llm_sidekick_auto_apply then
-        require("llm-sidekick.file_editor").apply_modifications(prompt_buffer, true)
-        pcall(function()
-          vim.api.nvim_win_close(0, true)
-
-          if vim.api.nvim_buf_is_valid(prompt_buffer) then
-            vim.api.nvim_buf_delete(prompt_buffer, { force = true })
-          end
-        end)
-      else
-        pcall(function()
-          chat.paste_at_end("\n\nUSER: ", prompt_buffer)
-        end)
-      end
+      pcall(function()
+        chat.paste_at_end("\n\nUSER: ", prompt_buffer)
+      end)
 
       local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")

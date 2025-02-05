@@ -170,18 +170,6 @@ COMMANDS                                                 *llm-sidekick-commands*
                     data.json` to include two specific files, or `:Code %:h` to
                     include all files in the current directory recursively.
 
-                                                        *:Yolo*
-:Yolo [args] [paths] Similar to :Code but always opens in split mode,
-                    automatically applies all changes, and closes the buffer.
-                    Accepts the same arguments as :Code:
-                    - Model alias: any defined alias from configuration
-                      (e.g., claude, fast, o1, mini, flash)
-                    File content can be included by passing paths to files or
-                    directories. Multiple file paths are supported. Example:
-                    `:Yolo %` to include the current file, `:Yolo script.js
-                    data.json` to include two specific files, or `:Yolo %:h` to
-                    include all files in the current directory recursively.
-
                                                         *:Add*
 :Add [file|url]     Adds content to the last Ask buffer. Can add content from:
                     - Current buffer (entire or selected range)

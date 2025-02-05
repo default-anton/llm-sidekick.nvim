@@ -12,7 +12,6 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 - `:Ask` - Technical discussions about code, debugging, and architecture
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
 - `:Stt` - Use speech-to-text input instead of typing
-- `:Yolo` - Like `:Code`, but automatically applies changes and closes the chat buffer
 - `:Chat` - Have open-ended discussions for brainstorming and creative tasks
 
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
@@ -162,10 +161,6 @@ Opens a new buffer for code-related tasks. Handles file operations like creating
     - `script.js data.json` (multiple files)
     - `%:h` (all files in the current directory recursively)
 
-#### `:Yolo [args] [paths]`
-Like `:Code`, but automatically applies changes and closes the chat buffer.
-- Arguments: Same as `:Code`, minus the opening mode. Opening mode is always `split`.
-
 #### `:Ask [args] [paths]`
 Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.
 - Arguments: Same as `:Code`
@@ -221,10 +216,6 @@ vim.keymap.set('v', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add 
 
 -- Speech to text
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
-
--- Fast coding with Yolo mode
-vim.keymap.set('n', '<leader>ly', '<cmd>Yolo split %<CR>', { noremap = true, desc = "Fast coding with LLM on current buffer. Automatically applies changes and closes the chat buffer" })
-vim.keymap.set('v', '<leader>ly', '<cmd>Yolo split<CR>', { noremap = true, desc = "Fast coding with LLM on selection. Automatically applies changes and closes the chat buffer" })
 ```
 
 ## Telescope Integration

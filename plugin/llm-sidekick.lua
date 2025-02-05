@@ -105,7 +105,7 @@ local function open_buffer_in_mode(buf, mode)
   end
 end
 
-local function parse_ask_args(args, auto_apply)
+local function parse_ask_args(args)
   local parsed = {
     model = settings.get_model(),
     open_mode = "current",
@@ -430,7 +430,6 @@ The following additional instructions are provided by the user, and should be fo
 
   -- Update buffer settings
   vim.b[ask_buf].llm_sidekick_include_modifications = true
-  vim.b[ask_buf].llm_sidekick_auto_apply = false
   file_editor.create_apply_modifications_command(ask_buf)
 
   vim.api.nvim_buf_call(ask_buf, function()
@@ -443,7 +442,7 @@ local ask_command = function(cmd_opts)
     -- Always load project config
     load_project_config()
 
-    local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
+    local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
     local file_paths = parsed_args.file_paths
@@ -526,7 +525,6 @@ The following additional instructions are provided by the user, and should be fo
     vim.bo[buf].buftype = "nofile"
     vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
-    vim.b[buf].llm_sidekick_auto_apply = cmd_opts.auto_apply
     vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
@@ -564,7 +562,7 @@ The following additional instructions are provided by the user, and should be fo
     set_llm_sidekick_options()
 
     vim.keymap.set(
-      cmd_opts.auto_apply and { "n", "i" } or "n",
+      "n",
       "<CR>",
       function()
         vim.cmd('stopinsert!')
@@ -582,13 +580,8 @@ The following additional instructions are provided by the user, and should be fo
     -- Set cursor to the end of the buffer
     vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
 
-    if cmd_opts.auto_apply then
-      -- Enter insert mode at the end of the line
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('A', true, false, true), 'n', false)
-    else
-      -- Move cursor to the end of the line
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
-    end
+    -- Move cursor to the end of the line
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
 
     vim.schedule(function()
       litellm.start_web_server(1993)
@@ -611,12 +604,6 @@ vim.api.nvim_create_user_command(
 vim.api.nvim_create_user_command(
   "Code",
   ask_command({ coding = true, include_modifications = true }),
-  { range = true, nargs = "*", complete = utils.complete_command }
-)
-
-vim.api.nvim_create_user_command(
-  "Yolo",
-  ask_command({ coding = true, include_modifications = true, auto_apply = true }),
   { range = true, nargs = "*", complete = utils.complete_command }
 )
 
@@ -825,12 +812,6 @@ vim.api.nvim_create_user_command("Stt", function()
         -- Move cursor to the end of inserted text
         local inserted_text = table.concat(lines)
         vim.api.nvim_win_set_cursor(orig_winnr, { orig_pos[1], orig_pos[2] + #inserted_text })
-      end
-
-      if vim.b[orig_bufnr].llm_sidekick_auto_apply then
-        vim.api.nvim_buf_call(orig_bufnr, function()
-          vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), mode, false)
-        end)
       end
     end)
   end)
