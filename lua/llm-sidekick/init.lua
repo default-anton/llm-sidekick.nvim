@@ -22,7 +22,7 @@ function M.get_prompt(bufnr)
   return full_prompt
 end
 
-function M.parse_prompt(prompt)
+function M.parse_prompt(prompt, buffer)
   local options = {
     messages = {},
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
@@ -40,11 +40,7 @@ function M.parse_prompt(prompt)
       goto continue
     end
     if line:sub(1, 10) == "ASSISTANT:" then
-      local content = line:sub(11)
-      -- NOTE: delete all thinking tags
-      content = content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
-      content = content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
-      options.messages[#options.messages + 1] = { role = "assistant", content = content }
+      options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -75,8 +71,70 @@ function M.parse_prompt(prompt)
     ::continue::
   end
 
-  for _, message in ipairs(options.messages) do
+  for message_index, message in ipairs(options.messages) do
     message.content = vim.trim(message.content)
+
+    if message.role == "assistant" then
+      -- NOTE: delete all thinking tags
+      message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
+      message.content = message.content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
+      -- Extract tool calls from the content
+      local tool_calls = {}
+      local tool_call_results = {}
+      for id in message.content:gmatch('<llm_sidekick_tool id="(.-)" name=".-">') do
+        local tool_call = tool_utils.find_tool_call_by_id(id, { buffer = buffer })
+        if not tool_call then
+          goto next_tool_call
+        end
+
+        table.insert(tool_calls, {
+          id = tool_call.call.id,
+          type = "function",
+          ["function"] = {
+            name = tool_call.call.name,
+            arguments = vim.json.encode(tool_call.call.parameters),
+          }
+        })
+
+        if type(tool_call.result) == "boolean" then
+          if tool_call.result then
+            tool_call.result = "success"
+          else
+            tool_call.result = "failed"
+          end
+        end
+
+        table.insert(tool_call_results, {
+          role = "tool",
+          tool_call_id = tool_call.call.id,
+          content = tool_call.result,
+        })
+
+        ::next_tool_call::
+      end
+
+      message.content = message.content:gsub("<llm_sidekick_tool id=\".-\" name=\".-\">.-</llm_sidekick_tool>", "")
+      message.content = vim.trim(message.content)
+
+      if #tool_calls > 0 then
+        message.tool_calls = tool_calls
+      end
+
+      if #tool_call_results > 0 then
+        for j, tool_call_result in ipairs(tool_call_results) do
+          table.insert(options.messages, message_index + j, tool_call_result)
+        end
+      end
+    end
+  end
+
+  -- Remove last empty user message if the last message is a tool result
+  if #options.messages > 1 then
+    local last_msg = options.messages[#options.messages]
+    local prev_msg = options.messages[#options.messages - 1]
+    if last_msg.role == "user" and vim.trim(last_msg.content) == "" and prev_msg.role == "tool" then
+      table.remove(options.messages)
+    end
   end
 
   if #options.messages > 0 and options.messages[#options.messages].role == "user" then
@@ -143,7 +201,7 @@ function M.ask(prompt_buffer)
 
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
-  local prompt = M.parse_prompt(full_prompt)
+  local prompt = M.parse_prompt(full_prompt, prompt_buffer)
 
   prompt.tools = require("llm-sidekick.tools.file_operations")
 
@@ -166,6 +224,10 @@ function M.ask(prompt_buffer)
     if system_prompt then
       prompt.messages[1].content = system_prompt.content .. "\n\n" .. prompt.messages[1].content
     end
+  end
+
+  if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+    vim.print('prompt:' .. vim.inspect(prompt))
   end
 
   local current_line = "ASSISTANT: "

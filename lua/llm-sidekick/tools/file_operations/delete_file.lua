@@ -66,6 +66,6 @@ return {
       vim.api.nvim_buf_delete(deleted_file_buffer, { force = true })
     end
 
-    return true
+    return "file deleted"
   end
 }

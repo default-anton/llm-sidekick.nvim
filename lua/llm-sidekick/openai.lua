@@ -110,7 +110,6 @@ function openai:chat(opts, callback)
               name = function_data.name,
               parameters = "",
               state = {},
-              provider_tool_call = tool_calls[1],
             }
             callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
           end

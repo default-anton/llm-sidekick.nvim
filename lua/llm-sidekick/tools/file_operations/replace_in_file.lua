@@ -298,6 +298,6 @@ return {
       end
     end
 
-    return true
+    return 'file updated'
   end,
 }

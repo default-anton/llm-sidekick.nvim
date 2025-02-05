@@ -10,6 +10,17 @@ local function find_tool_for_tool_call(tool_call)
   return found_tools[1]
 end
 
+local function find_tool_call_by_id(tool_id, opts)
+  local found_tools = vim.tbl_filter(
+    function(tool) return tool.call.id == tool_id end,
+    vim.b[opts.buffer].llm_sidekick_tool_calls
+  )
+  if #found_tools == 0 then
+    return nil
+  end
+  return found_tools[1]
+end
+
 local function run_tool_at_cursor(opts)
   local prompt_buffer = vim.api.nvim_get_current_buf()
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
@@ -231,6 +242,7 @@ local function run_all_tools(opts)
 end
 
 return {
+  find_tool_call_by_id = find_tool_call_by_id,
   run_tool_at_cursor = run_tool_at_cursor,
   run_all_tools = run_all_tools,
   add_tool_call_to_buffer = add_tool_call_to_buffer,
