@@ -178,8 +178,8 @@ return {
       chat = 0.7,
     },
   },
-  ["gemini-exp-1206"] = {
-    name = "gemini/gemini-exp-1206",
+  ["gemini-2.0-pro"] = {
+    name = "gemini/gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
     top_k = 64,
     tools = true,
@@ -188,8 +188,8 @@ return {
       chat = 0.7,
     }
   },
-  ["gemini-2.0-flash-exp"] = {
-    name = "gemini/gemini-2.0-flash-exp",
+  ["gemini-2.0-flash"] = {
+    name = "gemini/gemini-2.0-flash",
     max_tokens = 8192,
     top_k = 40,
     tools = true,
@@ -207,5 +207,15 @@ return {
     },
     top_k = 64,
     reasoning = true,
+  },
+  ["gemini-exp-1206"] = {
+    name = "gemini/gemini-exp-1206",
+    max_tokens = 8192,
+    top_k = 64,
+    tools = true,
+    temperature = {
+      coding = 0.4,
+      chat = 0.7,
+    }
   },
 }
