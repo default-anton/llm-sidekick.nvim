@@ -179,121 +179,127 @@ function M.ask(prompt_buffer)
   })
 
   local in_reasoning_tag = false
+  local debug_error_handler = function(err)
+    return debug.traceback(err, 2)
+  end
 
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_buffer) then
       return
     end
 
-    local success = true
-    -- local success, err = pcall(function()
-    if state == message_types.ERROR then
-      cleanup()
-      vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
-      return
+    if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+      vim.notify(string.format("State: %s, Chars: %s", state, vim.inspect(chars)), vim.log.levels.INFO)
     end
 
-    if state == message_types.ERROR_MAX_TOKENS then
-      cleanup()
-      vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
-      return
-    end
-
-    if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
-      local tool_call = chars
-      local tool = tool_utils.find_tool_for_tool_call(tool_call)
-
-      if not tool then
-        vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
+    local success, err = xpcall(function()
+      if state == message_types.ERROR then
+        cleanup()
+        vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
         return
       end
 
-      if state == message_types.TOOL_START then
-        local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-        local needs_newlines = last_line and vim.trim(last_line) ~= ""
-        chat.paste_at_end(
-          string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
-            needs_newlines and "\n\n" or "",
-            tool_call.id,
-            tool_call.name
-          ),
-          prompt_buffer
-        )
-
-        local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
-
-        tool_call.parameters = sjson.decode(tool_call.parameters)
-        tool_utils.add_tool_call_to_buffer({
-          buffer = prompt_buffer,
-          tool_call = tool_call,
-          lnum = line_num,
-          result = nil,
-        })
-
-        if tool.start then
-          tool.start(tool_call, { buffer = prompt_buffer })
-        end
-
-        diagnostic.add_tool_call(
-          tool_call,
-          prompt_buffer,
-          line_num,
-          vim.diagnostic.severity.HINT,
-          string.format("→ %s (<leader>aa)", tool.spec.name)
-        )
-      elseif state == message_types.TOOL_DELTA then
-        if tool.delta then
-          tool_call.parameters = sjson.decode(tool_call.parameters)
-          tool.delta(tool_call, { buffer = prompt_buffer })
-        end
-      elseif state == message_types.TOOL_STOP then
-        tool_call.parameters = sjson.decode(tool_call.parameters)
-
-        if tool.stop then
-          tool.stop(tool_call, { buffer = prompt_buffer })
-        end
-
-        local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-        local needs_newline = last_line and vim.trim(last_line) ~= ""
-        if needs_newline then
-          chat.paste_at_end("\n", prompt_buffer)
-        end
-
-        local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,
-          vim.b[prompt_buffer].llm_sidekick_tool_calls)[1].lnum
-
-        tool_utils.update_tool_call_in_buffer({
-          buffer = prompt_buffer,
-          tool_call = tool_call,
-          result = nil,
-        })
-
-        diagnostic.add_tool_call(
-          tool_call,
-          prompt_buffer,
-          lnum,
-          vim.diagnostic.severity.HINT,
-          string.format("→ %s (<leader>aa)", tool.spec.name)
-        )
-
-        chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+      if state == message_types.ERROR_MAX_TOKENS then
+        cleanup()
+        vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
+        return
       end
 
-      return
-    end
+      if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
+        local tool_call = chars
+        local tool = tool_utils.find_tool_for_tool_call(tool_call)
 
-    if state == message_types.REASONING and not in_reasoning_tag then
-      chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
-      in_reasoning_tag = true
-    end
+        if not tool then
+          vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
+          return
+        end
 
-    if state == message_types.DATA and in_reasoning_tag then
-      chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
-      in_reasoning_tag = false
-    end
+        if state == message_types.TOOL_START then
+          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+          local needs_newlines = last_line and vim.trim(last_line) ~= ""
+          chat.paste_at_end(
+            string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
+              needs_newlines and "\n\n" or "",
+              tool_call.id,
+              tool_call.name
+            ),
+            prompt_buffer
+          )
 
-    chat.paste_at_end(chars, prompt_buffer)
-    -- end)
+          local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
+
+          tool_call.parameters = sjson.decode(tool_call.parameters)
+          tool_utils.add_tool_call_to_buffer({
+            buffer = prompt_buffer,
+            tool_call = tool_call,
+            lnum = line_num,
+            result = nil,
+          })
+
+          if tool.start then
+            tool.start(tool_call, { buffer = prompt_buffer })
+          end
+
+          diagnostic.add_tool_call(
+            tool_call,
+            prompt_buffer,
+            line_num,
+            vim.diagnostic.severity.HINT,
+            string.format("→ %s (<leader>aa)", tool.spec.name)
+          )
+        elseif state == message_types.TOOL_DELTA then
+          if tool.delta then
+            tool_call.parameters = sjson.decode(tool_call.parameters)
+            tool.delta(tool_call, { buffer = prompt_buffer })
+          end
+        elseif state == message_types.TOOL_STOP then
+          tool_call.parameters = sjson.decode(tool_call.parameters)
+
+          if tool.stop then
+            tool.stop(tool_call, { buffer = prompt_buffer })
+          end
+
+          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+          local needs_newline = last_line and vim.trim(last_line) ~= ""
+          if needs_newline then
+            chat.paste_at_end("\n", prompt_buffer)
+          end
+
+          local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,
+            vim.b[prompt_buffer].llm_sidekick_tool_calls)[1].lnum
+
+          tool_utils.update_tool_call_in_buffer({
+            buffer = prompt_buffer,
+            tool_call = tool_call,
+            result = nil,
+          })
+
+          diagnostic.add_tool_call(
+            tool_call,
+            prompt_buffer,
+            lnum,
+            vim.diagnostic.severity.HINT,
+            string.format("→ %s (<leader>aa)", tool.spec.name)
+          )
+
+          chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+        end
+
+        return
+      end
+
+      if state == message_types.REASONING and not in_reasoning_tag then
+        chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
+        in_reasoning_tag = true
+      end
+
+      if state == message_types.DATA and in_reasoning_tag then
+        chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
+        in_reasoning_tag = false
+      end
+
+      chat.paste_at_end(chars, prompt_buffer)
+    end, debug_error_handler)
 
     if not success then
       vim.notify(err, vim.log.levels.ERROR)

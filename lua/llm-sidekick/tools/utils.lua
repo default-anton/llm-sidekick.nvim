@@ -73,7 +73,7 @@ local function run_tool_at_cursor(opts)
       return
     end
 
-    local debug_mode = os.getenv("DEBUG") == "true"
+    local debug_mode = os.getenv("LLM_SIDEKICK_DEBUG") == "true"
     local ok, result
     if debug_mode then
       local debug_error_handler = function(err)
