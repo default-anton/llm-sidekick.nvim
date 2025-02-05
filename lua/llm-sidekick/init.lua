@@ -72,7 +72,7 @@ function M.parse_prompt(prompt, buffer)
   end
 
   for message_index, message in ipairs(options.messages) do
-    message.content = vim.trim(message.content)
+    message.content = vim.trim(message.content or "")
 
     if message.role == "assistant" then
       -- NOTE: delete all thinking tags
