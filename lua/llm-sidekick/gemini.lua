@@ -176,7 +176,7 @@ function gemini:chat(opts, callback)
         return
       end
 
-      local ok, decoded = pcall(vim.json.decode, line)
+      local ok, decoded = pcall(sjson.decode, line)
 
       if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
         vim.schedule(function()
@@ -190,15 +190,19 @@ function gemini:chat(opts, callback)
           if part.thought then
             callback(message_types.REASONING, part.text)
           elseif part.functionCall then
+            vim.g.llm_sidekick_gemini_tool_call_counter = (vim.g.llm_sidekick_gemini_tool_call_counter or 0) + 1
             local tool = {
-              id = part.functionCall.id,
+              id = tostring(vim.g.llm_sidekick_gemini_tool_call_counter),
               name = part.functionCall.name,
               parameters = part.functionCall.args,
               state = {},
             }
-            callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
-            callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool))
-            callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
+            callback(message_types.TOOL_START,
+              vim.tbl_extend("force", {}, tool, { parameters = vim.deepcopy(tool.parameters) }))
+            callback(message_types.TOOL_DELTA,
+              vim.tbl_extend("force", {}, tool, { parameters = vim.deepcopy(tool.parameters) }))
+            callback(message_types.TOOL_STOP,
+              vim.tbl_extend("force", {}, tool, { parameters = vim.deepcopy(tool.parameters) }))
           else
             callback(message_types.DATA, part.text)
           end

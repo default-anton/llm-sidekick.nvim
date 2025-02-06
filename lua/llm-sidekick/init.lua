@@ -290,7 +290,6 @@ function M.ask(prompt_buffer)
 
           local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
 
-          tool_call.parameters = sjson.decode(tool_call.parameters)
           tool_utils.add_tool_call_to_buffer({
             buffer = prompt_buffer,
             tool_call = tool_call,
@@ -311,12 +310,9 @@ function M.ask(prompt_buffer)
           )
         elseif state == message_types.TOOL_DELTA then
           if tool.delta then
-            tool_call.parameters = sjson.decode(tool_call.parameters)
             tool.delta(tool_call, { buffer = prompt_buffer })
           end
         elseif state == message_types.TOOL_STOP then
-          tool_call.parameters = sjson.decode(tool_call.parameters)
-
           if tool.stop then
             tool.stop(tool_call, { buffer = prompt_buffer })
           end

@@ -113,7 +113,10 @@ function openai:chat(opts, callback)
           local function_data = tool_calls[1]["function"]
           if tool_calls[1].id then
             if tool then
-              callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
+              callback(
+                message_types.TOOL_STOP,
+                vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+              )
             end
 
             tool = {
@@ -122,18 +125,27 @@ function openai:chat(opts, callback)
               parameters = "",
               state = {},
             }
-            callback(message_types.TOOL_START, vim.tbl_extend("force", {}, tool))
+            callback(
+              message_types.TOOL_START,
+              vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+            )
           end
 
           if tool and function_data.arguments and function_data.arguments ~= "" then
             tool.parameters = tool.parameters .. function_data.arguments
-            callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool))
+            callback(
+              message_types.TOOL_DELTA,
+              vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+            )
           end
         end
       end
 
       if decoded.choices and decoded.choices and decoded.choices[1].finish_reason == "tool_calls" then
-        callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool))
+        callback(
+          message_types.TOOL_STOP,
+          vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+        )
         tool = nil
       end
     end,
