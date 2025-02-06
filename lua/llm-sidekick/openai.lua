@@ -65,6 +65,10 @@ function openai:chat(opts, callback)
   end
   table.insert(args, self.url)
 
+  if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+    vim.notify("Request: " .. vim.inspect(data), vim.log.levels.INFO)
+  end
+
   local tool = nil
 
   require('plenary.job'):new({
@@ -86,6 +90,13 @@ function openai:chat(opts, callback)
       end
 
       local ok, decoded = pcall(sjson.decode, line)
+
+      if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+        vim.schedule(function()
+          vim.notify("Decoded: " .. vim.inspect(decoded))
+        end)
+      end
+
       if ok and decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].delta then
         local reasoning_content = decoded.choices[1].delta.reasoning_content
         if reasoning_content and reasoning_content ~= "" then

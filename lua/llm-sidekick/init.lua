@@ -226,10 +226,6 @@ function M.ask(prompt_buffer)
     end
   end
 
-  if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
-    vim.print('prompt:' .. vim.inspect(prompt))
-  end
-
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
@@ -256,10 +252,6 @@ function M.ask(prompt_buffer)
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_buffer) then
       return
-    end
-
-    if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
-      vim.notify(string.format("State: %s, Chars: %s", state, vim.inspect(chars)), vim.log.levels.INFO)
     end
 
     local success, err = xpcall(function()
