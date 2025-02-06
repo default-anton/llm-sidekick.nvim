@@ -1,56 +1,65 @@
-local markdown = require("llm-sidekick.markdown")
-local chat = require("llm-sidekick.chat")
-local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
-local description = vim.json.encode([[
-Makes precise, targeted changes to specific parts of a file. Default choice for most file modifications.
+local spec = [[
+When you need to suggest modifications to existing files you must use the following format:
 
-Critical Requirements:
-- Content to find must match EXACTLY (character-by-character, including whitespace and comments)
-- Only the first match will be replaced
-- Each search must be unique enough to match only the intended section
-- For large changes, make multiple replace_in_file calls instead of one big replacement
+**Path:** `<path to file>`
+**Find:**
+```[filetype]
+<text to find>
+```
+**Replace:**
+```[filetype]
+<replacement text>
+```
 
-Best Practices:
-- Break large changes into multiple smaller, focused replacements
-- Include just enough context to ensure unique matches
-- Keep replacements small and targeted
-- Use complete lines only, never partial lines
-- Make multiple tool calls for complex changes rather than one large replacement
+**Critical Requirements**:
+- **Find:** Include the exact text that needs to be located for modification. This must be an EXACT, CHARACTER-FOR-CHARACTER match of the original text, including all comments, spacing, indentation, and formatting.
+- **Replace:** Provide the new text that will replace the found text. Ensure that the replacement maintains the original file's formatting and style.
+- Only include the relevant sections of the file necessary for the modification, not the entire file content.
+- Use the **Find** section to provide sufficient surrounding context to uniquely identify the location of the change.
+- Use triple backticks for content sections to preserve formatting and readability.
 
-Technical Constraints:
-- No regex support - literal text matching only
-- Case-sensitive matching
-- Whitespace and indentation must match exactly
-- Comments and docstrings must be included in matches]])
+**IMPORTANT:** You must include ALL content in the **Find** sections exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
-local spec_json = [[{
-  "name": "replace_in_file",
-  "description": ]] .. description .. [[,
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string",
-        "description": "Path to target file. Accepts relative (from CWD) or absolute paths. Use forward slashes even on Windows. Examples: 'docs/report.txt', '/home/user/docs/report.txt', 'C:/Users/name/file.txt'"
-      },
-      "find": {
-        "type": "string",
-        "description": "Text to find. Must match exactly, including indentation, whitespace, newlines and comments. Case-sensitive, no regex. Even a single space difference in indentation will prevent matching."
-      },
-      "replace": {
-        "type": "string",
-        "description": "Replacement text. Can be empty to delete matched text. Literal replacement, no special characters. Must use the same indentation level as the original text to maintain code formatting."
-      }
-    },
-    "required": [
-      "path",
-      "find",
-      "replace"
-    ]
-  }
-}]]
+**Multiple Modifications:**
+- For multiple modifications within the same file or across multiple files, repeat the **Path**, **Find**, and **Replace** sections for each change.
+
+**Example:**
+
+For clarity, here's an example demonstrating how to use the format for various file operations:
+
+**Path:**: `config.yaml`
+**Find:**
+```yaml
+development:
+  database:
+    host: localhost
+    port: 5432
+  logging:
+    level: DEBUG
+    file: dev.log
+```
+**Replace:**
+```yaml
+development:
+  database:
+    host: localhost
+    port: 5432
+```
+
+**Path:**: `config.yaml`
+**Find:**
+```yaml
+general:
+  app_name: My App
+```
+**Replace:**
+```yaml
+general:
+  app_name: My App
+  enable_new_feature: true
+```]]
 
 local function find_min_indentation(lines)
   local min_indent = math.huge
@@ -97,104 +106,72 @@ local function dedent_lines(lines, min_indent)
   return dedented_lines
 end
 
+local find_modifications = function(text, pattern)
+  local found_modifications = {}
+  local start = 1
+
+  while true do
+    local start_pos, end_pos, lines, path, find, replace = text:find(pattern, 1, start)
+    if not start_pos then
+      break
+    end
+
+    local start_line = start_pos == 1 and 1 or select(2, text:sub(1, start_pos):gsub("\n", "")) + 1
+    local end_line = start_line + select(2, lines:gsub("\n", ""))
+
+    local abs_path = vim.fn.fnamemodify(path, ":p")
+    local cwd = vim.fn.getcwd()
+    if not vim.startswith(abs_path, cwd) then
+      vim.api.nvim_err_writeln(string.format("The file path '%s' must be within the current working directory '%s'",
+        abs_path, cwd))
+    else
+      table.insert(found_modifications, {
+        type = "update",
+        path = path,
+        search = find,
+        replace = replace,
+        start_line = start_line,
+        end_line = end_line,
+        lines = lines,
+      })
+    end
+
+    start = end_pos + 1
+  end
+
+  return found_modifications
+end
+
+local function find_and_parse_modifications(opts)
+  local bufnr = opts.bufnr
+  local start_search_line = opts.start_search_line
+  local end_search_line = opts.end_search_line
+
+  local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, start_search_line - 1, end_search_line, false)
+  local content = table.concat(buffer_lines, "\n"):gsub("^ASSISTANT:%s*", "")
+
+  local default_modify_pattern =
+  "(%*%*Path:%*%*%s*`(.-)`\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
+  local sonnet_modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
+  local gemini_modify_pattern =
+  "(%*%*Path:%*%*\n```%w*\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w*\n(.-)\n```\n%*%*Replace:%*%*\n```%w*\n(.-)\n```)"
+
+  local modifications = find_modifications(content, default_modify_pattern)
+  vim.list_extend(modifications, find_modifications(content, sonnet_modify_pattern))
+  vim.list_extend(modifications, find_modifications(content, gemini_modify_pattern))
+
+  return modifications
+end
+
 return {
-  spec_json = spec_json,
-  spec = sjson.decode(spec_json),
-  start = function(tool_call, opts)
-    chat.paste_at_end("**Path:**", opts.buffer)
-    -- Store the starting line number for later updates
-    tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
+  spec = spec,
+  stop = function(content, opts)
+    local modifications = find_and_parse_modifications(opts)
 
-    chat.paste_at_end("\n```txt\n", opts.buffer)
-    tool_call.state.find_start_line = vim.api.nvim_buf_line_count(opts.buffer)
-
-    chat.paste_at_end("\n\n", opts.buffer)
-    tool_call.state.replace_start_line = vim.api.nvim_buf_line_count(opts.buffer)
-
-    chat.paste_at_end("\n```", opts.buffer)
-  end,
-  delta = function(tool_call, opts)
-    tool_call.parameters.path = vim.trim(tool_call.parameters.path or "")
-    tool_call.parameters.find = tool_call.parameters.find or ""
-    tool_call.parameters.replace = tool_call.parameters.replace or ""
-    tool_call.state.path_written = tool_call.state.path_written or 0
-    tool_call.state.find_written = tool_call.state.find_written or 0
-    tool_call.state.replace_written = tool_call.state.replace_written or 0
-
-    if tool_call.parameters.path and tool_call.state.path_written < #tool_call.parameters.path then
-      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.path_line - 1, tool_call.state.path_line, false,
-        { string.format("**Path:** `%s`", tool_call.parameters.path) })
-      tool_call.state.path_written = #tool_call.parameters.path
-
-      -- Update the language for syntax highlighting
-      local language = markdown.filename_to_language(tool_call.parameters.path)
-      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.find_start_line - 2, tool_call.state.find_start_line - 1,
-        false, { "```" .. language })
-    end
-
-    if tool_call.parameters.find and tool_call.state.find_written < #tool_call.parameters.find then
-      local find_start_line = tool_call.state.find_start_line
-      local written = tool_call.parameters.find:sub(1, tool_call.state.find_written)
-
-      if #written > 0 then
-        -- Add the number of lines already written
-        local find_lines = select(2, written:gsub("\n", ""))
-        find_start_line = find_start_line + find_lines
-      end
-
-      chat.paste_at_line(tool_call.parameters.find:sub(tool_call.state.find_written + 1), find_start_line, opts.buffer)
-      tool_call.state.find_written = #tool_call.parameters.find
-
-      -- Place signs for the find section
-      find_start_line = tool_call.state.find_start_line
-      local find_end_line = find_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
-      local sign_group = string.format("%s-replace_in_file-find", tool_call.id)
-      signs.clear(opts.buffer, sign_group)
-      signs.place(opts.buffer, sign_group, find_start_line, find_end_line, "llm_sidekick_red")
-    end
-
-    if tool_call.parameters.replace and tool_call.state.replace_written < #tool_call.parameters.replace then
-      local replace_start_line = tool_call.state.replace_start_line
-
-      if tool_call.state.find_written > 0 then
-        -- Add the number of lines from the find section
-        local find_lines = select(2, tool_call.parameters.find:gsub("\n", ""))
-        replace_start_line = replace_start_line + find_lines
-      end
-
-      local written = tool_call.parameters.replace:sub(1, tool_call.state.replace_written)
-
-      if #written > 0 then
-        -- Add the number of lines already written
-        local find_lines = select(2, written:gsub("\n", ""))
-        replace_start_line = replace_start_line + find_lines
-      end
-
-      chat.paste_at_line(tool_call.parameters.replace:sub(tool_call.state.replace_written + 1), replace_start_line,
-        opts.buffer)
-      tool_call.state.replace_written = #tool_call.parameters.replace
-
-      -- Place signs for both find and replace sections
-      replace_start_line = tool_call.state.replace_start_line
-      if tool_call.state.find_written > 0 then
-        replace_start_line = replace_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
-      end
-      local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
-      local sign_group = string.format("%s-replace_in_file-replace", tool_call.id)
-      signs.clear(opts.buffer, sign_group)
-      signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_green")
-    end
-  end,
-  stop = function(tool_call, opts)
-    -- If 'replace' is empty, it means we are deleting the code.
-    if tool_call.parameters.replace == "" then
-      local replace_start_line = tool_call.state.replace_start_line
-      if tool_call.state.find_written > 0 then
-        replace_start_line = replace_start_line + select(2, tool_call.parameters.find:gsub("\n", ""))
-      end
-
-      -- Delete the lines that were allocated for 'replace'
-      vim.api.nvim_buf_set_lines(opts.buffer, replace_start_line - 2, replace_start_line, false, {})
+    local sign_group = "llm_sidekick-replace_in_file-find"
+    signs.clear(opts.buffer, sign_group)
+    for _, modification in ipairs(modifications) do
+      signs.place(opts.buffer, sign_group, modification.start_line, modification.end_line, "llm_sidekick_red")
     end
   end,
   run = function(tool_call, opts)
