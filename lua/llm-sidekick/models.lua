@@ -186,6 +186,24 @@ return {
       chat = 0.7,
     }
   },
+  ["gemini-2.0-flash"] = {
+    name = "gemini-2.0-flash",
+    max_tokens = 8192,
+    top_k = 40,
+    temperature = {
+      coding = 0.4,
+      chat = 0.7,
+    }
+  },
+  ["gemini-2.0-pro-exp-02-05"] = {
+    name = "gemini-2.0-pro-exp-02-05",
+    max_tokens = 8192,
+    top_k = 64,
+    temperature = {
+      coding = 0.4,
+      chat = 0.7,
+    }
+  },
   ["gemini-2.0-flash-exp"] = {
     name = "gemini-2.0-flash-exp",
     max_tokens = 8192,
