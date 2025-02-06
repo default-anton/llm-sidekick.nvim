@@ -179,7 +179,7 @@ return {
     },
   },
   ["gemini-2.0-pro"] = {
-    name = "gemini/gemini-2.0-pro-exp-02-05",
+    name = "gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
     top_k = 64,
     tools = true,
@@ -189,7 +189,7 @@ return {
     }
   },
   ["gemini-2.0-flash"] = {
-    name = "gemini/gemini-2.0-flash",
+    name = "gemini-2.0-flash",
     max_tokens = 8192,
     top_k = 40,
     tools = true,

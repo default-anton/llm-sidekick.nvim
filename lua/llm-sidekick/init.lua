@@ -235,10 +235,18 @@ function M.ask(prompt_buffer)
 
   local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
 
-  local client = require "llm-sidekick.openai".new({
-    url = "http://localhost:1993/v1/chat/completions",
-    include_modifications = include_modifications,
-  })
+  local client
+  if prompt.settings.model:find("gemini") then
+    client = require "llm-sidekick.gemini".new({
+      include_modifications = include_modifications,
+    })
+  else
+    client = require "llm-sidekick.openai".new({
+      url = "http://localhost:1993/v1/chat/completions",
+      include_modifications = include_modifications,
+    })
+  end
+
 
   local in_reasoning_tag = false
   local debug_error_handler = function(err)
