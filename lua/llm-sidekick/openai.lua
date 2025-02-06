@@ -132,7 +132,7 @@ function openai:chat(opts, callback)
       end
 
       vim.schedule(function()
-        vim.api.nvim_err_writeln("Error: " .. tostring(text))
+        vim.api.nvim_err_writeln("Error: " .. vim.inspect(text))
       end)
     end,
     on_exit = function(j, return_val)
