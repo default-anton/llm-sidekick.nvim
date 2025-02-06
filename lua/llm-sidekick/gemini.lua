@@ -77,7 +77,9 @@ function gemini:chat(opts, callback)
           table.insert(prev.parts, {
             functionResponse = {
               name = tool_name_by_id[msg.tool_call_id],
-              response = msg.content,
+              response = {
+                result = msg.content,
+              }
             },
           })
         else
@@ -87,7 +89,9 @@ function gemini:chat(opts, callback)
               {
                 functionResponse = {
                   name = tool_name_by_id[msg.tool_call_id],
-                  response = msg.content,
+                  response = {
+                    result = msg.content,
+                  }
                 },
               },
             },
