@@ -89,7 +89,13 @@ function openai:chat(opts, callback)
         return
       end
 
-      local ok, decoded = pcall(sjson.decode, line)
+      local ok, decoded = pcall(vim.json.decode, line, { luanil = { object = true, array = true } })
+
+      if not ok or not decoded then
+        vim.schedule(function()
+          vim.notify(line, vim.log.levels.ERROR)
+        end)
+      end
 
       if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
         vim.schedule(function()

@@ -176,7 +176,13 @@ function gemini:chat(opts, callback)
         return
       end
 
-      local ok, decoded = pcall(sjson.decode, line)
+      local ok, decoded = pcall(vim.json.decode, line, { luanil = { object = true, array = true } })
+
+      if not ok or not decoded then
+        vim.schedule(function()
+          vim.notify(line, vim.log.levels.ERROR)
+        end)
+      end
 
       if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
         vim.schedule(function()
@@ -184,7 +190,7 @@ function gemini:chat(opts, callback)
         end)
       end
 
-      if ok and decoded and decoded.candidates and decoded.candidates[1] and
+      if decoded.candidates and decoded.candidates[1] and
           decoded.candidates[1].content and decoded.candidates[1].content.parts then
         for _, part in ipairs(decoded.candidates[1].content.parts) do
           if part.thought then
