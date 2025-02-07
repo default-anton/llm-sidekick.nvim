@@ -29,7 +29,6 @@ return {
   ["claude-3-5-sonnet-latest"] = {
     name = "anthropic/claude-3-5-sonnet-latest",
     max_tokens = 8192,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -38,7 +37,6 @@ return {
   ["claude-3-5-haiku-latest"] = {
     name = "anthropic/claude-3-5-haiku-latest",
     max_tokens = 8192,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -47,7 +45,6 @@ return {
   ["anthropic.claude-3-5-sonnet-20241022-v2:0"] = {
     name = "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
     max_tokens = 8192,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -55,7 +52,6 @@ return {
   },
   ["anthropic.claude-3-5-sonnet-20240620-v1:0"] = {
     name = "bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0",
-    tools = true,
     max_tokens = 4096,
     temperature = {
       coding = 0.3,
@@ -65,7 +61,6 @@ return {
   ["anthropic.claude-3-5-haiku-20241022-v1:0"] = {
     name = "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
     max_tokens = 8192,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -84,42 +79,36 @@ return {
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o1-medium"] = {
     name = "openai/o1",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o1-high"] = {
     name = "openai/o1",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,         -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o3-mini-low"] = {
     name = "openai/o3-mini",
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o3-mini-medium"] = {
     name = "openai/o3-mini",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o3-mini-high"] = {
     name = "openai/o3-mini",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,         -- temperature is not supported
     reasoning = true,
-    tools = true,
   },
   ["o1-mini"] = {
     name = "openai/o1-mini",
@@ -136,7 +125,6 @@ return {
   ["gpt-4o"] = {
     name = "openai/gpt-4o",
     max_tokens = 16384,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -145,7 +133,6 @@ return {
   ["gpt-4o-2024-11-20"] = {
     name = "openai/gpt-4o-2024-11-20",
     max_tokens = 16384,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -154,7 +141,6 @@ return {
   ["gpt-4o-2024-08-06"] = {
     name = "openai/gpt-4o-2024-08-06",
     max_tokens = 16384,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -163,7 +149,6 @@ return {
   ["gpt-4o-2024-05-13"] = {
     name = "openai/gpt-4o-2024-05-13",
     max_tokens = 4096,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
@@ -172,27 +157,24 @@ return {
   ["gpt-4o-mini"] = {
     name = "openai/gpt-4o-mini",
     max_tokens = 16384,
-    tools = true,
     temperature = {
       coding = 0.3,
       chat = 0.7,
     },
   },
   ["gemini-2.0-pro"] = {
-    name = "gemini-2.0-pro-exp-02-05",
+    name = "gemini/gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
     top_k = 64,
-    tools = true,
     temperature = {
       coding = 0.4,
       chat = 0.7,
     }
   },
   ["gemini-2.0-flash"] = {
-    name = "gemini-2.0-flash",
+    name = "gemini/gemini-2.0-flash",
     max_tokens = 8192,
     top_k = 40,
-    tools = true,
     temperature = {
       coding = 0.4,
       chat = 0.7,
@@ -212,7 +194,6 @@ return {
     name = "gemini/gemini-exp-1206",
     max_tokens = 8192,
     top_k = 64,
-    tools = true,
     temperature = {
       coding = 0.4,
       chat = 0.7,

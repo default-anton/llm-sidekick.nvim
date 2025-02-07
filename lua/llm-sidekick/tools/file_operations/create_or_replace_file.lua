@@ -13,7 +13,7 @@ When to Use:
 - Restructuring entire file content
 
 When to Avoid:
-- For small, targeted changes use replace_in_file instead
+- For small, targeted changes use search_and_replace_in_file instead
 
 Technical Details:
 - Paths are relative to current working directory

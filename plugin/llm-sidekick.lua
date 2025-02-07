@@ -240,18 +240,6 @@ local function is_llm_sidekick_chat_file(bufnr)
   return true
 end
 
-local function adapt_system_prompt_for(model, prompt)
-  if vim.startswith(model, "gemini") then
-    return prompt:gsub("Claude", "Gemini"):gsub("claude_info", "gemini_info")
-  end
-
-  if vim.startswith(model, "o1") or vim.startswith(model, "o3") or vim.startswith(model, "gpt") or vim.startswith(model, "deepseek") then
-    return prompt:gsub("Claude", "Sidekick"):gsub("claude_info", "sidekick_info")
-  end
-
-  return prompt
-end
-
 local function add_file_content_to_prompt(prompt, file_paths)
   if vim.tbl_isempty(file_paths) then
     return prompt
@@ -299,14 +287,6 @@ local function add_file_content_to_prompt(prompt, file_paths)
     prompt = prompt .. "Here is what I'm working on:\n" .. render_editor_context(table.concat(snippets, "\n")) .. "\n"
   end
   return prompt
-end
-
-local function get_modifications_prompt_for(model)
-  if model:lower():find("gemini") then
-    return prompts.gemini_modifications
-  end
-
-  return prompts.modifications
 end
 
 local function replace_system_prompt(ask_buf, opts)
@@ -382,13 +362,13 @@ local function replace_system_prompt(ask_buf, opts)
   end
 
   -- Generate new SYSTEM prompt with coding=true and include_modifications=true
-  local model_settings = settings.get_model_settings(model)
-  local model_name = model_settings.name
-
   local system_prompt = prompts_v2.system_prompt({
     os_name = utils.get_os_name(),
     shell = vim.o.shell or "bash",
     cwd = vim.fn.getcwd(),
+    tools = {
+      require('llm-sidekick.tools.file_operations.search_and_replace_in_file'),
+    },
   })
 
   local guidelines = vim.trim(current_project_config.guidelines or "")
@@ -409,10 +389,6 @@ The following additional instructions are provided by the user, and should be fo
 
   if technologies ~= "" then
     system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
-  end
-
-  if not model_settings.tools then
-    system_prompt = system_prompt .. "\n\n" .. vim.trim(get_modifications_prompt_for(model_name))
   end
 
   system_prompt = vim.trim(system_prompt)
@@ -455,7 +431,6 @@ local ask_command = function(cmd_opts)
     end
 
     local model_settings = settings.get_model_settings(model)
-    local is_reasoning = model_settings.reasoning
 
     local prompt_settings = {
       model = model,
@@ -479,6 +454,9 @@ local ask_command = function(cmd_opts)
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
+        tools = {
+          require('llm-sidekick.tools.file_operations.search_and_replace_in_file'),
+        }
       })
 
       local guidelines = vim.trim(current_project_config.guidelines or "")
@@ -499,10 +477,6 @@ The following additional instructions are provided by the user, and should be fo
 
       if technologies ~= "" then
         system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
-      end
-
-      if not model_settings.tools then
-        system_prompt = system_prompt .. "\n\n" .. vim.trim(get_modifications_prompt_for(model_settings.name))
       end
 
       system_prompt = vim.trim(system_prompt)
@@ -566,7 +540,7 @@ The following additional instructions are provided by the user, and should be fo
       "<CR>",
       function()
         vim.cmd('stopinsert!')
-        -- require 'llm-sidekick.diagnostic'.prune_stale(buf)
+        -- TODO: update diagnostics if needed
         llm_sidekick.ask(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }

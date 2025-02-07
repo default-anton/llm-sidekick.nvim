@@ -231,17 +231,15 @@ function M.ask(prompt_buffer)
 
   local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
 
-  local client
-  if prompt.settings.model:find("gemini") then
-    client = require "llm-sidekick.gemini".new({
-      include_modifications = include_modifications,
-    })
-  else
-    client = require "llm-sidekick.openai".new({
-      url = "http://localhost:1993/v1/chat/completions",
-      include_modifications = include_modifications,
-    })
-  end
+  -- if prompt.settings.model:find("gemini") then
+  --   client = require "llm-sidekick.gemini".new({
+  --     include_modifications = include_modifications,
+  --   })
+  -- end
+  local client = require "llm-sidekick.openai".new({
+    url = "http://localhost:1993/v1/chat/completions",
+    include_modifications = include_modifications,
+  })
 
 
   local in_reasoning_tag = false
@@ -367,9 +365,10 @@ function M.ask(prompt_buffer)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      pcall(function()
+      xpcall(function()
+        tool_utils.on_assistant_turn_end({ buffer = prompt_buffer })
         chat.paste_at_end("\n\nUSER: ", prompt_buffer)
-      end)
+      end, debug_error_handler)
 
       local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")
