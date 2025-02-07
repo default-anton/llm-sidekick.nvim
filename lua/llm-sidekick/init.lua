@@ -1,8 +1,12 @@
+local chat          = require "llm-sidekick.chat"
 local message_types = require "llm-sidekick.message_types"
-local fs = require "llm-sidekick.fs"
-local settings = require "llm-sidekick.settings"
+local sjson         = require "llm-sidekick.sjson"
+local fs            = require "llm-sidekick.fs"
+local settings      = require "llm-sidekick.settings"
+local diagnostic    = require("llm-sidekick.diagnostic")
+local tool_utils    = require("llm-sidekick.tools.utils")
 
-local M = {}
+local M             = {}
 
 function M.setup(opts)
   settings.setup(opts or {})
@@ -18,7 +22,7 @@ function M.get_prompt(bufnr)
   return full_prompt
 end
 
-function M.parse_prompt(prompt)
+function M.parse_prompt(prompt, buffer)
   local options = {
     messages = {},
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
@@ -36,11 +40,7 @@ function M.parse_prompt(prompt)
       goto continue
     end
     if line:sub(1, 10) == "ASSISTANT:" then
-      local content = line:sub(11)
-      -- NOTE: delete all thinking tags
-      content = content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
-      content = content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
-      options.messages[#options.messages + 1] = { role = "assistant", content = content }
+      options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -71,10 +71,70 @@ function M.parse_prompt(prompt)
     ::continue::
   end
 
-  local model_name = settings.get_model_settings(options.settings.model).name
+  for message_index, message in ipairs(options.messages) do
+    message.content = vim.trim(message.content or "")
 
-  for _, message in ipairs(options.messages) do
-    message.content = vim.trim(message.content)
+    if message.role == "assistant" then
+      -- NOTE: delete all thinking tags
+      message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
+      message.content = message.content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
+      -- Extract tool calls from the content
+      local tool_calls = {}
+      local tool_call_results = {}
+      for id in message.content:gmatch('<llm_sidekick_tool id="(.-)" name=".-">') do
+        local tool_call = tool_utils.find_tool_call_by_id(id, { buffer = buffer })
+        if not tool_call then
+          goto next_tool_call
+        end
+
+        table.insert(tool_calls, {
+          id = tool_call.call.id,
+          type = "function",
+          ["function"] = {
+            name = tool_call.call.name,
+            arguments = vim.json.encode(tool_call.call.parameters),
+          }
+        })
+
+        if type(tool_call.result) == "boolean" then
+          if tool_call.result then
+            tool_call.result = "success"
+          else
+            tool_call.result = "failed"
+          end
+        end
+
+        table.insert(tool_call_results, {
+          role = "tool",
+          tool_call_id = tool_call.call.id,
+          content = tool_call.result,
+        })
+
+        ::next_tool_call::
+      end
+
+      message.content = message.content:gsub("<llm_sidekick_tool id=\".-\" name=\".-\">.-</llm_sidekick_tool>", "")
+      message.content = vim.trim(message.content)
+
+      if #tool_calls > 0 then
+        message.tool_calls = tool_calls
+      end
+
+      if #tool_call_results > 0 then
+        for j, tool_call_result in ipairs(tool_call_results) do
+          table.insert(options.messages, message_index + j, tool_call_result)
+        end
+      end
+    end
+  end
+
+  -- Remove last empty user message if the last message is a tool result
+  if #options.messages > 1 then
+    local last_msg = options.messages[#options.messages]
+    local prev_msg = options.messages[#options.messages - 1]
+    if last_msg.role == "user" and vim.trim(last_msg.content) == "" and prev_msg.role == "tool" then
+      table.remove(options.messages)
+    end
   end
 
   if #options.messages > 0 and options.messages[#options.messages].role == "user" then
@@ -104,33 +164,10 @@ function M.parse_prompt(prompt)
       text = text:gsub("<llm_sidekick_image>" .. vim.pesc(image_path) .. "</llm_sidekick_image>", "")
       local mime_type = vim.fn.systemlist({ "file", "--mime-type", "--brief", image_path })[1]
 
-      local image
-      if vim.startswith(model_name, "claude") or vim.startswith(model_name, "anthropic.claude") then
-        image = {
-          type = "image",
-          source = {
-            data = base64_image,
-            type = "base64",
-            media_type = mime_type,
-          },
-        }
-      elseif vim.startswith(model_name, "gpt") or model_name == "o1" or vim.startswith(model_name, "o3") then
-        image = {
-          type = "image_url",
-          image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
-        }
-      elseif vim.startswith(model_name, "gemini") then
-        image = {
-          type = "image",
-          inlineData = {
-            data = base64_image,
-            mimeType = mime_type,
-          },
-        }
-      else
-        vim.api.nvim_err_writeln("Model does not support images: " .. options.settings.model)
-        return options
-      end
+      local image = {
+        type = "image_url",
+        image_url = { url = string.format("data:%s;base64,%s", mime_type, base64_image) },
+      }
 
       options.messages[#options.messages] = {
         role = "user",
@@ -147,16 +184,37 @@ function M.parse_prompt(prompt)
   return options
 end
 
-function M.ask(prompt_bufnr)
-  local buf_lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+function M.ask(prompt_buffer)
+  -- Set up a buffer-local autocmd to block manual typing during LLM response.
+  local block_input_au = vim.api.nvim_create_autocmd("InsertCharPre", {
+    buffer = prompt_buffer,
+    callback = function()
+      -- Set v:char to an empty string to prevent the character from being inserted
+      vim.v.char = ""
+    end,
+  })
+
+  local function cleanup()
+    -- Remove the autocmd that blocks manual typing
+    vim.api.nvim_del_autocmd(block_input_au)
+  end
+
+  local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
-  local prompt = M.parse_prompt(full_prompt)
+  local prompt = M.parse_prompt(full_prompt, prompt_buffer)
+
+  prompt.tools = require("llm-sidekick.tools.file_operations")
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
   prompt.settings.model = model_settings.name
 
   if model_settings.reasoning_effort then
     prompt.settings.reasoning_effort = model_settings.reasoning_effort
+  end
+
+  if model_settings.use_max_completion_tokens then
+    prompt.settings.max_completion_tokens = prompt.settings.max_tokens
+    prompt.settings.max_tokens = nil
   end
 
   if model_settings.no_system_prompt then
@@ -169,87 +227,150 @@ function M.ask(prompt_bufnr)
   end
 
   local current_line = "ASSISTANT: "
-  vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", current_line })
+  vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
-  local client
-  if vim.startswith(prompt.settings.model, "claude-") then
-    client = require "llm-sidekick.anthropic".new()
-  elseif vim.startswith(prompt.settings.model, "o1") or vim.startswith(prompt.settings.model, "o3") or vim.startswith(prompt.settings.model, "gpt-") then
-    client = require "llm-sidekick.openai".new({ api_key = require("llm-sidekick.settings").get_openai_api_key() })
-  elseif vim.startswith(prompt.settings.model, "ollama.") then
-    prompt.settings.model = string.sub(prompt.settings.model, 8)
-    client = require "llm-sidekick.openai".new({ url = "http://localhost:11434/v1/chat/completions" })
-  elseif vim.startswith(prompt.settings.model, "deepseek") then
-    local api_key = require("llm-sidekick.settings").get_deepseek_api_key()
-    client = require "llm-sidekick.openai".new({
-      url = "https://api.deepseek.com/beta/chat/completions",
-      api_key =
-          api_key
-    })
-  elseif vim.startswith(prompt.settings.model, "groq.") then
-    prompt.settings.model = string.sub(prompt.settings.model, 6)
-    local api_key = require("llm-sidekick.settings").get_groq_api_key()
-    client = require "llm-sidekick.openai".new({
-      url = "https://api.groq.com/openai/v1/chat/completions",
-      api_key =
-          api_key
-    })
-  elseif vim.startswith(prompt.settings.model, "anthropic.") then
-    client = require "llm-sidekick.bedrock".new()
-  elseif vim.startswith(prompt.settings.model, "gemini") then
-    client = require "llm-sidekick.gemini".new()
-  else
-    error("Model not supported: " .. prompt.settings.model)
-  end
+  local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
+
+  -- if prompt.settings.model:find("gemini") then
+  --   client = require "llm-sidekick.gemini".new({
+  --     include_modifications = include_modifications,
+  --   })
+  -- end
+  local client = require "llm-sidekick.openai".new({
+    url = "http://localhost:1993/v1/chat/completions",
+    include_modifications = include_modifications,
+  })
+
 
   local in_reasoning_tag = false
+  local debug_error_handler = function(err)
+    return debug.traceback(err, 3)
+  end
 
-  client:chat(prompt.messages, prompt.settings, function(state, chars)
-    if not vim.api.nvim_buf_is_valid(prompt_bufnr) then
+  client:chat(prompt, function(state, chars)
+    if not vim.api.nvim_buf_is_valid(prompt_buffer) then
       return
     end
 
-    local lines = vim.split(chars, "\n")
-    local success = pcall(function()
+    local success, err = xpcall(function()
+      if state == message_types.ERROR then
+        cleanup()
+        vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
+        return
+      end
+
+      if state == message_types.ERROR_MAX_TOKENS then
+        cleanup()
+        vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
+        return
+      end
+
+      if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
+        local tool_call = chars
+        local tool = tool_utils.find_tool_for_tool_call(tool_call)
+
+        if not tool then
+          vim.notify("Tool not found: " .. tool_call.name, vim.log.levels.ERROR)
+          return
+        end
+
+        if state == message_types.TOOL_START then
+          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+          local needs_newlines = last_line and vim.trim(last_line) ~= ""
+          chat.paste_at_end(
+            string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
+              needs_newlines and "\n\n" or "",
+              tool_call.id,
+              tool_call.name
+            ),
+            prompt_buffer
+          )
+
+          local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
+
+          tool_utils.add_tool_call_to_buffer({
+            buffer = prompt_buffer,
+            tool_call = tool_call,
+            lnum = line_num,
+            result = nil,
+          })
+
+          if tool.start then
+            tool.start(tool_call, { buffer = prompt_buffer })
+          end
+
+          diagnostic.add_tool_call(
+            tool_call,
+            prompt_buffer,
+            line_num,
+            vim.diagnostic.severity.HINT,
+            string.format("→ %s (<leader>aa)", tool.spec.name)
+          )
+        elseif state == message_types.TOOL_DELTA then
+          if tool.delta then
+            tool.delta(tool_call, { buffer = prompt_buffer })
+          end
+        elseif state == message_types.TOOL_STOP then
+          if tool.stop then
+            tool.stop(tool_call, { buffer = prompt_buffer })
+          end
+
+          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
+          local needs_newline = last_line and vim.trim(last_line) ~= ""
+          if needs_newline then
+            chat.paste_at_end("\n", prompt_buffer)
+          end
+
+          local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,
+            vim.b[prompt_buffer].llm_sidekick_tool_calls)[1].lnum
+
+          tool_utils.update_tool_call_in_buffer({
+            buffer = prompt_buffer,
+            tool_call = tool_call,
+            result = nil,
+          })
+
+          diagnostic.add_tool_call(
+            tool_call,
+            prompt_buffer,
+            lnum,
+            vim.diagnostic.severity.HINT,
+            string.format("→ %s (<leader>aa)", tool.spec.name)
+          )
+
+          chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+        end
+
+        return
+      end
+
       if state == message_types.REASONING and not in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "<llm_sidekick_thinking>", "" })
+        chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", prompt_buffer)
         in_reasoning_tag = true
       end
 
       if state == message_types.DATA and in_reasoning_tag then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "</llm_sidekick_thinking>", "", "" })
+        chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", prompt_buffer)
         in_reasoning_tag = false
       end
 
-      local last_line = vim.api.nvim_buf_get_lines(prompt_bufnr, -2, -1, false)[1]
-      local new_last_line = last_line .. lines[1]
-      vim.api.nvim_buf_set_lines(prompt_bufnr, -2, -1, false, { new_last_line })
-      if #lines > 1 then
-        vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, vim.list_slice(lines, 2))
-      end
-    end)
+      chat.paste_at_end(chars, prompt_buffer)
+    end, debug_error_handler)
 
     if not success then
+      vim.notify(err, vim.log.levels.ERROR)
       return
     end
 
-    if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_bufnr) then
-      if vim.b[prompt_bufnr].llm_sidekick_auto_apply then
-        require("llm-sidekick.file_editor").apply_modifications(prompt_bufnr, true)
-        pcall(function()
-          vim.api.nvim_win_close(0, true)
+    if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
+      cleanup()
 
-          if vim.api.nvim_buf_is_valid(prompt_bufnr) then
-            vim.api.nvim_buf_delete(prompt_bufnr, { force = true })
-          end
-        end)
-      else
-        pcall(function()
-          vim.api.nvim_buf_set_lines(prompt_bufnr, -1, -1, false, { "", "USER: " })
-        end)
-      end
+      xpcall(function()
+        tool_utils.on_assistant_turn_end({ buffer = prompt_buffer })
+        chat.paste_at_end("\n\nUSER: ", prompt_buffer)
+      end, debug_error_handler)
 
-      lines = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, -1, false)
+      local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")
       local assistant_start_line = file_editor.find_last_assistant_start_line(lines)
       if assistant_start_line ~= -1 then
@@ -258,14 +379,13 @@ function M.ask(prompt_bufnr)
           lines
         )
         local modification_blocks = file_editor.find_and_parse_modification_blocks(
-          prompt_bufnr,
+          prompt_buffer,
           assistant_start_line,
           assistant_end_line
         )
-        local diagnostic = require("llm-sidekick.diagnostic")
         for _, block in ipairs(modification_blocks) do
           diagnostic.add_diagnostic(
-            prompt_bufnr,
+            prompt_buffer,
             block.start_line,
             block.start_line,
             block.raw_block,

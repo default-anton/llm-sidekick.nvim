@@ -18,6 +18,16 @@ function M.get_model_settings(model)
   return settings.models[model] or error("Model not found: " .. model)
 end
 
+function M.get_model_settings_by_name(model)
+  for _, s in pairs(settings.models) do
+    if s.name == model then
+      return s
+    end
+  end
+
+  error("Model not found: " .. model)
+end
+
 function M.setup(opts)
   if opts == nil then
     opts = settings
@@ -74,10 +84,10 @@ function M.get_aliases()
   return vim.tbl_keys(settings.aliases)
 end
 
-function M.get_anthropic_api_key()
-  local api_key = vim.env.LLM_SIDEKICK_ANTHROPIC_API_KEY or vim.env.ANTHROPIC_API_KEY
+function M.get_gemini_api_key()
+  local api_key = vim.env.LLM_SIDEKICK_GEMINI_API_KEY or vim.env.GEMINI_API_KEY
   if not api_key then
-    error("No API key found. Set LLM_SIDEKICK_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY in your environment.")
+    error("No API key found. Set LLM_SIDEKICK_GEMINI_API_KEY or GEMINI_API_KEY in your environment.")
   end
 
   return api_key
@@ -87,33 +97,6 @@ function M.get_groq_api_key()
   local api_key = vim.env.LLM_SIDEKICK_GROQ_API_KEY or vim.env.GROQ_API_KEY
   if not api_key then
     error("No API key found. Set LLM_SIDEKICK_GROQ_API_KEY or GROQ_API_KEY in your environment.")
-  end
-
-  return api_key
-end
-
-function M.get_openai_api_key()
-  local api_key = vim.env.LLM_SIDEKICK_OPENAI_API_KEY or vim.env.OPENAI_API_KEY
-  if not api_key then
-    error("No API key found. Set LLM_SIDEKICK_OPENAI_API_KEY or OPENAI_API_KEY in your environment.")
-  end
-
-  return api_key
-end
-
-function M.get_deepseek_api_key()
-  local api_key = vim.env.LLM_SIDEKICK_DEEPSEEK_API_KEY or vim.env.DEEPSEEK_API_KEY
-  if not api_key then
-    error("No API key found. Set LLM_SIDEKICK_DEEPSEEK_API_KEY or DEEPSEEK_API_KEY in your environment.")
-  end
-
-  return api_key
-end
-
-function M.get_gemini_api_key()
-  local api_key = vim.env.LLM_SIDEKICK_GEMINI_API_KEY or vim.env.GEMINI_API_KEY
-  if not api_key then
-    error("No API key found. Set LLM_SIDEKICK_GEMINI_API_KEY or GEMINI_API_KEY in your environment.")
   end
 
   return api_key

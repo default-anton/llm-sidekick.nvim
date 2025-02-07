@@ -3,18 +3,36 @@ if vim.g.loaded_llm_sidekick == 1 then
 end
 
 vim.g.loaded_llm_sidekick = 1
-vim.g.llm_sidekick_diagnostic_ns = vim.api.nvim_create_namespace('llm-sidekick')
+vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 
-local M = {}
+local litellm = require "llm-sidekick.litellm"
+-- Start the web server when the plugin loads
+vim.schedule(function()
+  litellm.start_web_server(1993)
+end)
+
+-- Define signs for LLM Sidekick
+vim.fn.sign_define("llm_sidekick_red", {
+  text = "▎",
+  texthl = "DiffDelete",
+  linehl = "DiffDelete",
+  numhl = "DiffDelete"
+})
+
+vim.fn.sign_define("llm_sidekick_green", {
+  text = "▎",
+  texthl = "DiffAdd",
+  linehl = "DiffAdd",
+  numhl = "DiffAdd"
+})
 
 local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
 local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
-local bedrock = require "llm-sidekick.bedrock"
-local markdown = require "llm-sidekick.markdown"
 local prompts = require "llm-sidekick.prompts"
+local prompts_v2 = require "llm-sidekick.prompts_v2"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
@@ -87,7 +105,7 @@ local function open_buffer_in_mode(buf, mode)
   end
 end
 
-local function parse_ask_args(args, auto_apply)
+local function parse_ask_args(args)
   local parsed = {
     model = settings.get_model(),
     open_mode = "current",
@@ -114,10 +132,6 @@ local function parse_ask_args(args, auto_apply)
     end
   end
 
-  if auto_apply then
-    parsed.open_mode = "split"
-  end
-
   return parsed
 end
 
@@ -128,6 +142,14 @@ local function set_llm_sidekick_options()
   vim.opt_local.textwidth = 0
   vim.opt_local.scrollbind = false
   vim.opt_local.signcolumn = "no"
+
+  -- Set up syntax concealing
+  vim.opt_local.conceallevel = 3
+  vim.opt_local.concealcursor = "nvic"
+  vim.cmd([[
+    syntax match LlmSidekickToolStart /^<llm_sidekick_tool\s\+.*>$/ conceal cchar=""
+    syntax match LlmSidekickToolEnd /^<\/llm_sidekick_tool>$/ conceal cchar=""
+  ]])
 end
 
 -- Function to fold all editor context tags in a given buffer
@@ -197,7 +219,6 @@ local function is_llm_sidekick_chat_file(bufnr)
 
   local required_keywords = {
     ["MODEL:"] = false,
-    ["TEMPERATURE:"] = false,
     ["MAX_TOKENS:"] = false
   }
 
@@ -217,18 +238,6 @@ local function is_llm_sidekick_chat_file(bufnr)
   end
 
   return true
-end
-
-local function adapt_system_prompt_for(model, prompt)
-  if vim.startswith(model, "gemini") then
-    return prompt:gsub("Claude", "Gemini"):gsub("claude_info", "gemini_info")
-  end
-
-  if vim.startswith(model, "o1") or vim.startswith(model, "o3") or vim.startswith(model, "gpt") or vim.startswith(model, "deepseek") then
-    return prompt:gsub("Claude", "Sidekick"):gsub("claude_info", "sidekick_info")
-  end
-
-  return prompt
 end
 
 local function add_file_content_to_prompt(prompt, file_paths)
@@ -278,14 +287,6 @@ local function add_file_content_to_prompt(prompt, file_paths)
     prompt = prompt .. "Here is what I'm working on:\n" .. render_editor_context(table.concat(snippets, "\n")) .. "\n"
   end
   return prompt
-end
-
-local function get_modifications_prompt_for(model)
-  if model:lower():find("gemini") then
-    return prompts.gemini_modifications
-  end
-
-  return prompts.modifications
 end
 
 local function replace_system_prompt(ask_buf, opts)
@@ -361,32 +362,36 @@ local function replace_system_prompt(ask_buf, opts)
   end
 
   -- Generate new SYSTEM prompt with coding=true and include_modifications=true
-  local model_settings = settings.get_model_settings(model)
-  local model_name = model_settings.name
-  local is_reasoning = model_settings.reasoning
+  local system_prompt = prompts_v2.system_prompt({
+    os_name = utils.get_os_name(),
+    shell = vim.o.shell or "bash",
+    cwd = vim.fn.getcwd(),
+    tools = require('llm-sidekick.tools.file_operations'),
+  })
 
   local guidelines = vim.trim(current_project_config.guidelines or "")
-  if guidelines == "" then
-    guidelines = "No guidelines provided."
+  local technologies = vim.trim(current_project_config.technologies or "")
+
+  if guidelines ~= "" or technologies ~= "" then
+    system_prompt = system_prompt .. [[
+
+---
+
+User's Custom Instructions:
+The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
   end
 
-  local args = {
-    os.date("%B %d, %Y"),
-    model_settings.reasoning and "" or prompts.reasoning,
-    guidelines,
-    vim.trim(current_project_config.technologies or ""),
-    vim.trim(get_modifications_prompt_for(model_name)) -- include_modifications=true
-  }
-
-  if is_reasoning then
-    table.remove(args, 2) -- Remove reasoning instructions
+  if guidelines ~= "" then
+    system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
   end
 
-  local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
-  system_prompt = string.format(vim.trim(system_prompt), unpack(args))
-  system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-  local adapted_system_prompt = adapt_system_prompt_for(model_name, system_prompt)
-  local new_system_lines = vim.split("SYSTEM: " .. adapted_system_prompt, "\n")
+  if technologies ~= "" then
+    system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
+  end
+
+  system_prompt = vim.trim(system_prompt)
+
+  local new_system_lines = vim.split("SYSTEM: " .. system_prompt, "\n")
 
   -- Replace or insert SYSTEM section
   if system_start and system_end then
@@ -399,7 +404,6 @@ local function replace_system_prompt(ask_buf, opts)
 
   -- Update buffer settings
   vim.b[ask_buf].llm_sidekick_include_modifications = true
-  vim.b[ask_buf].llm_sidekick_auto_apply = false
   file_editor.create_apply_modifications_command(ask_buf)
 
   vim.api.nvim_buf_call(ask_buf, function()
@@ -412,7 +416,7 @@ local ask_command = function(cmd_opts)
     -- Always load project config
     load_project_config()
 
-    local parsed_args = parse_ask_args(opts.fargs, cmd_opts.auto_apply)
+    local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
     local file_paths = parsed_args.file_paths
@@ -425,7 +429,6 @@ local ask_command = function(cmd_opts)
     end
 
     local model_settings = settings.get_model_settings(model)
-    local is_reasoning = model_settings.reasoning
 
     local prompt_settings = {
       model = model,
@@ -433,7 +436,8 @@ local ask_command = function(cmd_opts)
     }
 
     if model_settings.temperature then
-      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or model_settings.temperature.chat
+      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or
+          model_settings.temperature.chat
     end
 
     local prompt = ""
@@ -444,38 +448,36 @@ local ask_command = function(cmd_opts)
         prompt = prompt .. key:upper() .. ": " .. value .. "\n"
       end
 
+      local system_prompt = prompts_v2.system_prompt({
+        os_name = utils.get_os_name(),
+        shell = vim.o.shell or "bash",
+        cwd = vim.fn.getcwd(),
+        tools = require('llm-sidekick.tools.file_operations'),
+      })
+
       local guidelines = vim.trim(current_project_config.guidelines or "")
-      if guidelines == "" then
-        guidelines = "No guidelines provided."
+      local technologies = vim.trim(current_project_config.technologies or "")
+
+      if guidelines ~= "" or technologies ~= "" then
+        system_prompt = system_prompt .. [[
+
+---
+
+User's Custom Instructions:
+The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
       end
 
-      if cmd_opts.coding then
-        local args = {
-          os.date("%B %d, %Y"),
-          model_settings.reasoning and "" or prompts.reasoning,
-          guidelines,
-          vim.trim(current_project_config.technologies or ""),
-          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or ""
-        }
-        if is_reasoning then
-          table.remove(args, 2) -- Remove reasoning instructionsk
-        end
-
-        local system_prompt = is_reasoning and prompts.code_reasoning_system_prompt or prompts.code_system_prompt
-        system_prompt = string.format(vim.trim(system_prompt), unpack(args))
-        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
-      elseif not is_reasoning then
-        local args = {
-          os.date("%B %d, %Y"),
-          model_settings.reasoning and "" or prompts.reasoning,
-          vim.trim(guidelines),
-          cmd_opts.include_modifications and vim.trim(get_modifications_prompt_for(model)) or "",
-        }
-        local system_prompt = string.format(vim.trim(prompts.chat_system_prompt), unpack(args))
-        system_prompt = string.gsub(system_prompt, "\n\n+", "\n\n")
-        prompt = prompt .. "SYSTEM: " .. adapt_system_prompt_for(model, system_prompt)
+      if guidelines ~= "" then
+        system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
       end
+
+      if technologies ~= "" then
+        system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
+      end
+
+      system_prompt = vim.trim(system_prompt)
+
+      prompt = prompt .. "SYSTEM: " .. system_prompt
 
       prompt = prompt .. "\nUSER: "
       if opts.range == 2 then
@@ -493,11 +495,23 @@ local ask_command = function(cmd_opts)
     vim.bo[buf].buftype = "nofile"
     vim.b[buf].is_llm_sidekick_chat = true
     vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
-    vim.b[buf].llm_sidekick_auto_apply = cmd_opts.auto_apply
     vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
+      local tool_utils = require 'llm-sidekick.tools.utils'
+      vim.keymap.set(
+        'n',
+        '<leader>aa',
+        function() tool_utils.run_tool_call_at_cursor({ buffer = buf }) end,
+        { buffer = buf, desc = "Accept and run the tool at the cursor" }
+      )
+      vim.keymap.set(
+        'n',
+        '<leader>A',
+        function() tool_utils.run_all_tool_calls({ buffer = buf }) end,
+        { buffer = buf, desc = "Accept and run all tools in the chat" }
+      )
     else
       local function complete_mode(ArgLead, CmdLine, CursorPos)
         local args = vim.split(CmdLine, "%s+")
@@ -518,11 +532,11 @@ local ask_command = function(cmd_opts)
     set_llm_sidekick_options()
 
     vim.keymap.set(
-      cmd_opts.auto_apply and { "n", "i" } or "n",
+      "n",
       "<CR>",
       function()
         vim.cmd('stopinsert!')
-        require 'llm-sidekick.diagnostic'.prune_stale(buf)
+        -- TODO: update diagnostics if needed
         llm_sidekick.ask(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }
@@ -536,19 +550,12 @@ local ask_command = function(cmd_opts)
     -- Set cursor to the end of the buffer
     vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
 
-    if cmd_opts.auto_apply then
-      -- Enter insert mode at the end of the line
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('A', true, false, true), 'n', false)
-    else
-      -- Move cursor to the end of the line
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
-    end
+    -- Move cursor to the end of the line
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('$', true, false, true), 'n', false)
 
-    if vim.startswith(model, "anthropic.") then
-      vim.schedule(function()
-        bedrock.start_web_server()
-      end)
-    end
+    vim.schedule(function()
+      litellm.start_web_server(1993)
+    end)
   end
 end
 
@@ -567,12 +574,6 @@ vim.api.nvim_create_user_command(
 vim.api.nvim_create_user_command(
   "Code",
   ask_command({ coding = true, include_modifications = true }),
-  { range = true, nargs = "*", complete = utils.complete_command }
-)
-
-vim.api.nvim_create_user_command(
-  "Yolo",
-  ask_command({ coding = true, include_modifications = true, auto_apply = true }),
   { range = true, nargs = "*", complete = utils.complete_command }
 )
 
@@ -601,10 +602,16 @@ local function get_content(opts, callback)
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(vim.trim(opts.args))
+    -- Convert GitHub blob URLs to raw URLs
+    file_path = file_path:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
+      "https://raw.githubusercontent.com/%1/%2/%3/%4")
     if file_path:match("^https?://") then
-      markdown.get_markdown(file_path, function(markdown_content)
-        callback({ type = "text", content = markdown_content }, file_path)
-      end)
+      local content = require('llm-sidekick.http').get(file_path)
+      if content then
+        callback({ type = "text", content = content }, file_path)
+      else
+        error(string.format("Failed to fetch content from '%s'", file_path))
+      end
       return
     end
     if vim.fn.isdirectory(file_path) == 1 then
@@ -776,12 +783,6 @@ vim.api.nvim_create_user_command("Stt", function()
         local inserted_text = table.concat(lines)
         vim.api.nvim_win_set_cursor(orig_winnr, { orig_pos[1], orig_pos[2] + #inserted_text })
       end
-
-      if vim.b[orig_bufnr].llm_sidekick_auto_apply then
-        vim.api.nvim_buf_call(orig_bufnr, function()
-          vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), mode, false)
-        end)
-      end
     end)
   end)
   job:start()
@@ -858,4 +859,51 @@ end, {
   complete = "file"
 })
 
-return M
+-- LLM Sidekick server management commands
+vim.api.nvim_create_user_command("LlmSidekick", function(opts)
+  local action = opts.args
+  local port = 1993
+
+  if action == "start" then
+    if litellm.is_server_ready(port) then
+      vim.notify("LLM Sidekick server is already running", vim.log.levels.INFO)
+      return
+    end
+    litellm.start_web_server(port)
+    if vim.wait(10000, function() return litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server started successfully", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to start LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  elseif action == "stop" then
+    litellm.stop_web_server(port)
+    if vim.wait(10000, function() return not litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server stopped", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to stop LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  elseif action == "restart" then
+    litellm.stop_web_server(port)
+    if not vim.wait(10000, function() return not litellm.is_server_ready(port) end) then
+      vim.notify("Failed to stop LLM Sidekick server", vim.log.levels.ERROR)
+      return
+    end
+    litellm.start_web_server(port)
+    if vim.wait(10000, function() return litellm.is_server_ready(port) end) then
+      vim.notify("LLM Sidekick server restarted successfully", vim.log.levels.INFO)
+    else
+      vim.notify("Failed to restart LLM Sidekick server", vim.log.levels.ERROR)
+    end
+  else
+    vim.notify("Invalid action. Use 'start', 'stop', or 'restart'", vim.log.levels.ERROR)
+  end
+end, {
+  nargs = 1,
+  complete = function(ArgLead, CmdLine, CursorPos)
+    local actions = { "start", "stop", "restart" }
+    return vim.tbl_filter(function(action)
+      return vim.startswith(action, ArgLead)
+    end, actions)
+  end,
+  desc = "Manage LLM Sidekick server (start|stop|restart)"
+})
