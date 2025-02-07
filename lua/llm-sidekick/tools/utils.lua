@@ -21,7 +21,7 @@ local function find_tool_call_by_id(tool_id, opts)
   return found_tools[1]
 end
 
-local function run_tool_at_cursor(opts)
+local function run_tool_call_at_cursor(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
@@ -33,13 +33,9 @@ local function run_tool_at_cursor(opts)
     end
   end
 
-  local tools = {
-    require("llm-sidekick.tools.file_operations.search_and_replace_in_file"),
-  }
-
-  for _, tool in ipairs(tools) do
+  for _, tool in ipairs(file_operations) do
     local debug_error_handler = function(err)
-      return debug.traceback(err, 2)
+      return debug.traceback(err, 3)
     end
 
     local ok, result = xpcall(
@@ -94,7 +90,7 @@ local function update_tool_call_in_buffer(opts)
   vim.b[opts.buffer].llm_sidekick_tool_calls = updated_tool_calls
 end
 
-local function run_all_tools(opts)
+local function run_all_tool_calls(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
@@ -106,13 +102,9 @@ local function run_all_tools(opts)
     end
   end
 
-  local tools = {
-    require("llm-sidekick.tools.file_operations.search_and_replace_in_file"),
-  }
-
-  for _, tool in ipairs(tools) do
+  for _, tool in ipairs(file_operations) do
     local debug_error_handler = function(err)
-      return debug.traceback(err, 2)
+      return debug.traceback(err, 3)
     end
 
     local ok, results = xpcall(
@@ -160,13 +152,9 @@ local function on_assistant_turn_end(opts)
     end
   end
 
-  local tools = {
-    require("llm-sidekick.tools.file_operations.search_and_replace_in_file"),
-  }
-
-  for _, tool in ipairs(tools) do
+  for _, tool in ipairs(file_operations) do
     local debug_error_handler = function(err)
-      return debug.traceback(err, 2)
+      return debug.traceback(err, 3)
     end
 
     local ok, results = xpcall(
@@ -195,8 +183,8 @@ end
 
 return {
   find_tool_call_by_id = find_tool_call_by_id,
-  run_tool_at_cursor = run_tool_at_cursor,
-  run_all_tools = run_all_tools,
+  run_tool_call_at_cursor = run_tool_call_at_cursor,
+  run_all_tool_calls = run_all_tool_calls,
   add_tool_call_to_buffer = add_tool_call_to_buffer,
   update_tool_call_in_buffer = update_tool_call_in_buffer,
   find_tool_for_tool_call = find_tool_for_tool_call,

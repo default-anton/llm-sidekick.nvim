@@ -244,7 +244,7 @@ function M.ask(prompt_buffer)
 
   local in_reasoning_tag = false
   local debug_error_handler = function(err)
-    return debug.traceback(err, 2)
+    return debug.traceback(err, 3)
   end
 
   client:chat(prompt, function(state, chars)

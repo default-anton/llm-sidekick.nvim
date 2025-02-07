@@ -366,9 +366,7 @@ local function replace_system_prompt(ask_buf, opts)
     os_name = utils.get_os_name(),
     shell = vim.o.shell or "bash",
     cwd = vim.fn.getcwd(),
-    tools = {
-      require('llm-sidekick.tools.file_operations.search_and_replace_in_file'),
-    },
+    tools = require('llm-sidekick.tools.file_operations'),
   })
 
   local guidelines = vim.trim(current_project_config.guidelines or "")
@@ -454,9 +452,7 @@ local ask_command = function(cmd_opts)
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
-        tools = {
-          require('llm-sidekick.tools.file_operations.search_and_replace_in_file'),
-        }
+        tools = require('llm-sidekick.tools.file_operations'),
       })
 
       local guidelines = vim.trim(current_project_config.guidelines or "")
@@ -507,13 +503,13 @@ The following additional instructions are provided by the user, and should be fo
       vim.keymap.set(
         'n',
         '<leader>aa',
-        function() tool_utils.run_tool_at_cursor({ buffer = buf }) end,
+        function() tool_utils.run_tool_call_at_cursor({ buffer = buf }) end,
         { buffer = buf, desc = "Accept and run the tool at the cursor" }
       )
       vim.keymap.set(
         'n',
         '<leader>A',
-        function() tool_utils.run_all_tools({ buffer = buf }) end,
+        function() tool_utils.run_all_tool_calls({ buffer = buf }) end,
         { buffer = buf, desc = "Accept and run all tools in the chat" }
       )
     else

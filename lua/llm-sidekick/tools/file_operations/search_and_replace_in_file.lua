@@ -1,4 +1,5 @@
 local signs = require("llm-sidekick.signs")
+local tc = require("llm-sidekick.tools.tool_calls")
 
 local description = [[
 Replace sections of content in an existing file. Use this tool to make targeted changes to specific parts of a file.
@@ -16,11 +17,13 @@ Replace sections of content in an existing file. Use this tool to make targeted 
 ```
 
 **Critical Requirements**:
+- **Path:** The path to the file.  This must be relative to the project root, or it will be rejected.
 - **Search:** Include the exact text that needs to be located for modification. This must be an EXACT, CHARACTER-FOR-CHARACTER match of the original text, including all comments, spacing, indentation, and formatting.
 - **Replace:** Provide the new text that will replace the found text. Ensure that the replacement maintains the original file's formatting and style.
 - Only include the relevant sections of the file necessary for the modification, not the entire file content.
 - Use the **Search** section to provide sufficient surrounding context to uniquely identify the location of the change.
-- Use triple backticks for content sections to preserve formatting and readability.
+- Use triple backticks for enclose the search and replace, and include the filetype.
+- The provided `filetype` will be used for syntax highlighting.
 
 **IMPORTANT:** You must include ALL content in the **Search** sections exactly as it appears in the original file, including comments, whitespace, and seemingly irrelevant details. Do not omit or modify any characters.
 
@@ -28,8 +31,6 @@ Replace sections of content in an existing file. Use this tool to make targeted 
 - For multiple modifications within the same file or across multiple files, repeat the **Path**, **Search**, and **Replace** sections for each change.
 
 **Example:**
-
-For clarity, here's an example demonstrating how to use the format:
 
 **Path:**: `config.yaml`
 **Search:**
@@ -89,96 +90,55 @@ local function dedent_lines(lines, min_indent)
   return dedented_lines
 end
 
-local find_modifications = function(text, pattern, true_start_line)
-  local found_modifications = {}
-  local start = 1
+local function find_tool_calls(opts)
+  local pattern = "%*%*Path:%*%*%s*`(.-)`\n%*%*Search:%*%*\n```%w-\n(.-)\n```\n%*%*Replace:%*%*\n```%w-\n(.-)\n```"
+  local attribute_names = {
+    "path",
+    "search",
+    "replace",
+  }
+  local tool_calls = tc.find_tool_calls(
+    opts.buffer,
+    opts.start_search_line,
+    opts.end_search_line,
+    pattern,
+    attribute_names
+  )
 
-  while true do
-    local start_pos, end_pos, raw_body, path, search, replace = text:find(pattern, start)
-    if not start_pos then
-      break
-    end
-
-    local start_line = start_pos == 1 and 1 or select(2, text:sub(1, start_pos):gsub("\n", ""))
-    local search_start_pos = raw_body:find(search, 1, true)
-    local search_start_line = start_line + select(2, raw_body:sub(1, search_start_pos):gsub("\n", ""))
-    local search_end_line = search_start_line + select(2, search:gsub("\n", ""))
-    local replace_start_pos = raw_body:find(replace, 1, true)
-    local replace_start_line = start_line + select(2, raw_body:sub(1, replace_start_pos):gsub("\n", ""))
-    local replace_end_line = replace_start_line + select(2, replace:gsub("\n", ""))
-    local end_line = start_line + select(2, raw_body:gsub("\n", ""))
-
-    local abs_path = vim.fn.fnamemodify(path, ":p")
+  return vim.tbl_filter(function(tool_call)
+    local abs_path = vim.fn.fnamemodify(tool_call.path, ":p")
     local cwd = vim.fn.getcwd()
     if not vim.startswith(abs_path, cwd) then
       vim.api.nvim_err_writeln(string.format("The file path '%s' must be within the current working directory '%s'",
         abs_path, cwd))
-    else
-      table.insert(found_modifications, {
-        type = "update",
-        path = path,
-        search = search,
-        search_start_line = true_start_line + search_start_line,
-        search_end_line = true_start_line + search_end_line,
-        replace = replace,
-        replace_start_line = true_start_line + replace_start_line,
-        replace_end_line = true_start_line + replace_end_line,
-        start_line = true_start_line + start_line,
-        end_line = true_start_line + end_line,
-        raw_body = raw_body,
-      })
+
+      return false
     end
 
-    start = end_pos + 1
-  end
-
-  return found_modifications
-end
-
-local function find_tools(opts)
-  local buffer = opts.buffer
-  local start_search_line = opts.start_search_line
-  local end_search_line = opts.end_search_line
-
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, start_search_line - 1, end_search_line, false)
-  buffer_lines[1] = buffer_lines[1]:gsub("^ASSISTANT:%s*", "")
-  local content = table.concat(buffer_lines, "\n")
-
-  local default_modify_pattern =
-  "(%*%*Path:%*%*%s*`(.-)`\n%*%*Search:%*%*\n```%w-\n(.-)\n```\n%*%*Replace:%*%*\n```%w-\n(.-)\n```)"
-  local sonnet_modify_pattern = "(@([^\n]+)\n<search>\n?(.-)\n?</search>\n<replace>\n?(.-)\n?</replace>)"
-  local gemini_modify_pattern =
-  "(%*%*Path:%*%*\n```%w-\n([^\n]+)\n```\n%*%*Find:%*%*\n```%w-\n(.-)\n```\n%*%*Replace:%*%*\n```%w-\n(.-)\n```)"
-
-  local modifications = find_modifications(content, default_modify_pattern, start_search_line)
-  vim.list_extend(modifications, find_modifications(content, sonnet_modify_pattern, start_search_line))
-  vim.list_extend(modifications, find_modifications(content, gemini_modify_pattern, start_search_line))
-
-  return modifications
+    return true
+  end, tool_calls)
 end
 
 local function find_tool_at_cursor(opts)
-  local modifications = find_tools(opts)
+  local tool_calls = find_tool_calls(opts)
 
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
 
-  for _, modification in ipairs(modifications) do
-    if cursor_line >= modification.start_line and cursor_line <= modification.end_line then
-      return modification
+  for _, tool_call in ipairs(tool_calls) do
+    if cursor_line >= tool_call.start_line and cursor_line <= tool_call.end_line then
+      return tool_call
     end
   end
 end
 
 local function error_handler(err)
-  vim.notify("Error writing to file: " .. vim.inspect(err), vim.log.levels.ERROR)
-  vim.print(debug.traceback())
-  return err
+  return debug.traceback(err, 3)
 end
 
-local function apply_modification(modification)
-  local path = vim.trim(modification.path or "")
-  local replace = modification.replace or ""
-  local original_search = modification.search
+local function apply_tool_call(tool_call)
+  local path = vim.trim(tool_call.path or "")
+  local replace = tool_call.replace or ""
+  local original_search = tool_call.search
 
   local buf = vim.fn.bufnr(path)
   if buf == -1 then
@@ -299,29 +259,29 @@ local function apply_modification(modification)
 end
 
 local function on_assistant_turn_end(opts)
-  local modifications = find_tools(opts)
+  local tool_calls = find_tool_calls(opts)
 
   local sign_group = "llm_sidekick-search_and_replace_in_file"
   signs.clear(opts.buffer, sign_group)
 
-  for _, modification in ipairs(modifications) do
+  for _, tool_call in ipairs(tool_calls) do
     signs.place(
       opts.buffer,
       sign_group,
-      modification.search_start_line,
-      modification.search_end_line,
+      tool_call.search_start_line,
+      tool_call.search_end_line,
       "llm_sidekick_red"
     )
     signs.place(
       opts.buffer,
       sign_group,
-      modification.replace_start_line,
-      modification.replace_end_line,
+      tool_call.replace_start_line,
+      tool_call.replace_end_line,
       "llm_sidekick_green"
     )
   end
 
-  return modifications
+  return tool_calls
 end
 
 return {
@@ -330,28 +290,30 @@ return {
   description = description,
   on_assistant_turn_end = on_assistant_turn_end,
   on_user_accept = function(opts)
-    local modification = find_tool_at_cursor(opts)
-    if not modification then
+    local tool_call = find_tool_at_cursor(opts)
+    if not tool_call then
       return
     end
 
-    local ok, err = xpcall(apply_modification, error_handler, modification)
+    local ok, err = xpcall(apply_tool_call, error_handler, tool_call)
     if not ok then
-      modification.error = string.format("Error applying modification to %s: %s", modification.path, vim.inspect(err))
+      tool_call.error = string.format("Error applying search_and_replace_in_file to %s: %s", tool_call.path,
+        vim.inspect(err))
     end
 
-    return modification
+    return tool_call
   end,
   on_user_accept_all = function(opts)
-    local modifications = find_tools(opts)
+    local tool_calls = find_tool_calls(opts)
 
-    for _, modification in ipairs(modifications) do
-      local ok, err = xpcall(apply_modification, error_handler, modification)
+    for _, tool_call in ipairs(tool_calls) do
+      local ok, err = xpcall(apply_tool_call, error_handler, tool_call)
       if not ok then
-        modification.error = string.format("Error applying modification to %s: %s", modification.path, vim.inspect(err))
+        tool_call.error = string.format("Error applying search_and_replace_in_file to %s: %s", tool_call.path,
+          vim.inspect(err))
       end
     end
 
-    return modifications
+    return tool_calls
   end,
 }
