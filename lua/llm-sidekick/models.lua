@@ -180,7 +180,7 @@ return {
       chat = 0.7,
     }
   },
-  ["gemini-2.0-flash-thinking-exp-01-21"] = {
+  ["gemini-2.0-flash-thinking"] = {
     name = "gemini/gemini-2.0-flash-thinking-exp-01-21",
     max_tokens = 65536,
     temperature = {
