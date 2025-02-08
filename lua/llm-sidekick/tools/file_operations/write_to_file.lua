@@ -7,14 +7,13 @@ Create or overwrite a file with the specified content.
 **FORMAT:**
 
 **Create:** `<path/to/file>`
-**Content:**
 ```<filetype>
 <file content>
 ```
 
 **Critical Requirements:**
 - **Create:** The path to the file. This must be relative to the project root, or it will be rejected.
-- **Content:** The complete content of the file to be written. The file will be overwritten if it already exists. Use triple backticks to enclose the content, and include the filetype.
+- Content: The complete content of the file to be written. The file will be overwritten if it already exists. Use triple backticks to enclose the content, and include the filetype.
 - The provided `filetype` will be used for syntax highlighting.
 - The entire file content must be provided. This tool is not for appending or inserting into existing files.
 - The tool will create any necessary directories in the path if they do not already exist.
@@ -22,7 +21,6 @@ Create or overwrite a file with the specified content.
 **Example:**
 
 **Create:** `src/components/Button.jsx`
-**Content:**
 ```jsx
 import React from 'react';
 
@@ -36,9 +34,10 @@ export default Button;
 ```]]
 
 local function find_tool_calls(opts)
-  local pattern = "%*%*Create:%*%*%s-`(.-)`\n%*%*Content:%*%*\n```%w-\n(.-)\n```"
+  local pattern = "%*%*Create:%*%*%s-`(.-)`\n```(%w*)\n(.-)```"
   local attribute_names = {
     "path",
+    "filetype",
     "content",
   }
   local tool_calls = tc.find_tool_calls(
