@@ -94,16 +94,15 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
     require('llm-sidekick').setup({
       -- Model aliases configuration
       aliases = {
-        deepseek = "deepseek-chat",
-        r1 = "deepseek-reasoner",
+        pro = "gemini-2.0-pro",
+        flash = "gemini-2.0-flash",
         sonnet = "claude-3-5-sonnet-latest",
         bedrock_sonnet = "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        deepseek = "deepseek-chat",
+        gpt4o = "gpt-4o-2024-11-20",
+        high_o3_mini = "o3-mini-high",
         low_o3_mini = "o3-mini-low",
         medium_o3_mini = "o3-mini-medium",
-        high_o3_mini = "o3-mini-high",
-        flash = "gemini-2.0-flash-exp",
-        think_flash = "gemini-2.0-flash-thinking-exp-01-21",
-        gpt4o = "gpt-4o-2024-11-20",
       },
       default = "sonnet",
     })
@@ -117,30 +116,22 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `claude-3-5-sonnet-latest`
 - `claude-3-5-haiku-latest`
 
+### Google Gemini Models
+- Gemini 2.0 Pro `gemini-2.0-pro`
+- Gemini 2.0 Flash `gemini-2.0-flash`
+
 ### OpenAI Models
+- `o3-mini`: 3 variants (high, medium, low)
+- `o1`
+- `o1-preview`
 - `gpt-4o`
 - `gpt-4o-2024-11-20`
 - `gpt-4o-2024-08-06`
 - `gpt-4o-2024-05-13`
 - `gpt-4o-mini`
-- `o1`
-- `o1-mini`
-- `o1-preview`
 
 ### DeepSeek AI Models
 - `deepseek-chat`: DeepSeek-V3
-- `deepseek-reasoner`: DeepSeek-R1
-
-### Google Gemini Models
-- Gemini Experimental 1206 `gemini-exp-1206`
-- Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
-- Gemini 2.0 Flash Thinking Exp-1219 `gemini-2.0-flash-thinking-exp-1219`
-- Gemini 2.0 Flash Thinking Exp-01-21 `gemini-2.0-flash-thinking-exp-01-21`
-
-### Ollama Models
-- `ollama.qwen2.5-coder:1.5b`
-
-Each model is configured with specific token limits and temperature settings optimized for different use cases.
 
 ## Usage
 

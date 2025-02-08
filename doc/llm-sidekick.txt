@@ -113,16 +113,15 @@ Configure the plugin by calling the setup function:
     require('llm-sidekick').setup({
       -- Model aliases configuration
       aliases = {
-        deepseek = "deepseek-chat",
-        r1 = "deepseek-reasoner",
+        pro = "gemini-2.0-pro",
+        flash = "gemini-2.0-flash",
         sonnet = "claude-3-5-sonnet-latest",
         bedrock_sonnet = "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        deepseek = "deepseek-chat",
+        gpt4o = "gpt-4o-2024-11-20",
+        high_o3_mini = "o3-mini-high",
         low_o3_mini = "o3-mini-low",
         medium_o3_mini = "o3-mini-medium",
-        high_o3_mini = "o3-mini-high",
-        flash = "gemini-2.0-flash-exp",
-        think_flash = "gemini-2.0-flash-thinking-exp-01-21",
-        gpt4o = "gpt-4o-2024-11-20",
       },
       default = "sonnet",
     })
