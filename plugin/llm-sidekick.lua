@@ -32,7 +32,6 @@ local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 local settings = require "llm-sidekick.settings"
 local fs = require "llm-sidekick.fs"
 local prompts = require "llm-sidekick.prompts"
-local prompts_v2 = require "llm-sidekick.prompts_v2"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
@@ -325,7 +324,7 @@ local ask_command = function()
         prompt = prompt .. key:upper() .. ": " .. value .. "\n"
       end
 
-      local system_prompt = prompts_v2.system_prompt({
+      local system_prompt = prompts.system_prompt({
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
