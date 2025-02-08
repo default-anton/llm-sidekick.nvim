@@ -21,48 +21,106 @@ local function find_tool_call_by_id(tool_id, opts)
   return found_tools[1]
 end
 
+local debug_error_handler = function(err)
+  return debug.traceback(err, 3)
+end
+
 local function run_tool_call_at_cursor(opts)
   local buffer = opts.buffer
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local id
+  for i = cursor_line, 1, -1 do
+    id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+    if id then break end
+  end
 
-  local start_line = 1
-  for i = #buffer_lines, 1, -1 do
-    if buffer_lines[i]:match("^ASSISTANT:") then
-      start_line = i
+  if id == nil then
+    vim.notify("No tool found under the cursor", vim.log.levels.ERROR)
+    return
+  end
+
+  local close_tag_found = false
+  for i = cursor_line, #buffer_lines do
+    if buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      close_tag_found = true
       break
     end
   end
 
-  for _, tool in ipairs(file_operations) do
-    local debug_error_handler = function(err)
-      return debug.traceback(err, 3)
+  if not close_tag_found then
+    vim.notify("No tool found under the cursor", vim.log.levels.ERROR)
+    return
+  end
+
+  local tool_call_found = false
+  for _, tool_call in ipairs(vim.b[opts.buffer].llm_sidekick_tool_calls) do
+    if tool_call.call.id ~= id then
+      goto continue
     end
 
-    local ok, result = xpcall(
-      tool.on_user_accept,
-      debug_error_handler,
-      { buffer = buffer, start_search_line = start_line, end_search_line = #buffer_lines }
-    )
+    tool_call_found = true
+
+    if tool_call.result then
+      goto continue
+    end
+
+    local tool = find_tool_for_tool_call(tool_call.call)
+    if not tool then
+      diagnostic.add_tool_call(
+        tool_call.call,
+        buffer,
+        tool_call.lnum,
+        vim.diagnostic.severity.ERROR,
+        string.format("✗ %s: not found", tool_call.call.name)
+      )
+      return
+    end
+
+    if tool.run == nil then
+      diagnostic.add_tool_call(
+        tool_call.call,
+        buffer,
+        tool_call.lnum,
+        vim.diagnostic.severity.ERROR,
+        string.format("✗ %s: No run function defined", tool_call.call.name)
+      )
+      return
+    end
+
+    local ok, result = xpcall(tool.run, debug_error_handler, tool_call.call, { buffer = buffer })
 
     if ok then
-      if result and result.error then
-        diagnostic.add_tool_call(
-          buffer,
-          result.start_line,
-          vim.diagnostic.severity.ERROR,
-          string.format("✗ %s: %s", tool.diagnostic_name, result.error)
-        )
-      elseif result then
-        diagnostic.add_tool_call(
-          buffer,
-          result.start_line,
-          vim.diagnostic.severity.INFO,
-          string.format("✓ %s", tool.diagnostic_name)
-        )
+      local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
+      for _, tc in ipairs(new_tool_calls) do
+        if tc.call.id == tool_call.call.id then
+          tc.result = result
+        end
       end
+      vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
+
+      diagnostic.add_tool_call(
+        tool_call.call,
+        buffer,
+        tool_call.lnum,
+        vim.diagnostic.severity.INFO,
+        string.format("✓ %s", tool_call.call.name)
+      )
     else
-      vim.notify(string.format("✗ %s: %s", tool.diagnostic_name, vim.inspect(result)), vim.log.levels.ERROR)
+      diagnostic.add_tool_call(
+        tool_call.call,
+        buffer,
+        tool_call.lnum,
+        vim.diagnostic.severity.ERROR,
+        string.format("✗ %s: %s", tool_call.call.name, vim.inspect(result))
+      )
     end
+
+    ::continue::
+  end
+
+  if not tool_call_found then
+    vim.notify("No tool call found under the cursor", vim.log.levels.ERROR)
   end
 end
 
@@ -93,91 +151,80 @@ end
 local function run_all_tool_calls(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local current_id = nil
+  local tool_calls_processed = 0
 
-  local start_line = 1
-  for i = #buffer_lines, 1, -1 do
-    if buffer_lines[i]:match("^ASSISTANT:") then
-      start_line = i
-      break
-    end
-  end
+  for i = 1, #buffer_lines do
+    local id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
 
-  for _, tool in ipairs(file_operations) do
-    local debug_error_handler = function(err)
-      return debug.traceback(err, 3)
-    end
+    if id then
+      current_id = id
+    elseif current_id and buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      for _, tool_call in ipairs(vim.b[buffer].llm_sidekick_tool_calls) do
+        if tool_call.call.id ~= current_id then
+          goto continue
+        end
 
-    local ok, results = xpcall(
-      tool.on_user_accept_all,
-      debug_error_handler,
-      { buffer = buffer, start_search_line = start_line, end_search_line = #buffer_lines }
-    )
+        if tool_call.result then
+          goto continue
+        end
 
-    if not ok then
-      vim.notify(string.format("✗ %s: %s", tool.diagnostic_name, vim.inspect(results)), vim.log.levels.ERROR)
-      goto continue
-    end
+        local tool = find_tool_for_tool_call(tool_call.call)
+        if not tool then
+          diagnostic.add_tool_call(
+            tool_call.call,
+            buffer,
+            tool_call.lnum,
+            vim.diagnostic.severity.ERROR,
+            string.format("✗ %s: not found", tool_call.call.name)
+          )
+          goto continue
+        end
 
-    for _, result in ipairs(results) do
-      if result.error then
-        diagnostic.add_tool_call(
-          buffer,
-          result.start_line,
-          vim.diagnostic.severity.ERROR,
-          string.format("✗ %s: %s", tool.diagnostic_name, result.error)
-        )
-      else
-        diagnostic.add_tool_call(
-          buffer,
-          result.start_line,
-          vim.diagnostic.severity.INFO,
-          string.format("✓ %s", tool.diagnostic_name)
-        )
+        if tool.run == nil then
+          diagnostic.add_tool_call(
+            tool_call.call,
+            buffer,
+            tool_call.lnum,
+            vim.diagnostic.severity.ERROR,
+            string.format("✗ %s: No run function defined", tool_call.call.name)
+          )
+          goto continue
+        end
+
+        local ok, result = xpcall(tool.run, debug_error_handler, tool_call.call, { buffer = buffer })
+
+        if ok then
+          local new_tool_calls = vim.b[buffer].llm_sidekick_tool_calls
+          for _, tc in ipairs(new_tool_calls) do
+            if tc.call.id == tool_call.call.id then
+              tc.result = result
+            end
+          end
+          vim.b[buffer].llm_sidekick_tool_calls = new_tool_calls
+
+          diagnostic.add_tool_call(
+            tool_call.call,
+            buffer,
+            tool_call.lnum,
+            vim.diagnostic.severity.INFO,
+            string.format("✓ %s", tool_call.call.name)
+          )
+        else
+          diagnostic.add_tool_call(
+            tool_call.call,
+            buffer,
+            tool_call.lnum,
+            vim.diagnostic.severity.ERROR,
+            string.format("✗ %s: %s", tool_call.call.name, vim.inspect(result))
+          )
+        end
+
+        tool_calls_processed = tool_calls_processed + 1
+        ::continue::
       end
+      current_id = nil
     end
-
-    ::continue::
-  end
-end
-
-local function on_assistant_turn_end(opts)
-  local buffer = opts.buffer
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-
-  local start_line = 1
-  for i = #buffer_lines, 1, -1 do
-    if buffer_lines[i]:match("^ASSISTANT:") then
-      start_line = i
-      break
-    end
-  end
-
-  for _, tool in ipairs(file_operations) do
-    local debug_error_handler = function(err)
-      return debug.traceback(err, 3)
-    end
-
-    local ok, results = xpcall(
-      tool.on_assistant_turn_end,
-      debug_error_handler,
-      { buffer = buffer, start_search_line = start_line, end_search_line = #buffer_lines }
-    )
-
-    if not ok then
-      vim.notify(string.format("✗ %s: %s", tool.diagnostic_name, vim.inspect(results)), vim.log.levels.ERROR)
-      goto continue
-    end
-
-    for _, result in ipairs(results) do
-      diagnostic.add_tool_call(
-        buffer,
-        result.start_line,
-        vim.diagnostic.severity.HINT,
-        string.format("▶ %s (<leader> aa)", tool.diagnostic_name)
-      )
-    end
-
-    ::continue::
   end
 end
 
@@ -188,5 +235,4 @@ return {
   add_tool_call_to_buffer = add_tool_call_to_buffer,
   update_tool_call_in_buffer = update_tool_call_in_buffer,
   find_tool_for_tool_call = find_tool_for_tool_call,
-  on_assistant_turn_end = on_assistant_turn_end,
 }

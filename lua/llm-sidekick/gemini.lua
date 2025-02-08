@@ -3,11 +3,11 @@ local sjson = require("llm-sidekick.sjson")
 
 local gemini = {}
 
-function gemini.new(opts)
+function gemini.new()
   local api_key = require("llm-sidekick.settings").get_gemini_api_key()
 
   return setmetatable({
-      base_url = 'https://generativelanguage.googleapis.com/v1alpha/models',
+      base_url = 'https://generativelanguage.googleapis.com/v1beta/models',
       api_key = api_key,
     },
     { __index = gemini }
@@ -105,6 +105,7 @@ function gemini:chat(opts, callback)
     end
   end
 
+  local g = require("llm-sidekick.tools.gemini")
   local data = {
     contents = contents,
     generationConfig = {
@@ -120,20 +121,17 @@ function gemini:chat(opts, callback)
       { category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = "BLOCK_NONE" },
       { category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" },
       { category = "HARM_CATEGORY_CIVIC_INTEGRITY",   threshold = "BLOCK_NONE" }
-    }
+    },
+    tools = {
+      { functionDeclarations = vim.tbl_map(function(tool) return g.convert_spec(tool.spec) end, opts.tools) },
+    },
+    toolConfig = {
+      functionCallingConfig = {
+        mode = "ANY"
+      }
+    },
   }
 
-  --   local g = require("llm-sidekick.tools.gemini")
-  --   local function_declarations = vim.tbl_map(function(tool) return g.convert_spec(tool.spec) end, opts.tools)
-  --   data.tools = {
-  --     { functionDeclarations = function_declarations },
-  --   }
-  --   data.toolConfig = {
-  --     functionCallingConfig = {
-  --       mode = "AUTO"
-  --     }
-  --   }
-  --
   -- Include thoughts for thinking models
   if model_settings.reasoning then
     data.generationConfig.thinkingConfig = {

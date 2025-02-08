@@ -12,12 +12,6 @@ return {
     no_system_prompt = true,
     reasoning = true,
   },
-  ["deepseek-r1-distill-llama-70b"] = {
-    name = "groq/deepseek-r1-distill-llama-70b",
-    temperature = 0.6,
-    no_system_prompt = true,
-    reasoning = true,
-  },
   ["claude-3-5-sonnet-latest"] = {
     name = "anthropic/claude-3-5-sonnet-latest",
     max_tokens = 8192,
@@ -84,12 +78,6 @@ return {
     temperature = nil,         -- temperature is not supported
     reasoning = true,
   },
-  ["o1-mini"] = {
-    name = "openai/o1-mini",
-    temperature = nil, -- temperature is not supported
-    reasoning = true,
-    no_system_prompt = true,
-  },
   ["o1-preview"] = {
     name = "openai/o1-preview",
     temperature = nil, -- temperature is not supported
@@ -122,28 +110,15 @@ return {
     temperature = 0.3,
   },
   ["gemini-2.0-pro"] = {
-    name = "gemini/gemini-2.0-pro-exp-02-05",
+    name = "gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
     top_k = 64,
     temperature = 0.4,
   },
   ["gemini-2.0-flash"] = {
-    name = "gemini/gemini-2.0-flash",
+    name = "gemini-2.0-flash",
     max_tokens = 8192,
     top_k = 40,
-    temperature = 0.4,
-  },
-  ["gemini-2.0-flash-thinking"] = {
-    name = "gemini/gemini-2.0-flash-thinking-exp-01-21",
-    max_tokens = 65536,
-    temperature = 0.5,
-    top_k = 64,
-    reasoning = true,
-  },
-  ["gemini-exp-1206"] = {
-    name = "gemini/gemini-exp-1206",
-    max_tokens = 8192,
-    top_k = 64,
     temperature = 0.4,
   },
 }

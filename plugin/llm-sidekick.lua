@@ -329,7 +329,6 @@ local ask_command = function()
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
-        tools = require('llm-sidekick.tools.file_operations'),
       })
 
       local guidelines = vim.trim(current_project_config.guidelines or "")

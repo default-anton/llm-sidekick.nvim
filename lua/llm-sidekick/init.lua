@@ -229,14 +229,12 @@ function M.ask(prompt_buffer)
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
-  -- if prompt.settings.model:find("gemini") then
-  --   client = require "llm-sidekick.gemini".new({
-  --   })
-  -- end
-  local client = require "llm-sidekick.openai".new({
-    url = "http://localhost:1993/v1/chat/completions",
-  })
-
+  local client
+  if prompt.settings.model:find("gemini") then
+    client = require "llm-sidekick.gemini".new()
+  else
+    client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
+  end
 
   local in_reasoning_tag = false
   local debug_error_handler = function(err)
@@ -273,14 +271,16 @@ function M.ask(prompt_buffer)
         if state == message_types.TOOL_START then
           local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
           local needs_newlines = last_line and vim.trim(last_line) ~= ""
-          chat.paste_at_end(
-            string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
-              needs_newlines and "\n\n" or "",
-              tool_call.id,
-              tool_call.name
-            ),
-            prompt_buffer
-          )
+          if tool.run then
+            chat.paste_at_end(
+              string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
+                needs_newlines and "\n\n" or "",
+                tool_call.id,
+                tool_call.name
+              ),
+              prompt_buffer
+            )
+          end
 
           local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
 
@@ -294,14 +294,6 @@ function M.ask(prompt_buffer)
           if tool.start then
             tool.start(tool_call, { buffer = prompt_buffer })
           end
-
-          diagnostic.add_tool_call(
-            tool_call,
-            prompt_buffer,
-            line_num,
-            vim.diagnostic.severity.HINT,
-            string.format("→ %s (<leader>aa)", tool.spec.name)
-          )
         elseif state == message_types.TOOL_DELTA then
           if tool.delta then
             tool.delta(tool_call, { buffer = prompt_buffer })
@@ -326,15 +318,16 @@ function M.ask(prompt_buffer)
             result = nil,
           })
 
-          diagnostic.add_tool_call(
-            tool_call,
-            prompt_buffer,
-            lnum,
-            vim.diagnostic.severity.HINT,
-            string.format("→ %s (<leader>aa)", tool.spec.name)
-          )
-
-          chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+          if tool.run then
+            diagnostic.add_tool_call(
+              tool_call,
+              prompt_buffer,
+              lnum,
+              vim.diagnostic.severity.HINT,
+              string.format("▶ %s (<leader>aa)", tool.spec.name)
+            )
+            chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+          end
         end
 
         return
@@ -354,17 +347,21 @@ function M.ask(prompt_buffer)
     end, debug_error_handler)
 
     if not success then
-      vim.notify(err, vim.log.levels.ERROR)
+      vim.notify(vim.insect(err), vim.log.levels.ERROR)
       return
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      xpcall(function()
-        tool_utils.on_assistant_turn_end({ buffer = prompt_buffer })
+      success, err = xpcall(function()
         chat.paste_at_end("\n\nUSER: ", prompt_buffer)
       end, debug_error_handler)
+
+      if not success then
+        vim.notify(vim.insect(err), vim.log.levels.ERROR)
+        return
+      end
 
       local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
       local file_editor = require("llm-sidekick.file_editor")

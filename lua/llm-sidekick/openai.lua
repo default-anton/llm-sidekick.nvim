@@ -15,6 +15,8 @@ function openai:chat(opts, callback)
   local messages = opts.messages
   local settings = opts.settings
   callback = vim.schedule_wrap(callback)
+
+  local o = require("llm-sidekick.tools.openai")
   local data = {
     model = settings.model,
     stream = settings.stream,
@@ -22,10 +24,9 @@ function openai:chat(opts, callback)
     max_tokens = settings.max_tokens,
     max_completion_tokens = settings.max_completion_tokens,
     temperature = settings.temperature,
+    tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools),
+    tool_choice = "required"
   }
-
-  --   local o = require("llm-sidekick.tools.openai")
-  --   data.tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools)
 
   if settings.response_format then
     data.response_format = settings.response_format
@@ -36,17 +37,17 @@ function openai:chat(opts, callback)
   end
 
   local body = vim.json.encode(data)
-  -- if data.tools then
-  --   for i, tool in ipairs(opts.tools) do
-  --     local unordered_json = vim.json.encode(data.tools[i])
-  --     local ordered_json = tool.spec_json
-  --     if body:find(unordered_json, 1, true) then
-  --       body = body:gsub(unordered_json, ordered_json, 1)
-  --     else
-  --       error("Failed to find tool in request body")
-  --     end
-  --   end
-  -- end
+  if data.tools then
+    for i, tool in ipairs(opts.tools) do
+      local unordered_json = vim.json.encode(data.tools[i])
+      local ordered_json = tool.spec_json
+      if body:find(unordered_json, 1, true) then
+        body = body:gsub(unordered_json, ordered_json, 1)
+      else
+        error("Failed to find tool in request body")
+      end
+    end
+  end
 
   local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {
