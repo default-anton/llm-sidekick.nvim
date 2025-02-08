@@ -499,19 +499,6 @@ The following additional instructions are provided by the user, and should be fo
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
     if vim.b[buf].llm_sidekick_include_modifications then
       file_editor.create_apply_modifications_command(buf)
-      local tool_utils = require 'llm-sidekick.tools.utils'
-      vim.keymap.set(
-        'n',
-        '<leader>aa',
-        function() tool_utils.run_tool_call_at_cursor({ buffer = buf }) end,
-        { buffer = buf, desc = "Accept and run the tool at the cursor" }
-      )
-      vim.keymap.set(
-        'n',
-        '<leader>A',
-        function() tool_utils.run_all_tool_calls({ buffer = buf }) end,
-        { buffer = buf, desc = "Accept and run all tools in the chat" }
-      )
     else
       local function complete_mode(ArgLead, CmdLine, CursorPos)
         local args = vim.split(CmdLine, "%s+")

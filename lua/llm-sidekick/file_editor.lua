@@ -488,18 +488,33 @@ local function apply_modifications(bufnr, is_apply_all)
   end
 end
 
-local function create_apply_modifications_command(bufnr)
-  vim.api.nvim_buf_create_user_command(bufnr, "Apply", function()
-    apply_modifications(bufnr, false)
+local function create_apply_modifications_command(buffer)
+  local tool_utils = require 'llm-sidekick.tools.utils'
+
+  vim.api.nvim_buf_create_user_command(buffer, "Accept", function()
+    tool_utils.run_tool_call_at_cursor({ buffer = buffer })
   end, {
-    desc = "Apply the modification block containing the cursor",
+    desc = "Accept tool under the cursor",
   })
 
-  vim.api.nvim_buf_create_user_command(bufnr, "ApplyAll", function()
-    apply_modifications(bufnr, true)
+  vim.api.nvim_buf_create_user_command(buffer, "AcceptAll", function()
+    tool_utils.run_all_tool_calls({ buffer = buffer })
   end, {
-    desc = "Apply all modification blocks in the last assistant message",
+    desc = "Accept all tools in the last assistant message",
   })
+
+  vim.keymap.set(
+    'n',
+    '<leader>aa',
+    function() tool_utils.run_tool_call_at_cursor({ buffer = buffer }) end,
+    { buffer = buffer, desc = "Accept tool under the cursor" }
+  )
+  vim.keymap.set(
+    'n',
+    '<leader>A',
+    function() tool_utils.run_all_tool_calls({ buffer = buffer }) end,
+    { buffer = buffer, desc = "Accept all tools in the last assistant message" }
+  )
 end
 
 return {

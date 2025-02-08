@@ -173,7 +173,7 @@ local function on_assistant_turn_end(opts)
         buffer,
         result.start_line,
         vim.diagnostic.severity.HINT,
-        string.format("▶ %s", tool.diagnostic_name)
+        string.format("▶ %s (<leader> aa)", tool.diagnostic_name)
       )
     end
 
