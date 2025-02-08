@@ -229,16 +229,12 @@ function M.ask(prompt_buffer)
   local current_line = "ASSISTANT: "
   vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
 
-  local include_modifications = vim.b[prompt_buffer].llm_sidekick_include_modifications
-
   -- if prompt.settings.model:find("gemini") then
   --   client = require "llm-sidekick.gemini".new({
-  --     include_modifications = include_modifications,
   --   })
   -- end
   local client = require "llm-sidekick.openai".new({
     url = "http://localhost:1993/v1/chat/completions",
-    include_modifications = include_modifications,
   })
 
 

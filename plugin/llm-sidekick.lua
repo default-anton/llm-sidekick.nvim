@@ -289,129 +289,7 @@ local function add_file_content_to_prompt(prompt, file_paths)
   return prompt
 end
 
-local function replace_system_prompt(ask_buf, opts)
-  load_project_config()
-
-  local model = ""
-  local model_line = nil
-  local lines = vim.api.nvim_buf_get_lines(ask_buf, 0, -1, false)
-  for i, line in ipairs(lines) do
-    local match = line:match("^MODEL:(.+)$")
-    if match then
-      model = vim.trim(match)
-      model_line = i
-      break
-    end
-  end
-
-  local original_model = model
-
-  for _, arg in ipairs(opts.fargs) do
-    if settings.has_model_for(arg) then
-      model = settings.get_model(arg)
-      break
-    end
-  end
-
-  if model == "" then
-    error("No model specified in the buffer or arguments")
-  end
-
-  -- Update MODEL line if changed via fargs
-  if model ~= original_model then
-    local new_line = "MODEL: " .. model
-    if model_line then
-      -- Replace existing line
-      vim.api.nvim_buf_set_lines(ask_buf, model_line - 1, model_line, false, { new_line })
-    else
-      -- Insert new line at the top
-      vim.api.nvim_buf_set_lines(ask_buf, 0, 0, false, { new_line })
-    end
-  end
-
-  -- Find SYSTEM prompt start and first USER message
-  local system_start = nil
-  local user_start = nil
-  for i, line in ipairs(lines) do
-    if vim.startswith(line, "SYSTEM:") then
-      system_start = i
-      break
-    elseif vim.startswith(line, "USER:") then
-      user_start = i
-      break
-    end
-  end
-
-  -- Find SYSTEM prompt end (before USER:) if it exists
-  local system_end = nil
-  if system_start then
-    system_end = system_start
-    for i = system_start + 1, #lines do
-      if vim.startswith(lines[i], "USER:") then
-        system_end = i - 1
-        break
-      else
-        system_end = i
-      end
-    end
-  end
-
-  -- If no USER message found, can't proceed
-  if not user_start and not system_start then
-    error("No USER message found in buffer")
-  end
-
-  -- Generate new SYSTEM prompt with coding=true and include_modifications=true
-  local system_prompt = prompts_v2.system_prompt({
-    os_name = utils.get_os_name(),
-    shell = vim.o.shell or "bash",
-    cwd = vim.fn.getcwd(),
-    tools = require('llm-sidekick.tools.file_operations'),
-  })
-
-  local guidelines = vim.trim(current_project_config.guidelines or "")
-  local technologies = vim.trim(current_project_config.technologies or "")
-
-  if guidelines ~= "" or technologies ~= "" then
-    system_prompt = system_prompt .. [[
-
----
-
-User's Custom Instructions:
-The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
-  end
-
-  if guidelines ~= "" then
-    system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
-  end
-
-  if technologies ~= "" then
-    system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
-  end
-
-  system_prompt = vim.trim(system_prompt)
-
-  local new_system_lines = vim.split("SYSTEM: " .. system_prompt, "\n")
-
-  -- Replace or insert SYSTEM section
-  if system_start and system_end then
-    -- Replace existing SYSTEM section
-    vim.api.nvim_buf_set_lines(ask_buf, system_start - 1, system_end, false, new_system_lines)
-  else
-    -- Insert before first USER message
-    vim.api.nvim_buf_set_lines(ask_buf, user_start - 1, user_start - 1, false, new_system_lines)
-  end
-
-  -- Update buffer settings
-  vim.b[ask_buf].llm_sidekick_include_modifications = true
-  file_editor.create_apply_modifications_command(ask_buf)
-
-  vim.api.nvim_buf_call(ask_buf, function()
-    fold_stuff(ask_buf)
-  end)
-end
-
-local ask_command = function(cmd_opts)
+local ask_command = function()
   return function(opts)
     -- Always load project config
     load_project_config()
@@ -436,8 +314,7 @@ local ask_command = function(cmd_opts)
     }
 
     if model_settings.temperature then
-      prompt_settings.temperature = cmd_opts.coding and model_settings.temperature.coding or
-          model_settings.temperature.chat
+      prompt_settings.temperature = model_settings.temperature.coding
     end
 
     local prompt = ""
@@ -494,27 +371,9 @@ The following additional instructions are provided by the user, and should be fo
     local buf = vim.api.nvim_create_buf(true, true)
     vim.bo[buf].buftype = "nofile"
     vim.b[buf].is_llm_sidekick_chat = true
-    vim.b[buf].llm_sidekick_include_modifications = cmd_opts.include_modifications
     vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
-    if vim.b[buf].llm_sidekick_include_modifications then
-      file_editor.create_apply_modifications_command(buf)
-    else
-      local function complete_mode(ArgLead, CmdLine, CursorPos)
-        local args = vim.split(CmdLine, "%s+")
-        local options = settings.get_aliases()
-        return vim.tbl_filter(function(item)
-          return vim.startswith(item:lower(), ArgLead:lower()) and not vim.tbl_contains(args, item)
-        end, options)
-      end
-
-      vim.api.nvim_buf_create_user_command(
-        buf,
-        "C",
-        function(buf_cmd_opts) replace_system_prompt(buf, buf_cmd_opts) end,
-        { desc = "Replace the system prompt with a coding prompt", complete = complete_mode, nargs = "?" }
-      )
-    end
+    file_editor.create_apply_modifications_command(buf)
     open_buffer_in_mode(buf, open_mode)
     set_llm_sidekick_options()
 
@@ -548,19 +407,7 @@ end
 
 vim.api.nvim_create_user_command(
   "Chat",
-  ask_command({ coding = false, include_modifications = false }),
-  { range = true, nargs = "*", complete = utils.complete_command }
-)
-
-vim.api.nvim_create_user_command(
-  "Ask",
-  ask_command({ coding = true, include_modifications = false }),
-  { range = true, nargs = "*", complete = utils.complete_command }
-)
-
-vim.api.nvim_create_user_command(
-  "Code",
-  ask_command({ coding = true, include_modifications = true }),
+  ask_command(),
   { range = true, nargs = "*", complete = utils.complete_command }
 )
 

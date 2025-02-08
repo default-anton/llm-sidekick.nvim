@@ -132,9 +132,12 @@ Configure the plugin by calling the setup function:
 COMMANDS                                                 *llm-sidekick-commands*
 
                                                         *:Chat*
-:Chat [args] [paths] Opens a new buffer for general conversation with the LLM.
-                    Perfect for brainstorming, creative writing, or any
-                    non-technical discussions. Arguments can be:
+:Chat [args] [paths] Opens a new buffer for all interactions with the LLM. This
+                    single command handles code-related tasks (creating,
+                    modifying, or deleting files), technical discussions
+                    (debugging, architecture, code explanations), and general
+                    conversations (brainstorming, creative writing).  Arguments
+                    can be:
                     - Model alias: any defined alias from configuration
                       (e.g., claude, fast, o1, mini, flash)
                     - Opening mode: tab (t), vsplit (v), split (s)
@@ -144,49 +147,19 @@ COMMANDS                                                 *llm-sidekick-commands*
                     file2.lua` to include two specific files, or `:Chat %:h` to
                     include all files in the current directory recursively.
 
-                                                        *:Ask*
-:Ask [args] [paths]  Opens a new buffer to ask software engineering and
-                    development-related questions. Uses a prompt optimized for
-                    technical discussions and problem-solving. Accepts an
-                    optional range to include the selected code. Arguments can be:
-                    - Model alias: any defined alias from configuration
-                      (e.g., claude, fast, o1, mini, flash)
-                    - Opening mode: tab (t), vsplit (v), split (s)
-                    File content can be included by passing paths to files or
-                    directories. Multiple file paths can be provided. Example:
-                    `:Ask %` to include the current file, `:Ask utils.py
-                    main.lua` to include two specific files, or `:Ask %:h` to
-                    include all files in the current directory recursively.
-
-                                                        *:Code*
-:Code [args] [paths] Similar to :Ask but includes additional context for file
-                    modifications. Accepts the same arguments as :Ask:
-                    - Model alias: any defined alias from configuration
-                      (e.g., claude, fast, o1, mini, flash)
-                    - Opening mode: tab (t), vsplit (v), split (s)
-                    File content can be included by passing paths to files or
-                    directories. Multiple file paths are supported. Example:
-                    `:Code %` to include the current file, `:Code script.js
-                    data.json` to include two specific files, or `:Code %:h` to
-                    include all files in the current directory recursively.
-
                                                         *:Add*
-:Add [file|url]     Adds content to the last Ask buffer. Can add content from:
+:Add [file|url]     Adds content to the last chat buffer. Can add content from:
                     - Current buffer (entire or selected range)
                     - Specified file path
                     - Directory path (recursively includes all files)
                     - URL to documentation or other web content
-                    Must be used after an :Ask or :Code command.
+                    Must be used after a :Chat command.
 
-                                                        *:Apply*
-:Apply              Applies file modifications from the modification block
-                    containing the cursor. Only available in buffers created
-                    by the :Code command.
+                                                        *:Accept*
+:Accept             Accept tool under the cursor.
 
-                                                        *:ApplyAll*
-:ApplyAll           Applies all file modifications from the last assistant
-                    message. Only available in buffers created by the :Code
-                    command.
+                                                        *:AcceptAll*
+:AcceptAll          Accept all tools in the last assistant message.
 
                                                         *:Stt*
 :Stt                Starts speech-to-text recording at the current cursor
@@ -194,15 +167,6 @@ COMMANDS                                                 *llm-sidekick-commands*
                     Press Enter to stop recording and insert the transcribed
                     text, or press q to cancel. Works in both normal and
                     insert modes.
-
-                                                        *:C*
-:C [model]          Converts a buffer created by :Ask or :Chat into a :Code
-                    buffer by replacing the system prompt with one that includes
-                    file modification capabilities. Takes an optional model
-                    argument to switch to a different model while converting.
-                    Only available in buffers created by :Ask or :Chat commands.
-                    After conversion, :Apply and :ApplyAll commands become
-                    available in the buffer.
 
 ==============================================================================
 LICENSE                                                  *llm-sidekick-license*

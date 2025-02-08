@@ -9,7 +9,6 @@ function gemini.new(opts)
   return setmetatable({
       base_url = 'https://generativelanguage.googleapis.com/v1alpha/models',
       api_key = api_key,
-      include_modifications = opts.include_modifications,
     },
     { __index = gemini }
   )
@@ -124,7 +123,6 @@ function gemini:chat(opts, callback)
     }
   }
 
-  -- if self.include_modifications then
   --   local g = require("llm-sidekick.tools.gemini")
   --   local function_declarations = vim.tbl_map(function(tool) return g.convert_spec(tool.spec) end, opts.tools)
   --   data.tools = {
@@ -135,7 +133,6 @@ function gemini:chat(opts, callback)
   --       mode = "AUTO"
   --     }
   --   }
-  -- end
   --
   -- Include thoughts for thinking models
   if model_settings.reasoning then

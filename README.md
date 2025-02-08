@@ -6,13 +6,11 @@ AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
 
 llm-sidekick.nvim turns your editor into a powerful code companion:
 
-- `:Code` - Write, refactor, and modify multiple files
-- `:Apply` - Apply suggested changes incrementally
-- `:ApplyAll` - Apply all suggested changes at once
-- `:Ask` - Technical discussions about code, debugging, and architecture
+- `:Chat` - Write, refactor, modify multiple files, have technical discussions about code, debugging, and architecture, and have open-ended discussions for brainstorming and creative tasks
+- `:Accept` - Accept tool under the cursor
+- `:AcceptAll` - Accept all tools in the last assistant message
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
 - `:Stt` - Use speech-to-text input instead of typing
-- `:Chat` - Have open-ended discussions for brainstorming and creative tasks
 
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
 
@@ -150,8 +148,8 @@ Each model is configured with specific token limits and temperature settings opt
 
 ### Core Commands
 
-#### `:Code [args] [paths]`
-Opens a new buffer for code-related tasks. Handles file operations like creating, modifying, or deleting files.
+#### `:Chat [args] [paths]`
+Opens a new buffer for all interactions with the LLM.  This single command handles code-related tasks (creating, modifying, or deleting files), technical discussions (debugging, architecture, code explanations), and general conversations (brainstorming, creative writing).
 - Arguments:
   - Model alias: any defined alias from configuration (e.g., claude, fast, o1, mini, flash)
   - Opening mode: `t` (tab), `v` (vsplit), `s` (split)
@@ -160,14 +158,6 @@ Opens a new buffer for code-related tasks. Handles file operations like creating
     - `%` (current file)
     - `script.js data.json` (multiple files)
     - `%:h` (all files in the current directory recursively)
-
-#### `:Ask [args] [paths]`
-Opens a new buffer for technical discussions. Optimized for debugging, architecture discussions, and code explanations.
-- Arguments: Same as `:Code`
-
-#### `:Chat [args] [paths]`
-Opens a new buffer for general conversation with the LLM. Perfect for brainstorming, creative writing, or any non-technical discussions. Supports range selection for including text context.
-- Arguments: Same as `:Code`
 
 #### `:Add [file|url]`
 Adds content to the last chat with llm-sidekick. Can add content from:
@@ -179,40 +169,43 @@ Adds content to the last chat with llm-sidekick. Can add content from:
 
 Must be used after an `:Ask`, `:Code`, or `:Chat` command.
 
-#### `:Apply`
+#### `:Accept`
 Applies a single change from the LLM response at the current cursor position. Use for selective, careful modifications.
 
-#### `:ApplyAll`
+#### `:AcceptAll`
 Applies all changes from the LLM response at once. Use for bulk, consistent modifications.
 
-Both commands handle file operations (create/modify/delete) and are only available in `:Code` buffers.
+Both commands handle file operations (create/modify/delete) and are available in `:Chat` buffers.
 
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
-
-#### `:C [model]`
-Converts a buffer created by `:Ask` or `:Chat` into a `:Code` buffer by replacing the system prompt with one that includes file modification capabilities. Takes an optional model argument to switch to a different model while converting. After conversion, `:Apply` and `:ApplyAll` commands become available in the buffer.
 
 ## Keybindings
 
 Recommended keybindings for common operations:
 
 ```lua
--- Ask LLM about code
-vim.keymap.set('n', '<leader>la', '<cmd>Ask split %<CR>', { noremap = true, desc = "Ask LLM about current buffer" })
-vim.keymap.set('v', '<leader>la', '<cmd>Ask split<CR>', { noremap = true, desc = "Ask LLM about selection" })
+-- Chat with LLM about code
+vim.keymap.set('n', '<leader>lc', '<cmd>Chat vsplit %<CR>', { noremap = true, desc = "Chat with the current buffer" })
+vim.keymap.set('v', '<leader>lc', '<cmd>Chat vsplit<CR>', { noremap = true, desc = "Chat with selected code" })
+vim.keymap.set('n', '<leader>ld', '<cmd>Chat vsplit %:h<CR>', { noremap = true, desc = "Chat with the current directory" })
 
--- Code with LLM
-vim.keymap.set('n', '<leader>lc', '<cmd>Code split %<CR>', { noremap = true, desc = "Start coding with LLM on current buffer" })
-vim.keymap.set('v', '<leader>lc', '<cmd>Code split<CR>', { noremap = true, desc = "Start coding with LLM on selection" })
-vim.keymap.set('n', '<leader>ld', '<cmd>Code split %:h<CR>', { noremap = true, desc = "Start coding with LLM on files in current directory" })
+-- Only set <C-a> mappings if not in telescope buffer
+local function set_add_keymap()
+  local opts = { noremap = true, silent = true }
+  -- Check if current buffer is not a telescope prompt
+  if vim.bo.filetype ~= "TelescopePrompt" and vim.bo.filetype ~= "oil" then
+    vim.keymap.set('n', '<C-a>', ':Add<CR>', vim.tbl_extend('force', opts, { desc = "Add context to LLM" }))
+    vim.keymap.set('v', '<C-a>', ':Add<CR>', vim.tbl_extend('force', opts, { desc = "Add selected context to LLM" }))
+  end
+end
 
--- Apply LLM changes
-vim.keymap.set('n', '<leader>lp', '<cmd>ApplyAll<CR>', { noremap = true, desc = "Apply all LLM changes" })
-
--- Add context to LLM
-vim.keymap.set('n', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add context to LLM" })
-vim.keymap.set('v', '<leader>ad', '<cmd>Add<CR>', { noremap = true, desc = "Add selected context to LLM" })
+-- Set up an autocmd to run when entering buffers
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+  callback = function()
+    set_add_keymap()
+  end,
+})
 
 -- Speech to text
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })

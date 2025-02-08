@@ -6,7 +6,6 @@ function openai.new(opts)
   return setmetatable({
       url = opts.url or 'https://api.openai.com/v1/chat/completions',
       api_key = opts.api_key,
-      include_modifications = opts.include_modifications,
     },
     { __index = openai }
   )
@@ -25,10 +24,8 @@ function openai:chat(opts, callback)
     temperature = settings.temperature,
   }
 
-  -- if self.include_modifications then
   --   local o = require("llm-sidekick.tools.openai")
   --   data.tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools)
-  -- end
 
   if settings.response_format then
     data.response_format = settings.response_format
