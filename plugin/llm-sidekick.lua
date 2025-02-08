@@ -314,7 +314,7 @@ local ask_command = function()
     }
 
     if model_settings.temperature then
-      prompt_settings.temperature = model_settings.temperature.coding
+      prompt_settings.temperature = model_settings.temperature
     end
 
     local prompt = ""
