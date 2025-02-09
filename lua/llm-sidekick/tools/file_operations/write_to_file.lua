@@ -41,7 +41,7 @@ return {
   spec = sjson.decode(spec_json),
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)
-    chat.paste_at_end("**Create:** `<path will be determined...>`", opts.buffer)
+    chat.paste_at_end("**Create:** ``", opts.buffer)
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
@@ -71,17 +71,20 @@ return {
       chat.paste_at_end(tool_call.parameters.content:sub(content_written + 1), opts.buffer)
       tool_call.state.content_written = #tool_call.parameters.content
 
-      -- Place signs for the find section
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
       local sign_group = string.format("%s-write_to_file-content", tool_call.id)
-      signs.clear(opts.buffer, sign_group)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     end
   end,
   stop = function(tool_call, opts)
     if #tool_call.parameters.content > 0 then
       chat.paste_at_end("\n```", opts.buffer)
+
+      local content_end_line = tool_call.state.content_start_line +
+          select(2, tool_call.parameters.content:gsub("\n", ""))
+      local sign_group = string.format("%s-write_to_file-content", tool_call.id)
+      signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     else
       chat.paste_at_end("```", opts.buffer)
     end

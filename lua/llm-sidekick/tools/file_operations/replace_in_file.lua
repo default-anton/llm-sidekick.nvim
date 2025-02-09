@@ -140,7 +140,6 @@ return {
       search_start_line = tool_call.state.search_start_line
       local search_end_line = search_start_line + select(2, tool_call.parameters.search:gsub("\n", ""))
       local sign_group = string.format("%s-replace_in_file-search", tool_call.id)
-      signs.clear(opts.buffer, sign_group)
       signs.place(opts.buffer, sign_group, search_start_line, search_end_line, "llm_sidekick_red")
     end
 
@@ -172,7 +171,6 @@ return {
       end
       local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
       local sign_group = string.format("%s-replace_in_file-replace", tool_call.id)
-      signs.clear(opts.buffer, sign_group)
       signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_green")
     end
   end,
