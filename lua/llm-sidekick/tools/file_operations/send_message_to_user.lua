@@ -2,10 +2,10 @@ local chat = require("llm-sidekick.chat")
 local sjson = require("llm-sidekick.sjson")
 
 local description = vim.json.encode([[
-Allows direct communication with the user through messages.
+Sends a message directly to the user.
 
 CRITICAL REQUIREMENTS:
-- `message`: The text message to display to the user.]])
+- `message`: What you want to say to the user]])
 
 local spec_json = [[{
   "name": "send_message_to_user",
