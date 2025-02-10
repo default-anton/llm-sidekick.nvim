@@ -100,8 +100,13 @@ function M.parse_prompt(prompt, buffer)
 
         local result = tool_call.call.result
         if type(result) == "boolean" then
-          result = tostring(result)
+          result = { success = result }
         end
+        if not result then
+          result = { result = "User hasn't accepted the tool yet" }
+        end
+
+        result = vim.json.encode(result)
 
         table.insert(tool_call_results, {
           role = "tool",
@@ -233,12 +238,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
   end
 
-  local client
-  if prompt.settings.model:find("gemini") then
-    client = require "llm-sidekick.gemini".new()
-  else
-    client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
-  end
+  local client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
 
   local in_reasoning_tag = false
   local debug_error_handler = function(err)
@@ -357,16 +357,20 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      local assistant_messages = vim.tbl_filter(function(tc)
-        tc.result = 'seen'
-        return tc.name == "send_message_to_user"
-      end, tool_calls)
+      has_pending_tools = vim.tbl_contains(
+        tool_calls,
+        function(tc)
+          return tc.name ~= "send_message_to_user" and tc.result == nil
+        end,
+        { predicate = true }
+      )
 
-      local tc = assistant_messages[#assistant_messages]
-      local needs_user_input = tc and tc.parameters.conversation_control and
-          vim.tbl_contains({ "expect_input", "done" }, tc.parameters.conversation_control)
+      local last_tool = tool_calls[#tool_calls]
+      local can_continue = last_tool
+          and last_tool.name == "send_message_to_user"
+          and last_tool.parameters.conversation_control == "continue"
 
-      if not needs_user_input and max_turns_without_user_input > 0 then
+      if not has_pending_tools and can_continue and max_turns_without_user_input > 0 then
         return M.ask(prompt_buffer, max_turns_without_user_input - 1)
       end
 

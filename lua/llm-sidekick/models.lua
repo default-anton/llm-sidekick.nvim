@@ -103,13 +103,13 @@ return {
     temperature = 0.3,
   },
   ["gemini-2.0-pro"] = {
-    name = "gemini-2.0-pro-exp-02-05",
+    name = "gemini/gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
     top_k = 64,
     temperature = 0.4,
   },
   ["gemini-2.0-flash"] = {
-    name = "gemini-2.0-flash",
+    name = "gemini/gemini-2.0-flash",
     max_tokens = 8192,
     top_k = 40,
     temperature = 0.4,

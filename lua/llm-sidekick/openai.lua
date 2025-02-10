@@ -25,7 +25,8 @@ function openai:chat(opts, callback)
     max_completion_tokens = settings.max_completion_tokens,
     temperature = settings.temperature,
     tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools),
-    tool_choice = "required"
+    tool_choice = "required",
+    parallel_tool_calls = false,
   }
 
   if settings.response_format then

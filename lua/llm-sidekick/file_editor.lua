@@ -488,6 +488,32 @@ local function apply_modifications(bufnr, is_apply_all)
   end
 end
 
+local function remove_trailing_user_prompt(buffer)
+  local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local last_content_line = #lines
+
+  -- Find last non-empty line
+  while last_content_line > 0 and vim.trim(lines[last_content_line]) == "" do
+    last_content_line = last_content_line - 1
+  end
+
+  vim.print("Last content line: " .. last_content_line)
+
+  -- Check if last non-empty line is "USER:" and adjust accordingly
+  if last_content_line > 0 and vim.trim(lines[last_content_line]) == "USER:" then
+    last_content_line = last_content_line - 1
+    -- Find last non-empty line before "USER:"
+    while last_content_line > 0 and vim.trim(lines[last_content_line]) == "" do
+      last_content_line = last_content_line - 1
+    end
+  end
+
+  -- Only modify buffer if we need to remove lines
+  if last_content_line < #lines then
+    vim.api.nvim_buf_set_lines(buffer, last_content_line, -1, false, {})
+  end
+end
+
 local function create_apply_modifications_command(buffer)
   local tool_utils = require 'llm-sidekick.tools.utils'
 
@@ -506,13 +532,21 @@ local function create_apply_modifications_command(buffer)
   vim.keymap.set(
     'n',
     '<leader>aa',
-    function() tool_utils.run_tool_call_at_cursor({ buffer = buffer }) end,
+    function()
+      tool_utils.run_tool_call_at_cursor({ buffer = buffer })
+      remove_trailing_user_prompt(buffer)
+      require("llm-sidekick").ask(buffer)
+    end,
     { buffer = buffer, desc = "Accept tool under the cursor" }
   )
   vim.keymap.set(
     'n',
     '<leader>A',
-    function() tool_utils.run_all_tool_calls({ buffer = buffer }) end,
+    function()
+      tool_utils.run_all_tool_calls({ buffer = buffer })
+      remove_trailing_user_prompt(buffer)
+      require("llm-sidekick").ask(buffer)
+    end,
     { buffer = buffer, desc = "Accept all tools in the last assistant message" }
   )
 end

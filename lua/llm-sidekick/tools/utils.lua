@@ -88,17 +88,20 @@ local function run_tool_call_at_cursor(opts)
       return
     end
 
-    local ok, result = xpcall(tool.run, debug_error_handler, tool_call.call, { buffer = buffer })
+    local ok, result = pcall(tool.run, tool_call.call, { buffer = buffer })
+
+    local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
+    for _, tc in ipairs(new_tool_calls) do
+      if tc.call.id == tool_call.call.id then
+        tc.call.result = {
+          success = ok,
+          result = result,
+        }
+      end
+    end
+    vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
 
     if ok then
-      local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
-      for _, tc in ipairs(new_tool_calls) do
-        if tc.call.id == tool_call.call.id then
-          tc.call.result = result
-        end
-      end
-      vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
-
       diagnostic.add_tool_call(
         tool_call.call,
         buffer,

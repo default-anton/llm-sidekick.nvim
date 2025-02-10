@@ -293,6 +293,6 @@ return {
       vim.cmd('bdelete ' .. buf)
     end
 
-    return 'replacement successful'
+    return true
   end,
 }
