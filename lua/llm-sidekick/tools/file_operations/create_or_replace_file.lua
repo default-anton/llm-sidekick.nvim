@@ -13,7 +13,7 @@ CRITICAL REQUIREMENTS:
 - The tool will create any necessary directories in the path if they do not already exist.]])
 
 local spec_json = [[{
-  "name": "write_to_file",
+  "name": "create_or_replace_file",
   "description": ]] .. description .. [[,
   "input_schema": {
     "type": "object",
@@ -73,7 +73,7 @@ return {
 
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
-      local sign_group = string.format("%s-write_to_file-content", tool_call.id)
+      local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     end
   end,
@@ -83,7 +83,7 @@ return {
 
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
-      local sign_group = string.format("%s-write_to_file-content", tool_call.id)
+      local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     else
       chat.paste_at_end("```", opts.buffer)
