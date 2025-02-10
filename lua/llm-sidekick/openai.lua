@@ -37,17 +37,6 @@ function openai:chat(opts, callback)
   end
 
   local body = vim.json.encode(data)
-  if data.tools then
-    for i, tool in ipairs(opts.tools) do
-      local unordered_json = vim.json.encode(data.tools[i])
-      local ordered_json = tool.spec_json
-      if body:find(unordered_json, 1, true) then
-        body = body:gsub(unordered_json, ordered_json, 1)
-      else
-        error("Failed to find tool in request body")
-      end
-    end
-  end
 
   local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {

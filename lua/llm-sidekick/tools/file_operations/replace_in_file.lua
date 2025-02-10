@@ -1,9 +1,10 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
-local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
-local description = vim.json.encode([[
+local spec = {
+  name = "replace_in_file",
+  description = [[
 Makes precise, targeted changes to specific parts of a file. Default choice for most file modifications.
 
 CRITICAL REQUIREMENTS:
@@ -11,31 +12,18 @@ CRITICAL REQUIREMENTS:
 - `search`: Include the exact text that needs to be located for modification. This must be an EXACT, CHARACTER-FOR-CHARACTER match of the original text, including all comments, spacing, indentation, and seemingly irrelevant details. Do not omit or modify any characters.
 - `replace`: Provide the new text that will replace the found text. Ensure that the replacement maintains the original file's formatting and style.
 - Each `search` must be unique enough to match only the intended section
-- All matches will be replaced with the provided `replace` text.]])
-
-local spec_json = [[{
-  "name": "replace_in_file",
-  "description": ]] .. description .. [[,
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string"
-      },
-      "search": {
-        "type": "string"
-      },
-      "replace": {
-        "type": "string"
-      }
+- All matches will be replaced with the provided `replace` text.
+  ]],
+  input_schema = {
+    type = "object",
+    properties = {
+      path = { type = "string" },
+      search = { type = "string" },
+      replace = { type = "string" },
     },
-    "required": [
-      "path",
-      "search",
-      "replace"
-    ]
-  }
-}]]
+    required = { "path", "search", "replace" },
+  },
+}
 
 local function find_min_indentation(lines)
   local min_indent = math.huge
@@ -87,8 +75,7 @@ local function error_handler(err)
 end
 
 return {
-  spec_json = spec_json,
-  spec = sjson.decode(spec_json),
+  spec = spec,
   start = function(tool_call, opts)
     chat.paste_at_end("**Path:**", opts.buffer)
     -- Store the starting line number for later updates
