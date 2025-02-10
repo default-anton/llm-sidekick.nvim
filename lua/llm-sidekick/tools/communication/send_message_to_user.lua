@@ -8,11 +8,14 @@ CRITICAL REQUIREMENTS:
 - `message`: What you want to say to the user
 - `message_type`: The type of message being sent. Must be one of:
   - "question": Requires user input/response
-  - "info": General informational message, no action required
-  - "all_tasks_done": Indicates all tasks are finished, nothing more to do
+  - "chat": General conversational message or response
   - "alert": Indicates issues requiring attention (includes both errors and warnings)
   - "progress": Updates during longer operations or multi-step tasks, no action required
-  - "suggestion": Proactive recommendations and advice that user can choose to act on]])
+  - "suggestion": Proactive recommendations and advice that user can choose to act on
+- `conversation_control`: Controls the flow of conversation. Must be one of:
+  - "expect_input": You are waiting for user input
+  - "continue": You have more to process or say
+  - "done": You have completed the task and are ready for new instructions]])
 
 local spec_json = [[{
   "name": "send_message_to_user",
@@ -25,11 +28,15 @@ local spec_json = [[{
       },
       "message_type": {
         "type": "string",
-        "enum": ["question", "info", "all_tasks_done", "alert", "progress", "suggestion"]
+        "enum": ["question", "chat", "alert", "progress", "suggestion"]
+      },
+      "conversation_control": {
+        "type": "string",
+        "enum": ["expect_input", "continue", "done"]
       }
     },
     "required": [
-      "message", "message_type"
+      "message", "message_type", "conversation_control"
     ]
   }
 }]]

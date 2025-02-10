@@ -6,9 +6,9 @@ local diagnostic    = require("llm-sidekick.diagnostic")
 local tool_utils    = require("llm-sidekick.tools.utils")
 
 
-MAX_TURNS_WITHOUT_USER_INPUT = 25
+MAX_TURNS_WITHOUT_USER_INPUT = 5
 
-local M             = {}
+local M                      = {}
 
 function M.setup(opts)
   settings.setup(opts or {})
@@ -357,22 +357,16 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      local awaiting_input = false
-      for _, tc in ipairs(tool_calls) do
-        if tc.name ~= "send_message_to_user" then
-          goto continue
-        end
+      local assistant_messages = vim.tbl_filter(function(tc)
+        tc.result = 'seen'
+        return tc.name == "send_message_to_user"
+      end, tool_calls)
 
-        if tc.parameters.message_type then
-          awaiting_input = vim.tbl_contains({ "question", "all_tasks_done", "suggestion" }, tc.parameters.message_type)
-        else
-          tc.result = 'seen'
-        end
+      local tc = assistant_messages[#assistant_messages]
+      local needs_user_input = tc and tc.parameters.conversation_control and
+          vim.tbl_contains({ "expect_input", "done" }, tc.parameters.conversation_control)
 
-        ::continue::
-      end
-
-      if not awaiting_input and max_turns_without_user_input > 0 then
+      if not needs_user_input and max_turns_without_user_input > 0 then
         return M.ask(prompt_buffer, max_turns_without_user_input - 1)
       end
 
