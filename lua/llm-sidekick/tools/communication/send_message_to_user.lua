@@ -5,7 +5,14 @@ local description = vim.json.encode([[
 Sends a message directly to the user.
 
 CRITICAL REQUIREMENTS:
-- `message`: What you want to say to the user]])
+- `message`: What you want to say to the user
+- `message_type`: The type of message being sent. Must be one of:
+  - "question": Requires user input/response
+  - "info": General informational message, no action required
+  - "all_tasks_done": Indicates all tasks are finished, nothing more to do
+  - "alert": Indicates issues requiring attention (includes both errors and warnings)
+  - "progress": Updates during longer operations or multi-step tasks, no action required
+  - "suggestion": Proactive recommendations and advice that user can choose to act on]])
 
 local spec_json = [[{
   "name": "send_message_to_user",
@@ -15,10 +22,14 @@ local spec_json = [[{
     "properties": {
       "message": {
         "type": "string"
-      }
+      },
+      "message_type": {
+        "type": "string",
+        "enum": ["question", "info", "all_tasks_done", "alert", "progress", "suggestion"]
+      },
     },
     "required": [
-      "message"
+      "message", "message_type"
     ]
   }
 }]]

@@ -1,10 +1,12 @@
 local chat          = require "llm-sidekick.chat"
 local message_types = require "llm-sidekick.message_types"
-local sjson         = require "llm-sidekick.sjson"
 local fs            = require "llm-sidekick.fs"
 local settings      = require "llm-sidekick.settings"
 local diagnostic    = require("llm-sidekick.diagnostic")
 local tool_utils    = require("llm-sidekick.tools.utils")
+
+
+MAX_TURNS_WITHOUT_USER_INPUT = 25
 
 local M             = {}
 
@@ -96,18 +98,15 @@ function M.parse_prompt(prompt, buffer)
           }
         })
 
-        if type(tool_call.result) == "boolean" then
-          if tool_call.result then
-            tool_call.result = "success"
-          else
-            tool_call.result = "failed"
-          end
+        local result = tool_call.call.result
+        if type(result) == "boolean" then
+          result = tostring(result)
         end
 
         table.insert(tool_call_results, {
           role = "tool",
           tool_call_id = tool_call.call.id,
-          content = tool_call.result,
+          content = result,
         })
 
         ::next_tool_call::
@@ -184,7 +183,9 @@ function M.parse_prompt(prompt, buffer)
   return options
 end
 
-function M.ask(prompt_buffer)
+function M.ask(prompt_buffer, max_turns_without_user_input)
+  max_turns_without_user_input = max_turns_without_user_input or MAX_TURNS_WITHOUT_USER_INPUT
+
   -- Set up a buffer-local autocmd to block manual typing during LLM response.
   local block_input_au = vim.api.nvim_create_autocmd("InsertCharPre", {
     buffer = prompt_buffer,
@@ -226,8 +227,11 @@ function M.ask(prompt_buffer)
     end
   end
 
-  local current_line = "ASSISTANT: "
-  vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
+  -- first assistant message
+  if max_turns_without_user_input == MAX_TURNS_WITHOUT_USER_INPUT then
+    local current_line = "ASSISTANT: "
+    vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
+  end
 
   local client
   if prompt.settings.model:find("gemini") then
@@ -240,6 +244,8 @@ function M.ask(prompt_buffer)
   local debug_error_handler = function(err)
     return debug.traceback(err, 3)
   end
+
+  local tool_calls = {}
 
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_buffer) then
@@ -288,7 +294,6 @@ function M.ask(prompt_buffer)
             buffer = prompt_buffer,
             tool_call = tool_call,
             lnum = line_num,
-            result = nil,
           })
 
           if tool.start then
@@ -303,6 +308,8 @@ function M.ask(prompt_buffer)
             tool.stop(tool_call, { buffer = prompt_buffer })
           end
 
+          table.insert(tool_calls, tool_call)
+
           local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
           local needs_newline = last_line and vim.trim(last_line) ~= ""
           if needs_newline then
@@ -315,7 +322,6 @@ function M.ask(prompt_buffer)
           tool_utils.update_tool_call_in_buffer({
             buffer = prompt_buffer,
             tool_call = tool_call,
-            result = nil,
           })
 
           if tool.run then
@@ -353,6 +359,25 @@ function M.ask(prompt_buffer)
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
+
+      local awaiting_input = false
+      for _, tc in ipairs(tool_calls) do
+        if tc.name ~= "send_message_to_user" then
+          goto continue
+        end
+
+        if tc.parameters.message_type then
+          awaiting_input = vim.tbl_contains({ "question", "all_tasks_done", "suggestion" }, tc.parameters.message_type)
+        else
+          tc.result = 'seen'
+        end
+
+        ::continue::
+      end
+
+      if not awaiting_input and max_turns_without_user_input > 0 then
+        return M.ask(prompt_buffer, max_turns_without_user_input - 1)
+      end
 
       success, err = xpcall(function()
         chat.paste_at_end("\n\nUSER: ", prompt_buffer)

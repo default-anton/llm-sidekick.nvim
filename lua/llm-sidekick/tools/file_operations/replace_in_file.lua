@@ -306,6 +306,6 @@ return {
       vim.cmd('bdelete ' .. buf)
     end
 
-    return 'file updated'
+    return 'replacement successful'
   end,
 }

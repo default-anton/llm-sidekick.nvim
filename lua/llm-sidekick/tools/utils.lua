@@ -61,7 +61,7 @@ local function run_tool_call_at_cursor(opts)
 
     tool_call_found = true
 
-    if tool_call.result then
+    if tool_call.call.result then
       goto continue
     end
 
@@ -94,7 +94,7 @@ local function run_tool_call_at_cursor(opts)
       local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
       for _, tc in ipairs(new_tool_calls) do
         if tc.call.id == tool_call.call.id then
-          tc.result = result
+          tc.call.result = result
         end
       end
       vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
@@ -127,7 +127,7 @@ end
 local function add_tool_call_to_buffer(opts)
   local tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls or {}
   vim.b[opts.buffer].llm_sidekick_tool_calls = vim.list_extend(tool_calls, {
-    { call = opts.tool_call, lnum = opts.lnum, result = opts.result }
+    { call = opts.tool_call, lnum = opts.lnum }
   })
 end
 
@@ -139,7 +139,6 @@ local function update_tool_call_in_buffer(opts)
       table.insert(updated_tool_calls, {
         call = opts.tool_call,
         lnum = tool_call_data.lnum,
-        result = opts.result
       })
     else
       table.insert(updated_tool_calls, tool_call_data)
@@ -165,7 +164,7 @@ local function run_all_tool_calls(opts)
           goto continue
         end
 
-        if tool_call.result then
+        if tool_call.call.result then
           goto continue
         end
 
@@ -198,7 +197,7 @@ local function run_all_tool_calls(opts)
           local new_tool_calls = vim.b[buffer].llm_sidekick_tool_calls
           for _, tc in ipairs(new_tool_calls) do
             if tc.call.id == tool_call.call.id then
-              tc.result = result
+              tc.call.result = result
             end
           end
           vim.b[buffer].llm_sidekick_tool_calls = new_tool_calls

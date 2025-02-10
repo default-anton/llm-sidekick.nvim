@@ -126,6 +126,6 @@ return {
       error(string.format("Failed to write to file: %s", err))
     end
 
-    return 'file created'
+    return 'file written successfully'
   end
 }
