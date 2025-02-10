@@ -60,7 +60,7 @@ local function transcribe(api_key, callback)
       "-H", "Authorization: bearer " .. api_key,
       "-H", "Content-Type: multipart/form-data",
       "-F", "file=@" .. FILE_PATH,
-      "-F", "model=whisper-large-v3-turbo",
+      "-F", "model=whisper-large-v3",
       "-F", "temperature=0.0",
       "-F", "response_format=text",
       "-F", "language=en",
