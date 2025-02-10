@@ -254,15 +254,11 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
 
     local success, err = xpcall(function()
       if state == message_types.ERROR then
-        cleanup()
-        vim.notify(vim.inspect(chars), vim.log.levels.ERROR)
-        return
+        error(string.format("Error: %s", vim.inspect(chars)))
       end
 
       if state == message_types.ERROR_MAX_TOKENS then
-        cleanup()
-        vim.notify("Max tokens exceeded", vim.log.levels.ERROR)
-        return
+        error("Max tokens exceeded")
       end
 
       if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
@@ -353,6 +349,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     end, debug_error_handler)
 
     if not success then
+      cleanup()
       vim.notify(vim.insect(err), vim.log.levels.ERROR)
       return
     end

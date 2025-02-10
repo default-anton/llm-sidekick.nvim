@@ -26,7 +26,7 @@ local spec_json = [[{
       "message_type": {
         "type": "string",
         "enum": ["question", "info", "all_tasks_done", "alert", "progress", "suggestion"]
-      },
+      }
     },
     "required": [
       "message", "message_type"
