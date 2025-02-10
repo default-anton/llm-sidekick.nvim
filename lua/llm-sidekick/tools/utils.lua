@@ -1,8 +1,8 @@
 local diagnostic = require("llm-sidekick.diagnostic")
-local file_operations = require('llm-sidekick.tools.file_operations')
+local built_in_tools = require("llm-sidekick.tools")
 
 local function find_tool_for_tool_call(tool_call)
-  local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, file_operations)
+  local found_tools = vim.tbl_filter(function(tool) return tool.spec.name == tool_call.name end, built_in_tools)
   if #found_tools == 0 then
     return nil
   end

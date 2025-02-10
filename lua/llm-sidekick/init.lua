@@ -203,7 +203,7 @@ function M.ask(prompt_buffer)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt, prompt_buffer)
 
-  prompt.tools = require("llm-sidekick.tools.file_operations")
+  prompt.tools = require("llm-sidekick.tools")
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
   prompt.settings.model = model_settings.name
