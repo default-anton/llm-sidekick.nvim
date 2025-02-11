@@ -31,7 +31,7 @@ local function run_tool_call_at_cursor(opts)
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local id
   for i = cursor_line, 1, -1 do
-    id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+    id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
     if id then break end
   end
 
@@ -157,7 +157,7 @@ local function run_all_tool_calls(opts)
   local tool_calls_processed = 0
 
   for i = 1, #buffer_lines do
-    local id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+    local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
 
     if id then
       current_id = id
@@ -230,6 +230,30 @@ local function run_all_tool_calls(opts)
   end
 end
 
+local function get_tool_calls_in_last_assistant_message(opts)
+  local buffer = opts.buffer
+  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local last_assistant_start_line = require('llm-sidekick.file_editor').find_last_assistant_start_line(buffer_lines)
+  if last_assistant_start_line == -1 then
+    error("ASSISTANT message not found")
+  end
+
+  local tools = {}
+  local current_tool_call = nil
+
+  for i = last_assistant_start_line, #buffer_lines do
+    local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+
+    if id then
+      current_tool_call = find_tool_call_by_id(id, { buffer = buffer })
+    elseif current_tool_call and buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      table.insert(tools, current_tool_call)
+    end
+  end
+
+  return tools
+end
+
 return {
   find_tool_call_by_id = find_tool_call_by_id,
   run_tool_call_at_cursor = run_tool_call_at_cursor,
@@ -237,4 +261,5 @@ return {
   add_tool_call_to_buffer = add_tool_call_to_buffer,
   update_tool_call_in_buffer = update_tool_call_in_buffer,
   find_tool_for_tool_call = find_tool_for_tool_call,
+  get_tool_calls_in_last_assistant_message = get_tool_calls_in_last_assistant_message,
 }

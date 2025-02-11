@@ -534,8 +534,19 @@ local function create_apply_modifications_command(buffer)
     '<leader>aa',
     function()
       tool_utils.run_tool_call_at_cursor({ buffer = buffer })
-      remove_trailing_user_prompt(buffer)
-      require("llm-sidekick").ask(buffer)
+
+      local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
+      local requires_user_input = vim.tbl_contains(
+        tool_calls,
+        function(tc)
+          return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
+        end,
+        { predicate = true }
+      )
+      if not requires_user_input then
+        remove_trailing_user_prompt(buffer)
+        require("llm-sidekick").ask(buffer)
+      end
     end,
     { buffer = buffer, desc = "Accept tool under the cursor" }
   )
