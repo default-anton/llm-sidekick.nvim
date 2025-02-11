@@ -191,35 +191,6 @@ end
 function M.ask(prompt_buffer, max_turns_without_user_input)
   max_turns_without_user_input = max_turns_without_user_input or MAX_TURNS_WITHOUT_USER_INPUT
 
-  -- Set up a buffer-local autocmd to block manual typing during LLM response.
-  -- Create an augroup for the prompt buffer autocmds
-  local augroup = vim.api.nvim_create_augroup("LLMSidekickPrompt", { clear = true })
-
-  -- Create the autocmd to block input
-  vim.api.nvim_create_autocmd("InsertCharPre", {
-    group = augroup,
-    buffer = prompt_buffer,
-    callback = function()
-      -- Set v:char to an empty string to prevent the character from being inserted
-      vim.v.char = ""
-    end,
-  })
-
-  -- Add an autocmd to clean up when the buffer is deleted
-  vim.api.nvim_create_autocmd("BufDelete", {
-    group = augroup,
-    buffer = prompt_buffer,
-    callback = function()
-      vim.api.nvim_del_augroup_by_name("LLMSidekickPrompt")
-    end,
-    once = true,
-  })
-
-  local function cleanup()
-    -- Remove the augroup which will clean up all associated autocmds
-    vim.api.nvim_del_augroup_by_name("LLMSidekickPrompt")
-  end
-
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt, prompt_buffer)
@@ -268,7 +239,6 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
 
   client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_buffer) then
-      cleanup()
       return
     end
 
@@ -376,14 +346,11 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     end, debug_error_handler)
 
     if not success then
-      cleanup()
       vim.notify(vim.insect(err), vim.log.levels.ERROR)
       return
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
-      cleanup()
-
       for _, tool_call in ipairs(tool_calls) do
         if tool_call.tool.run and tool_call.result == nil and tool_call.tool.is_auto_acceptable(tool_call) then
           tool_call.tool.run(tool_call, { buffer = prompt_buffer })
