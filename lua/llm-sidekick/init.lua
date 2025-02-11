@@ -353,7 +353,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       for _, tool_call in ipairs(tool_calls) do
         if tool_call.tool.run and tool_call.result == nil and tool_call.tool.is_auto_acceptable(tool_call) then
-          tool_call.tool.run(tool_call, { buffer = prompt_buffer })
+          tool_call.result = tool_call.tool.run(tool_call, { buffer = prompt_buffer })
           tool_utils.update_tool_call_in_buffer({
             buffer = prompt_buffer,
             tool_call = tool_call,
