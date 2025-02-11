@@ -71,5 +71,8 @@ return {
     else
       chat.paste_at_end("```", opts.buffer)
     end
+  end,
+  run = function(tool_call, _)
+    tool_call.result = true
   end
 }
