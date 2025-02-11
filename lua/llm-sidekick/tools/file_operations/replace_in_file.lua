@@ -76,6 +76,9 @@ end
 
 return {
   spec = spec,
+  is_auto_acceptable = function(_)
+    return false
+  end,
   start = function(tool_call, opts)
     chat.paste_at_end("**Path:**", opts.buffer)
     -- Store the starting line number for later updates

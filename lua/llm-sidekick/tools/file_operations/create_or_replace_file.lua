@@ -35,6 +35,9 @@ end
 
 return {
   spec = spec,
+  is_auto_acceptable = function(_)
+    return false
+  end,
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)
     chat.paste_at_end("**Create:** ``", opts.buffer)

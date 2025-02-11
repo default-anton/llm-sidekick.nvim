@@ -304,6 +304,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
             tool.stop(tool_call, { buffer = prompt_buffer })
           end
 
+          tool_call.tool = tool
           table.insert(tool_calls, tool_call)
 
           local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
@@ -357,20 +358,15 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
       cleanup()
 
-      has_pending_tools = vim.tbl_contains(
+      local requires_user_input = vim.tbl_contains(
         tool_calls,
         function(tc)
-          return tc.name ~= "send_message_to_user" and tc.result == nil
+          return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
         end,
         { predicate = true }
       )
 
-      local last_tool = tool_calls[#tool_calls]
-      local can_continue = last_tool
-          and last_tool.name == "send_message_to_user"
-          and last_tool.parameters.conversation_control == "continue"
-
-      if not has_pending_tools and can_continue and max_turns_without_user_input > 0 then
+      if not requires_user_input and max_turns_without_user_input > 0 then
         return M.ask(prompt_buffer, max_turns_without_user_input - 1)
       end
 

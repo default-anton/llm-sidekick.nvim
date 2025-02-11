@@ -12,11 +12,7 @@ CRITICAL REQUIREMENTS:
   - "chat": General conversational message or response
   - "alert": Indicates issues requiring attention (includes both errors and warnings)
   - "progress": Updates during longer operations or multi-step tasks, no action required
-  - "suggestion": Proactive recommendations and advice that user can choose to act on
-- `conversation_control`: Controls the flow of conversation. Must be one of:
-  - "expect_input": You are waiting for user input
-  - "continue": You have more to process or say
-  - "done": You have completed the task and are ready for new instructions]],
+  - "suggestion": Proactive recommendations and advice that user can choose to act on]],
   input_schema = {
     type = "object",
     properties = {
@@ -27,17 +23,16 @@ CRITICAL REQUIREMENTS:
         type = "string",
         enum = { "question", "chat", "alert", "progress", "suggestion" },
       },
-      conversation_control = {
-        type = "string",
-        enum = { "expect_input", "continue", "done" },
-      },
     },
-    required = { "message", "message_type", "conversation_control" },
+    required = { "message", "message_type" },
   },
 }
 
 return {
   spec = spec,
+  is_auto_acceptable = function(tool_call)
+    return tool_call.parameters.message_type == "chat" or tool_call.parameters.message_type == "progress"
+  end,
   delta = function(tool_call, opts)
     tool_call.parameters.message = tool_call.parameters.message or ""
     tool_call.state.message_written = tool_call.state.message_written or 0
