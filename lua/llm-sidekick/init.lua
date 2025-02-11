@@ -238,7 +238,12 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
   end
 
-  local client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
+  local client
+  if prompt.settings.model:find("gemini") then
+    client = require "llm-sidekick.gemini".new()
+  else
+    client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
+  end
 
   local in_reasoning_tag = false
   local debug_error_handler = function(err)

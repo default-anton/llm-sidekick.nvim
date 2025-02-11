@@ -28,8 +28,14 @@ CRITICAL REQUIREMENTS:
   },
 }
 
+local json_props = [[{
+  "message": { "type": "string" },
+  "message_type": { "type": "string", "enum": [ "question", "chat", "alert", "progress", "suggestion" ] }
+}]]
+
 return {
   spec = spec,
+  json_props = json_props,
   is_auto_acceptable = function(tool_call)
     return tool_call.parameters.message_type == "chat" or tool_call.parameters.message_type == "progress"
   end,

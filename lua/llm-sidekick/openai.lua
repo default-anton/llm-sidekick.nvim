@@ -16,7 +16,7 @@ function openai:chat(opts, callback)
   local settings = opts.settings
   callback = vim.schedule_wrap(callback)
 
-  local o = require("llm-sidekick.tools.openai")
+  local openai_converter = require("llm-sidekick.tools.openai")
   local data = {
     model = settings.model,
     stream = settings.stream,
@@ -24,10 +24,13 @@ function openai:chat(opts, callback)
     max_tokens = settings.max_tokens,
     max_completion_tokens = settings.max_completion_tokens,
     temperature = settings.temperature,
-    tools = vim.tbl_map(function(tool) return o.convert_spec(tool.spec) end, opts.tools),
+    tools = vim.tbl_map(function(tool) return openai_converter.convert_spec(tool.spec) end, opts.tools),
     tool_choice = "required",
-    parallel_tool_calls = false,
+    parallel_tool_calls = true,
   }
+  if settings.model:find("o3") then
+    data.parallel_tool_calls = nil
+  end
 
   if settings.response_format then
     data.response_format = settings.response_format
@@ -38,6 +41,9 @@ function openai:chat(opts, callback)
   end
 
   local body = vim.json.encode(data)
+  for _, tool in ipairs(opts.tools) do
+    body = body:gsub(vim.json.encode(tool.spec.input_schema.properties), tool.json_props)
+  end
 
   local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {

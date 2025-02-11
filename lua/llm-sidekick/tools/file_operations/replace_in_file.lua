@@ -11,9 +11,34 @@ CRITICAL REQUIREMENTS:
 - `path`: The path to the file. This must be relative to the current working directory, or it will be rejected.
 - `search`: Include the exact text that needs to be located for modification. This must be an EXACT, CHARACTER-FOR-CHARACTER match of the original text, including all comments, spacing, indentation, and seemingly irrelevant details. Do not omit or modify any characters.
 - `replace`: Provide the new text that will replace the found text. Ensure that the replacement maintains the original file's formatting and style.
-- Each `search` must be unique enough to match only the intended section
-- All matches will be replaced with the provided `replace` text.
-  ]],
+- Each `search` must be unique enough to match only the intended section.
+
+Example: Requesting to make targeted edits to a file
+
+path: src/components/App.tsx
+
+search:
+function onSubmit() {
+  save();
+}
+
+replace:
+
+---
+
+path: src/components/App.tsx
+
+search:
+return (
+  <div>
+
+replace:
+function onSubmit() {
+  save();
+}
+
+return (
+  <div>]],
   input_schema = {
     type = "object",
     properties = {
@@ -24,6 +49,12 @@ CRITICAL REQUIREMENTS:
     required = { "path", "search", "replace" },
   },
 }
+
+local json_props = [[{
+  "path": { "type": "string" },
+  "search": { "type": "string" },
+  "replace": { "type": "string" }
+}]]
 
 local function find_min_indentation(lines)
   local min_indent = math.huge
@@ -76,6 +107,7 @@ end
 
 return {
   spec = spec,
+  json_props = json_props,
   is_auto_acceptable = function(_)
     return false
   end,

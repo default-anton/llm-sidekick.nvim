@@ -29,12 +29,18 @@ CRITICAL REQUIREMENTS:
   }
 }
 
+local json_props = [[{
+  "path": { "type": "string" },
+  "content": { "type": "string" }
+}]]
+
 local function error_handler(err)
   return debug.traceback(err, 3)
 end
 
 return {
   spec = spec,
+  json_props = json_props,
   is_auto_acceptable = function(_)
     return false
   end,
