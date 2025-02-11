@@ -234,8 +234,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
 
   -- first assistant message
   if max_turns_without_user_input == MAX_TURNS_WITHOUT_USER_INPUT then
-    local current_line = "ASSISTANT: "
-    vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", current_line })
+    vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", "ASSISTANT: " })
   end
 
   local client
@@ -287,6 +286,8 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
               ),
               prompt_buffer
             )
+          else
+            chat.paste_at_end(needs_newlines and "\n\n" or "", prompt_buffer)
           end
 
           local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
@@ -335,6 +336,8 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
               string.format("▶ %s (<leader>aa)", tool.spec.name)
             )
             chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
+          else
+            chat.paste_at_end("\n\n", prompt_buffer)
           end
         end
 
@@ -372,7 +375,8 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
       )
 
       if not requires_user_input and max_turns_without_user_input > 0 then
-        return M.ask(prompt_buffer, max_turns_without_user_input - 1)
+        M.ask(prompt_buffer, max_turns_without_user_input - 1)
+        return
       end
 
       success, err = xpcall(function()

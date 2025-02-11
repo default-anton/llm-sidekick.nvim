@@ -450,6 +450,15 @@ local function find_last_assistant_start_line(lines)
   return -1
 end
 
+local function find_last_user_start_line(lines)
+  for i = #lines, 1, -1 do
+    if lines[i]:match("^USER:") then
+      return i
+    end
+  end
+  return -1
+end
+
 local function find_assistant_end_line(start_line, lines)
   local end_line = start_line
   while end_line <= #lines do
@@ -492,12 +501,16 @@ local function remove_trailing_user_prompt(buffer)
   local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local last_content_line = #lines
 
+  local last_assistant_lnum = find_last_assistant_start_line(lines)
+  local last_user_lnum = find_last_user_start_line(lines)
+  if last_assistant_lnum > 0 and last_user_lnum > 0 and last_assistant_lnum > last_user_lnum then
+    return
+  end
+
   -- Find last non-empty line
   while last_content_line > 0 and vim.trim(lines[last_content_line]) == "" do
     last_content_line = last_content_line - 1
   end
-
-  vim.print("Last content line: " .. last_content_line)
 
   -- Check if last non-empty line is "USER:" and adjust accordingly
   if last_content_line > 0 and vim.trim(lines[last_content_line]) == "USER:" then
