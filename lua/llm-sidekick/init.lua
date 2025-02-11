@@ -343,13 +343,16 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
           })
 
           if tool.run then
-            diagnostic.add_tool_call(
-              tool_call,
-              prompt_buffer,
-              lnum,
-              vim.diagnostic.severity.HINT,
-              string.format("▶ %s (<leader>aa)", tool.spec.name)
-            )
+            if tool_call.result == nil and not tool.is_auto_acceptable(tool_call) then
+              diagnostic.add_tool_call(
+                tool_call,
+                prompt_buffer,
+                lnum,
+                vim.diagnostic.severity.HINT,
+                string.format("▶ %s (<leader>aa)", tool.spec.name)
+              )
+            end
+
             chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
           else
             chat.paste_at_end("\n\n", prompt_buffer)
@@ -384,6 +387,10 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
       for _, tool_call in ipairs(tool_calls) do
         if tool_call.tool.run and tool_call.result == nil and tool_call.tool.is_auto_acceptable(tool_call) then
           tool_call.tool.run(tool_call, { buffer = prompt_buffer })
+          tool_utils.update_tool_call_in_buffer({
+            buffer = prompt_buffer,
+            tool_call = tool_call,
+          })
         end
       end
 
