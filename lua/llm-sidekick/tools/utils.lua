@@ -238,7 +238,7 @@ local function get_tool_calls_in_last_assistant_message(opts)
     error("ASSISTANT message not found")
   end
 
-  local tools = {}
+  local tool_calls = {}
   local current_tool_call = nil
 
   for i = last_assistant_start_line, #buffer_lines do
@@ -246,12 +246,15 @@ local function get_tool_calls_in_last_assistant_message(opts)
 
     if id then
       current_tool_call = find_tool_call_by_id(id, { buffer = buffer })
+      if current_tool_call then
+        current_tool_call.call.tool = find_tool_for_tool_call(current_tool_call)
+      end
     elseif current_tool_call and buffer_lines[i]:match("^</llm_sidekick_tool>") then
-      table.insert(tools, current_tool_call)
+      table.insert(tool_calls, current_tool_call.call)
     end
   end
 
-  return tools
+  return tool_calls
 end
 
 return {
