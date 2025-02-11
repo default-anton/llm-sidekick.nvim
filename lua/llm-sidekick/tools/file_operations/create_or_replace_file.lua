@@ -124,7 +124,7 @@ return {
 
     -- Unload the buffer if it wasn't open before
     if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 then
-      pcall(function() vim.cmd('bdelete ' .. tostring(buf)) end)
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
 
     if not ok then
