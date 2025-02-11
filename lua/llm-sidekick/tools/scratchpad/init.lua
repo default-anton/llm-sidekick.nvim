@@ -71,9 +71,5 @@ return {
     else
       chat.paste_at_end("```", opts.buffer)
     end
-  end,
-  -- No actual file operations needed for scratchpad
-  run = function(_, _)
-    return true
   end
 }
