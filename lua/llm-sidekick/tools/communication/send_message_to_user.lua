@@ -1,31 +1,44 @@
 local chat = require("llm-sidekick.chat")
-local sjson = require("llm-sidekick.sjson")
 
-local description = vim.json.encode([[
+local spec = {
+  name = "send_message_to_user",
+  description = [[
 Sends a message directly to the user.
 
 CRITICAL REQUIREMENTS:
-- `message`: What you want to say to the user]])
-
-local spec_json = [[{
-  "name": "send_message_to_user",
-  "description": ]] .. description .. [[,
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "message": {
-        "type": "string"
-      }
+- `message`: What you want to say to the user
+- `message_type`: The type of message being sent. Must be one of:
+  - "question": Requires user input/response
+  - "chat": General conversational message or response
+  - "alert": Indicates issues requiring attention (includes both errors and warnings)
+  - "progress": Updates during longer operations or multi-step tasks, no action required
+  - "suggestion": Proactive recommendations and advice that user can choose to act on]],
+  input_schema = {
+    type = "object",
+    properties = {
+      message = {
+        type = "string",
+      },
+      message_type = {
+        type = "string",
+        enum = { "question", "chat", "alert", "progress", "suggestion" },
+      },
     },
-    "required": [
-      "message"
-    ]
-  }
+    required = { "message", "message_type" },
+  },
+}
+
+local json_props = [[{
+  "message": { "type": "string" },
+  "message_type": { "type": "string", "enum": [ "question", "chat", "alert", "progress", "suggestion" ] }
 }]]
 
 return {
-  spec_json = spec_json,
-  spec = sjson.decode(spec_json),
+  spec = spec,
+  json_props = json_props,
+  is_auto_acceptable = function(tool_call)
+    return tool_call.parameters.message_type == "chat" or tool_call.parameters.message_type == "progress"
+  end,
   delta = function(tool_call, opts)
     tool_call.parameters.message = tool_call.parameters.message or ""
     tool_call.state.message_written = tool_call.state.message_written or 0

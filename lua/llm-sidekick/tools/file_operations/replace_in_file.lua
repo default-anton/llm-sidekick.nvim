@@ -1,40 +1,59 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
-local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
-local description = vim.json.encode([[
+local spec = {
+  name = "replace_in_file",
+  description = [[
 Makes precise, targeted changes to specific parts of a file. Default choice for most file modifications.
 
 CRITICAL REQUIREMENTS:
 - `path`: The path to the file. This must be relative to the current working directory, or it will be rejected.
 - `search`: Include the exact text that needs to be located for modification. This must be an EXACT, CHARACTER-FOR-CHARACTER match of the original text, including all comments, spacing, indentation, and seemingly irrelevant details. Do not omit or modify any characters.
 - `replace`: Provide the new text that will replace the found text. Ensure that the replacement maintains the original file's formatting and style.
-- Each `search` must be unique enough to match only the intended section
-- All matches will be replaced with the provided `replace` text.]])
+- Each `search` must be unique enough to match only the intended section.
 
-local spec_json = [[{
-  "name": "replace_in_file",
-  "description": ]] .. description .. [[,
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string"
-      },
-      "search": {
-        "type": "string"
-      },
-      "replace": {
-        "type": "string"
-      }
+Example: Requesting to make targeted edits to a file
+
+path: src/components/App.tsx
+
+search:
+function onSubmit() {
+  save();
+}
+
+replace:
+
+---
+
+path: src/components/App.tsx
+
+search:
+return (
+  <div>
+
+replace:
+function onSubmit() {
+  save();
+}
+
+return (
+  <div>]],
+  input_schema = {
+    type = "object",
+    properties = {
+      path = { type = "string" },
+      search = { type = "string" },
+      replace = { type = "string" },
     },
-    "required": [
-      "path",
-      "search",
-      "replace"
-    ]
-  }
+    required = { "path", "search", "replace" },
+  },
+}
+
+local json_props = [[{
+  "path": { "type": "string" },
+  "search": { "type": "string" },
+  "replace": { "type": "string" }
 }]]
 
 local function find_min_indentation(lines)
@@ -87,8 +106,11 @@ local function error_handler(err)
 end
 
 return {
-  spec_json = spec_json,
-  spec = sjson.decode(spec_json),
+  spec = spec,
+  json_props = json_props,
+  is_auto_acceptable = function(_)
+    return false
+  end,
   start = function(tool_call, opts)
     chat.paste_at_end("**Path:**", opts.buffer)
     -- Store the starting line number for later updates
@@ -306,6 +328,6 @@ return {
       vim.cmd('bdelete ' .. buf)
     end
 
-    return 'file updated'
+    return true
   end,
 }

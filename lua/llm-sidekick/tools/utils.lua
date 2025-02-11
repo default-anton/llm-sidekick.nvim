@@ -31,7 +31,7 @@ local function run_tool_call_at_cursor(opts)
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local id
   for i = cursor_line, 1, -1 do
-    id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+    id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
     if id then break end
   end
 
@@ -61,7 +61,7 @@ local function run_tool_call_at_cursor(opts)
 
     tool_call_found = true
 
-    if tool_call.result then
+    if tool_call.call.result then
       goto continue
     end
 
@@ -88,17 +88,20 @@ local function run_tool_call_at_cursor(opts)
       return
     end
 
-    local ok, result = xpcall(tool.run, debug_error_handler, tool_call.call, { buffer = buffer })
+    local ok, result = pcall(tool.run, tool_call.call, { buffer = buffer })
+
+    local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
+    for _, tc in ipairs(new_tool_calls) do
+      if tc.call.id == tool_call.call.id then
+        tc.call.result = {
+          success = ok,
+          result = result,
+        }
+      end
+    end
+    vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
 
     if ok then
-      local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
-      for _, tc in ipairs(new_tool_calls) do
-        if tc.call.id == tool_call.call.id then
-          tc.result = result
-        end
-      end
-      vim.b[opts.buffer].llm_sidekick_tool_calls = new_tool_calls
-
       diagnostic.add_tool_call(
         tool_call.call,
         buffer,
@@ -127,7 +130,7 @@ end
 local function add_tool_call_to_buffer(opts)
   local tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls or {}
   vim.b[opts.buffer].llm_sidekick_tool_calls = vim.list_extend(tool_calls, {
-    { call = opts.tool_call, lnum = opts.lnum, result = opts.result }
+    { call = opts.tool_call, lnum = opts.lnum }
   })
 end
 
@@ -139,7 +142,6 @@ local function update_tool_call_in_buffer(opts)
       table.insert(updated_tool_calls, {
         call = opts.tool_call,
         lnum = tool_call_data.lnum,
-        result = opts.result
       })
     else
       table.insert(updated_tool_calls, tool_call_data)
@@ -155,7 +157,7 @@ local function run_all_tool_calls(opts)
   local tool_calls_processed = 0
 
   for i = 1, #buffer_lines do
-    local id, _ = buffer_lines[i]:match("^<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+    local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
 
     if id then
       current_id = id
@@ -165,7 +167,7 @@ local function run_all_tool_calls(opts)
           goto continue
         end
 
-        if tool_call.result then
+        if tool_call.call.result then
           goto continue
         end
 
@@ -198,7 +200,7 @@ local function run_all_tool_calls(opts)
           local new_tool_calls = vim.b[buffer].llm_sidekick_tool_calls
           for _, tc in ipairs(new_tool_calls) do
             if tc.call.id == tool_call.call.id then
-              tc.result = result
+              tc.call.result = result
             end
           end
           vim.b[buffer].llm_sidekick_tool_calls = new_tool_calls
@@ -228,6 +230,33 @@ local function run_all_tool_calls(opts)
   end
 end
 
+local function get_tool_calls_in_last_assistant_message(opts)
+  local buffer = opts.buffer
+  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local last_assistant_start_line = require('llm-sidekick.file_editor').find_last_assistant_start_line(buffer_lines)
+  if last_assistant_start_line == -1 then
+    error("ASSISTANT message not found")
+  end
+
+  local tool_calls = {}
+  local current_tool_call = nil
+
+  for i = last_assistant_start_line, #buffer_lines do
+    local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
+
+    if id then
+      current_tool_call = find_tool_call_by_id(id, { buffer = buffer })
+      if current_tool_call then
+        current_tool_call.call.tool = find_tool_for_tool_call(current_tool_call)
+      end
+    elseif current_tool_call and buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      table.insert(tool_calls, current_tool_call.call)
+    end
+  end
+
+  return tool_calls
+end
+
 return {
   find_tool_call_by_id = find_tool_call_by_id,
   run_tool_call_at_cursor = run_tool_call_at_cursor,
@@ -235,4 +264,5 @@ return {
   add_tool_call_to_buffer = add_tool_call_to_buffer,
   update_tool_call_in_buffer = update_tool_call_in_buffer,
   find_tool_for_tool_call = find_tool_for_tool_call,
+  get_tool_calls_in_last_assistant_message = get_tool_calls_in_last_assistant_message,
 }

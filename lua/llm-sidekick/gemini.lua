@@ -105,7 +105,7 @@ function gemini:chat(opts, callback)
     end
   end
 
-  local g = require("llm-sidekick.tools.gemini")
+  local gemini_converter = require("llm-sidekick.tools.gemini")
   local data = {
     contents = contents,
     generationConfig = {
@@ -123,7 +123,7 @@ function gemini:chat(opts, callback)
       { category = "HARM_CATEGORY_CIVIC_INTEGRITY",   threshold = "BLOCK_NONE" }
     },
     tools = {
-      { functionDeclarations = vim.tbl_map(function(tool) return g.convert_spec(tool.spec) end, opts.tools) },
+      { functionDeclarations = vim.tbl_map(function(tool) return gemini_converter.convert_spec(tool.spec) end, opts.tools) },
     },
     toolConfig = {
       functionCallingConfig = {
@@ -153,12 +153,17 @@ function gemini:chat(opts, callback)
     self.api_key
   )
 
+  local body = vim.json.encode(data)
+  for _, tool in ipairs(opts.tools) do
+    body = body:gsub(vim.json.encode(tool.spec.input_schema.properties), tool.json_props)
+  end
+
   local curl = require("llm-sidekick.executables").get_curl_executable()
   local args = {
     '-s',
     '--no-buffer',
     '-H', 'Content-Type: application/json',
-    '-d', vim.json.encode(data),
+    '-d', body,
     url
   }
 

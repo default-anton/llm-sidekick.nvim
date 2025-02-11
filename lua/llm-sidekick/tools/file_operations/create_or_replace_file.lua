@@ -1,35 +1,37 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
-local sjson = require("llm-sidekick.sjson")
 local signs = require("llm-sidekick.signs")
 
-local description = vim.json.encode([[
+local spec = {
+  name = "create_or_replace_file",
+  description = [[
 Create or overwrite a file with the specified content.
 
 CRITICAL REQUIREMENTS:
 - `path`: The path to the file. This must be relative to the current working directory, or it will be rejected.
 - `content`: The complete content of the file to be written. The file will be overwritten if it already exists.
 - This tool is not for appending or inserting into existing files.
-- The tool will create any necessary directories in the path if they do not already exist.]])
-
-local spec_json = [[{
-  "name": "write_to_file",
-  "description": ]] .. description .. [[,
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string"
+- The tool will create any necessary directories in the path if they do not already exist.]],
+  input_schema = {
+    type = "object",
+    properties = {
+      path = {
+        type = "string"
       },
-      "content": {
-        "type": "string"
+      content = {
+        type = "string"
       }
     },
-    "required": [
+    required = {
       "path",
       "content"
-    ]
+    }
   }
+}
+
+local json_props = [[{
+  "path": { "type": "string" },
+  "content": { "type": "string" }
 }]]
 
 local function error_handler(err)
@@ -37,8 +39,11 @@ local function error_handler(err)
 end
 
 return {
-  spec_json = spec_json,
-  spec = sjson.decode(spec_json),
+  spec = spec,
+  json_props = json_props,
+  is_auto_acceptable = function(_)
+    return false
+  end,
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)
     chat.paste_at_end("**Create:** ``", opts.buffer)
@@ -73,7 +78,7 @@ return {
 
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
-      local sign_group = string.format("%s-write_to_file-content", tool_call.id)
+      local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     end
   end,
@@ -83,7 +88,7 @@ return {
 
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
-      local sign_group = string.format("%s-write_to_file-content", tool_call.id)
+      local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     else
       chat.paste_at_end("```", opts.buffer)
@@ -126,6 +131,6 @@ return {
       error(string.format("Failed to write to file: %s", err))
     end
 
-    return 'file created'
+    return true
   end
 }
