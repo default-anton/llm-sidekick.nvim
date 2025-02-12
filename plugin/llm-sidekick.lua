@@ -108,7 +108,7 @@ local function parse_ask_args(args)
   local parsed = {
     model = settings.get_model(),
     open_mode = "current",
-    file_paths = {}
+    rest = {}
   }
   for _, arg in ipairs(args) do
     if settings.has_model_for(arg) then
@@ -117,17 +117,8 @@ local function parse_ask_args(args)
       parsed.open_mode = arg
     elseif MODE_SHORTCUTS[arg] ~= nil then
       parsed.open_mode = MODE_SHORTCUTS[arg]
-    elseif arg:sub(1, 1) == "%" then
-      local expanded_path = vim.fn.expand(arg)
-      if vim.fn.filereadable(expanded_path) == 1 or vim.fn.isdirectory(expanded_path) == 1 then
-        table.insert(parsed.file_paths, expanded_path)
-      else
-        error("Expanded path is not a readable file: " .. expanded_path)
-      end
-    elseif vim.fn.filereadable(arg) == 1 or vim.fn.isdirectory(arg) == 1 then
-      table.insert(parsed.file_paths, arg)
     else
-      error("Invalid argument: " .. arg)
+      table.insert(parsed.rest, arg)
     end
   end
 
@@ -239,55 +230,6 @@ local function is_llm_sidekick_chat_file(bufnr)
   return true
 end
 
-local function add_file_content_to_prompt(prompt, file_paths)
-  if vim.tbl_isempty(file_paths) then
-    return prompt
-  end
-
-  local snippets = {}
-
-  local function add_file(file_path)
-    if vim.fn.filereadable(file_path) == 0 then
-      return
-    end
-    local content = fs.read_file(file_path)
-    if not content then
-      error(string.format("Failed to read file '%s'", file_path))
-    end
-    local relative_path = vim.fn.fnamemodify(file_path, ":.")
-    table.insert(snippets, render_snippet(relative_path, content))
-  end
-
-  for _, file_path in ipairs(file_paths) do
-    if vim.fn.isdirectory(file_path) == 1 then
-      local function add_files_recursively(dir)
-        local handle = vim.loop.fs_scandir(dir)
-        if not handle then return end
-
-        while true do
-          local name, type = vim.loop.fs_scandir_next(handle)
-          if not name then break end
-
-          local full_path = vim.fn.fnameescape(dir .. '/' .. name)
-          if type == 'file' then
-            add_file(full_path)
-          elseif type == 'directory' then
-            add_files_recursively(dir .. '/' .. name)
-          end
-        end
-      end
-      add_files_recursively(file_path)
-    else
-      add_file(file_path)
-    end
-  end
-
-  if not vim.tbl_isempty(snippets) then
-    prompt = prompt .. "Here is what I'm working on:\n" .. render_editor_context(table.concat(snippets, "\n")) .. "\n"
-  end
-  return prompt
-end
-
 local ask_command = function()
   return function(opts)
     -- Always load project config
@@ -296,17 +238,7 @@ local ask_command = function()
     local parsed_args = parse_ask_args(opts.fargs)
     local model = parsed_args.model
     local open_mode = parsed_args.open_mode
-    local file_paths = parsed_args.file_paths
-    local range_start = -1
-    local range_end = -1
-
-    if opts.range == 2 then
-      range_start = opts.line1
-      range_end = opts.line2
-    end
-
     local model_settings = settings.get_model_settings(model)
-
     local prompt_settings = {
       model = model,
       max_tokens = model_settings.max_tokens,
@@ -351,19 +283,8 @@ The following additional instructions are provided by the user, and should be fo
       end
 
       system_prompt = vim.trim(system_prompt)
-
       prompt = prompt .. "SYSTEM: " .. system_prompt
-
       prompt = prompt .. "\nUSER: "
-      if opts.range == 2 then
-        local relative_path = vim.fn.expand("%")
-        local context = table.concat(vim.api.nvim_buf_get_lines(0, range_start - 1, range_end, false), "\n")
-        prompt = prompt .. "Here is what I'm working on:\n"
-        local snippet = render_snippet(relative_path, context)
-        prompt = prompt .. render_editor_context(snippet) .. "\n"
-      end
-
-      prompt = add_file_content_to_prompt(prompt, file_paths)
     end
 
     local buf = vim.api.nvim_create_buf(true, true)
@@ -371,8 +292,21 @@ The following additional instructions are provided by the user, and should be fo
     vim.b[buf].is_llm_sidekick_chat = true
     vim.g.llm_sidekick_last_chat_buffer = buf
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
+
+    local lines = vim.split(prompt, "[\r]?\n")
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+    if opts.range == 2 then
+      vim.cmd(string.format("%d,%dAdd", opts.line1, opts.line2))
+    elseif #parsed_args.rest > 0 then
+      vim.cmd("Add " .. table.concat(parsed_args.rest, " "))
+    end
+
     file_editor.create_apply_modifications_command(buf)
     open_buffer_in_mode(buf, open_mode)
+    vim.api.nvim_buf_call(buf, function()
+      fold_stuff(buf)
+    end)
     set_llm_sidekick_options()
 
     vim.keymap.set(
@@ -386,11 +320,6 @@ The following additional instructions are provided by the user, and should be fo
       { buffer = buf, nowait = true, noremap = true, silent = true }
     )
 
-    local lines = vim.split(prompt, "[\r]?\n")
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    vim.api.nvim_buf_call(buf, function()
-      fold_stuff(buf)
-    end)
     -- Set cursor to the end of the buffer
     vim.api.nvim_win_set_cursor(0, { vim.api.nvim_buf_line_count(buf), 0 })
 
@@ -627,7 +556,18 @@ vim.api.nvim_create_user_command("Add", function(opts)
     return
   end
 
+  local llm_sidekick_files = vim.b[ask_buf].llm_sidekick_files
+
   local function insert_content(content_data, relative_path)
+    -- Track the file if it's a local file (not a URL)
+    if content_data.path and not content_data.path:match("^https?://") then
+      local abs_path = vim.fn.fnamemodify(content_data.path, ":p")
+      if not vim.tbl_contains(llm_sidekick_files, abs_path) then
+        table.insert(llm_sidekick_files, abs_path)
+        vim.b[ask_buf].llm_sidekick_files = llm_sidekick_files
+      end
+    end
+
     local snippet
     if content_data.type == "image" then
       snippet = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", content_data.path)
