@@ -154,7 +154,6 @@ local function run_all_tool_calls(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local current_id = nil
-  local tool_calls_processed = 0
 
   for i = 1, #buffer_lines do
     local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
@@ -222,7 +221,6 @@ local function run_all_tool_calls(opts)
           )
         end
 
-        tool_calls_processed = tool_calls_processed + 1
         ::continue::
       end
       current_id = nil
@@ -247,7 +245,7 @@ local function get_tool_calls_in_last_assistant_message(opts)
     if id then
       current_tool_call = find_tool_call_by_id(id, { buffer = buffer })
       if current_tool_call then
-        current_tool_call.call.tool = find_tool_for_tool_call(current_tool_call)
+        current_tool_call.call.tool = find_tool_for_tool_call(current_tool_call.call)
       end
     elseif current_tool_call and buffer_lines[i]:match("^</llm_sidekick_tool>") then
       table.insert(tool_calls, current_tool_call.call)
