@@ -47,5 +47,8 @@ return {
       chat.paste_at_end(tool_call.parameters.message:sub(tool_call.state.message_written + 1), opts.buffer)
       tool_call.state.message_written = #tool_call.parameters.message
     end
+  end,
+  run = function()
+    return true
   end
 }
