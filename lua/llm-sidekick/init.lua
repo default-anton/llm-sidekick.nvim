@@ -6,7 +6,7 @@ local diagnostic    = require("llm-sidekick.diagnostic")
 local tool_utils    = require("llm-sidekick.tools.utils")
 
 
-MAX_TURNS_WITHOUT_USER_INPUT = 5
+MAX_TURNS_WITHOUT_USER_INPUT = 2
 
 local M                      = {}
 
