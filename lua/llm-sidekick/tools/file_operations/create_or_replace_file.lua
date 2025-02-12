@@ -131,6 +131,10 @@ return {
       error(string.format("Failed to write to file: %s", err))
     end
 
+    -- Replace the tool call content with success message
+    vim.api.nvim_buf_set_lines(opts.buffer, opts.start_lnum - 1, opts.end_lnum, false,
+      { string.format("✓ Created file: %s", path) })
+
     return true
   end
 }

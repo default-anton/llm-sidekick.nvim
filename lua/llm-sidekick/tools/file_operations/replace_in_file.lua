@@ -313,6 +313,12 @@ return {
       error(string.format("Failed to write to file: %s", err))
     end
 
+    -- Replace the tool call content with success message
+    local lines_removed = select(2, tool_call.parameters.search:gsub("\n", ""))
+    local lines_added = select(2, tool_call.parameters.replace:gsub("\n", ""))
+    vim.api.nvim_buf_set_lines(opts.buffer, opts.start_lnum - 1, opts.end_lnum, false,
+      { string.format("✓ Updated %s (-%d/+%d)", path, lines_removed, lines_added) })
+
     -- Refresh any open windows displaying this file
     for _, win in ipairs(vim.api.nvim_list_wins()) do
       local win_buf = vim.api.nvim_win_get_buf(win)

@@ -30,9 +30,13 @@ local function run_tool_call_at_cursor(opts)
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local id
+  local start_line, end_line
   for i = cursor_line, 1, -1 do
     id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
-    if id then break end
+    if id then
+      start_line = i + 1
+      break
+    end
   end
 
   if id == nil then
@@ -43,6 +47,7 @@ local function run_tool_call_at_cursor(opts)
   local close_tag_found = false
   for i = cursor_line, #buffer_lines do
     if buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      end_line = i - 1
       close_tag_found = true
       break
     end
@@ -88,7 +93,7 @@ local function run_tool_call_at_cursor(opts)
       return
     end
 
-    local ok, result = pcall(tool.run, tool_call.call, { buffer = buffer })
+    local ok, result = pcall(tool.run, tool_call.call, { buffer = buffer, start_lnum = start_line, end_lnum = end_line })
 
     local new_tool_calls = vim.b[opts.buffer].llm_sidekick_tool_calls
     for _, tc in ipairs(new_tool_calls) do
@@ -154,13 +159,17 @@ local function run_all_tool_calls(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local current_id = nil
+  local current_start_line, current_end_line
 
   for i = 1, #buffer_lines do
     local id, _ = buffer_lines[i]:match("<llm_sidekick_tool id=\"(.-)\" name=\"(.-)\">")
 
     if id then
       current_id = id
+      current_start_line = i + 1
     elseif current_id and buffer_lines[i]:match("^</llm_sidekick_tool>") then
+      current_end_line = i - 1
+
       for _, tool_call in ipairs(vim.b[buffer].llm_sidekick_tool_calls) do
         if tool_call.call.id ~= current_id then
           goto continue
@@ -193,7 +202,12 @@ local function run_all_tool_calls(opts)
           goto continue
         end
 
-        local ok, result = xpcall(tool.run, debug_error_handler, tool_call.call, { buffer = buffer })
+        local ok, result = xpcall(
+          tool.run,
+          debug_error_handler,
+          tool_call.call,
+          { buffer = buffer, start_lnum = current_start_line, end_lnum = current_end_line }
+        )
 
         if ok then
           local new_tool_calls = vim.b[buffer].llm_sidekick_tool_calls
@@ -224,6 +238,8 @@ local function run_all_tool_calls(opts)
         ::continue::
       end
       current_id = nil
+      current_start_line = nil
+      current_end_line = nil
     end
   end
 end
