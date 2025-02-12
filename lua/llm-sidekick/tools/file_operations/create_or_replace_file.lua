@@ -123,8 +123,8 @@ return {
     end, error_handler)
 
     -- Unload the buffer if it wasn't open before
-    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 then
-      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
     end
 
     if not ok then

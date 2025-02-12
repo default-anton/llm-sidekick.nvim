@@ -269,8 +269,8 @@ return {
 
     if not start_pos then
       -- Unload the buffer if it wasn't open before
-      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 then
-        pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_delete(buf, { force = true })
       end
       error(string.format("Could not find the exact match in file: %s", path))
     end
@@ -307,8 +307,8 @@ return {
 
     if not ok then
       -- unload the buffer if it wasn't open before
-      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 then
-        pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_delete(buf, { force = true })
       end
       error(string.format("Failed to write to file: %s", err))
     end
@@ -324,8 +324,8 @@ return {
     end
 
     -- Unload the buffer if it wasn't open before
-    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 then
-      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
     end
 
     return true
