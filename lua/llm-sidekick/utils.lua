@@ -27,4 +27,60 @@ M.get_os_name = function()
   end
 end
 
+---Convert a URL to a safe filename
+---@param url string The URL to convert
+---@return string The converted filename
+function M.url_to_filename(url)
+  -- Remove protocol (http:// or https://)
+  local filename = url:gsub("^https?://", "")
+
+  -- Replace common URL special characters with underscores
+  filename = filename:gsub("[/?#&]", "_")
+
+  -- Replace other unsafe filename characters
+  filename = filename:gsub("[\\:%*\"<>|]", "_")
+
+  -- Remove any consecutive underscores
+  filename = filename:gsub("_+", "_")
+
+  -- Remove trailing underscores
+  filename = filename:gsub("_$", "")
+
+  -- Remove leading underscores
+  filename = filename:gsub("^_", "")
+
+  return filename
+end
+
+---Get the temporary directory path
+---@return string The path to the temporary directory with trailing separator
+function M.get_temp_dir()
+  -- Try system /tmp directory first
+  local tmp_path = "/tmp"
+  local stat = vim.loop.fs_stat(tmp_path)
+
+  if stat and stat.type == "directory" then
+    return tmp_path
+  end
+
+  -- Fall back to the TMPDIR environment variable
+  tmp_path = os.getenv("TMPDIR") or os.getenv("TEMP") or os.getenv("TMP")
+  if tmp_path then
+    stat = vim.loop.fs_stat(tmp_path)
+
+    if stat and stat.type == "directory" then
+      if vim.endswith(tmp_path, "/") then
+        return tmp_path:sub(1, -2)
+      else
+        return tmp_path
+      end
+    end
+  end
+
+  tmp_path = vim.fn.tempname()
+  vim.fn.mkdir(tmp_path, "p")
+
+  return tmp_path
+end
+
 return M

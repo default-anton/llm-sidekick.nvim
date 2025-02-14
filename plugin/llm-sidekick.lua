@@ -2,9 +2,12 @@ if vim.g.loaded_llm_sidekick == 1 then
   return
 end
 
+local utils = require "llm-sidekick.utils"
+
 vim.g.loaded_llm_sidekick = 1
 vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
+vim.g.llm_sidekick_tmp_dir = utils.get_temp_dir()
 
 local litellm = require "llm-sidekick.litellm"
 -- Start the web server when the plugin loads
@@ -30,12 +33,10 @@ vim.fn.sign_define("llm_sidekick_green", {
 local project_config_path = vim.fn.getcwd() .. "/.llmsidekick.lua"
 
 local settings = require "llm-sidekick.settings"
-local fs = require "llm-sidekick.fs"
 local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
-local utils = require "llm-sidekick.utils"
 local current_project_config = {}
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
@@ -188,17 +189,8 @@ local function fold_stuff(buf)
   fold_editor_context(buf)
 end
 
-local function render_snippet(relative_path, content)
-  return string.format([[
-%s
-```
-%s
-```
-]], relative_path, content)
-end
-
-local function render_editor_context(snippets)
-  return "<editor_context>\n" .. snippets .. "\n</editor_context>"
+local function render_editor_context(references)
+  return "<editor_context>\n" .. references .. "\n</editor_context>"
 end
 
 local function is_llm_sidekick_chat_file(bufnr)
@@ -349,15 +341,12 @@ local function get_content(opts, callback)
       return
     end
 
+    local relative_path = vim.fn.fnamemodify(file_path, ":.")
+
     if is_image_file(file_path) then
-      callback({ type = "image", path = file_path }, file_path)
+      callback({ type = "image", path = relative_path })
     else
-      local content = fs.read_file(file_path)
-      if not content then
-        error(string.format("Failed to read file '%s'", file_path))
-      end
-      local relative_path = vim.fn.fnamemodify(file_path, ":.")
-      callback({ type = "text", content = content }, relative_path)
+      callback({ type = "file", path = relative_path })
     end
   end
 
@@ -366,27 +355,44 @@ local function get_content(opts, callback)
     -- Convert GitHub blob URLs to raw URLs
     file_path = file_path:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
       "https://raw.githubusercontent.com/%1/%2/%3/%4")
+
     if file_path:match("^https?://") then
+      local filename = utils.url_to_filename(file_path)
+      local content_path = vim.g.llm_sidekick_tmp_dir .. "/" .. filename
+
       -- Handle GitHub URLs
       if file_path:match("^https://raw.githubusercontent.com") then
         local content = require('llm-sidekick.http').get(file_path)
-        if content then
-          callback({ type = "text", content = content }, file_path)
-        else
-          error(string.format("Failed to fetch content from '%s'", file_path))
+        local ok, err = pcall(vim.fn.writefile, vim.split(content, "\n"), content_path)
+        if not ok then
+          vim.notify(string.format("Failed to fetch content from '%s': %s", file_path, vim.inspect(err)),
+            vim.log.levels.ERROR)
+          return
         end
-      else
-        -- Use get_markdown for non-GitHub URLs
-        require('llm-sidekick.markdown').get_markdown(file_path, function(content)
-          if content then
-            callback({ type = "text", content = content }, file_path)
-          else
-            error(string.format("Failed to fetch markdown from '%s'", file_path))
-          end
-        end)
+
+        callback({ type = "url", path = file_path }, file_path)
+        return
       end
+
+      -- Use get_markdown for non-GitHub URLs
+      require('llm-sidekick.markdown').get_markdown(file_path, function(content)
+        if not content then
+          vim.notify(string.format("Failed to fetch content from '%s'", file_path), vim.log.levels.ERROR)
+          return
+        end
+
+        local ok, err = pcall(vim.fn.writefile, vim.split(content, "\n"), content_path)
+        if not ok then
+          vim.notify(string.format("Failed to fetch content from '%s': %s", file_path, vim.inspect(err)),
+            vim.log.levels.ERROR)
+          return
+        end
+
+        callback({ type = "url", path = file_path })
+      end)
       return
     end
+
     if vim.fn.isdirectory(file_path) == 1 then
       local function add_files_recursively(dir)
         local handle = vim.loop.fs_scandir(dir)
@@ -424,9 +430,12 @@ local function get_content(opts, callback)
     if #lines == 0 then
       error("No content to add. The buffer or selection is empty.")
     end
-    local content = table.concat(lines, "\n")
 
-    callback({ type = "text", content = content }, relative_path)
+    if start_line == 0 and end_line == -1 then
+      add_file(relative_path)
+    else
+      callback({ type = "snippet", path = relative_path, content = table.concat(lines, "\n") })
+    end
   end
 end
 
@@ -461,9 +470,7 @@ local function paste_image()
     return
   end
 
-  local temp_dir = vim.fn.tempname()
-  vim.fn.mkdir(temp_dir, "p")
-
+  local temp_dir = vim.g.llm_sidekick_tmp_dir
   local timestamp = os.time()
   local image_path = string.format("%s/image_%d.png", temp_dir, timestamp)
 
@@ -568,28 +575,21 @@ vim.api.nvim_create_user_command("Add", function(opts)
     return
   end
 
-  local llm_sidekick_files = vim.b[ask_buf].llm_sidekick_files
-
-  local function insert_content(content_data, relative_path)
-    -- Track the file if it's a local file (not a URL)
-    if content_data.path and not content_data.path:match("^https?://") then
-      local abs_path = vim.fn.fnamemodify(content_data.path, ":p")
-      if not vim.tbl_contains(llm_sidekick_files, abs_path) then
-        table.insert(llm_sidekick_files, abs_path)
-        vim.b[ask_buf].llm_sidekick_files = llm_sidekick_files
-      end
-    end
-
+  local function insert_content(content_data)
     local snippet
     if content_data.type == "image" then
       snippet = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", content_data.path)
-    else
-      snippet = render_snippet(relative_path, content_data.content)
+    elseif content_data.type == "url" then
+      snippet = string.format("<llm_sidekick_url>%s</llm_sidekick_url>", content_data.path)
+    elseif content_data.type == "file" then
+      snippet = string.format("<llm_sidekick_file>%s</llm_sidekick_file>", content_data.path)
+    elseif content_data.type == "snippet" then
+      snippet = string.format("````%s\n%s\n````", content_data.path, content_data.content)
     end
     -- Find the appropriate insertion point
     local ask_buf_line_count = vim.api.nvim_buf_line_count(ask_buf)
-    local insert_point = ask_buf_line_count
-    local last_user_line = ask_buf_line_count
+    local editor_context_end_lnum
+    local last_user_line
 
     -- Find the last USER: line
     for i = ask_buf_line_count, 1, -1 do
@@ -600,28 +600,43 @@ vim.api.nvim_create_user_command("Add", function(opts)
       end
     end
 
+    if not last_user_line then
+      error("No USER: line found in the buffer")
+    end
+
     -- Find the editor_context after the last user line
     for i = last_user_line, ask_buf_line_count do
       local line = vim.api.nvim_buf_get_lines(ask_buf, i - 1, i, false)[1]
       if line:match("^</editor_context>") then
-        insert_point = i - 1
+        editor_context_end_lnum = i - 1
         break
       end
     end
 
-    local insert_start, insert_end = insert_point, insert_point
-    -- If we didn't find a </editor_context> tag, create a new <editor_context> section
-    if insert_start == ask_buf_line_count then
-      snippet = "USER: Here is what I'm working on:\n" .. render_editor_context(snippet)
-      insert_start = last_user_line - 1
-      insert_end = last_user_line
-      local line = vim.api.nvim_buf_get_lines(ask_buf, last_user_line - 1, last_user_line, false)[1]
-      local _, end_idx = string.find(line, "USER:")
-      snippet = snippet .. "\n" .. vim.trim(line:sub(end_idx + 1))
-    end
+    if editor_context_end_lnum then
+      vim.api.nvim_buf_set_lines(
+        ask_buf,
+        editor_context_end_lnum,
+        editor_context_end_lnum,
+        false,
+        vim.split(snippet, "\n")
+      )
+    else
+      local content_of_user_line = vim.api.nvim_buf_get_lines(ask_buf, last_user_line - 1, last_user_line, false)[1]
+      content_of_user_line = content_of_user_line:gsub("^USER:%s*", "")
+      local editor_context = vim.split(render_editor_context(snippet), "\n")
+      local lines = { "USER: Here is what I'm working on:", "" }
+      vim.list_extend(lines, editor_context)
+      vim.list_extend(lines, { "", "", content_of_user_line })
 
-    local fragment_lines = vim.split(snippet, "\n")
-    vim.api.nvim_buf_set_lines(ask_buf, insert_start, insert_end, false, fragment_lines)
+      vim.api.nvim_buf_set_lines(
+        ask_buf,
+        last_user_line - 1,
+        last_user_line,
+        false,
+        lines
+      )
+    end
   end
 
   if not opts.fargs or vim.tbl_isempty(opts.fargs) then

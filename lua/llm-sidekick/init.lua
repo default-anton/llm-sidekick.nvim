@@ -4,6 +4,8 @@ local fs            = require "llm-sidekick.fs"
 local settings      = require "llm-sidekick.settings"
 local diagnostic    = require("llm-sidekick.diagnostic")
 local tool_utils    = require("llm-sidekick.tools.utils")
+local utils         = require("llm-sidekick.utils")
+local markdown      = require("llm-sidekick.markdown")
 
 
 MAX_TURNS_WITHOUT_USER_INPUT = 25
@@ -138,6 +140,53 @@ function M.parse_prompt(prompt, buffer)
     local prev_msg = options.messages[#options.messages - 1]
     if last_msg.role == "user" and vim.trim(last_msg.content) == "" and prev_msg.role == "tool" then
       table.remove(options.messages)
+    end
+  end
+
+  local editor_context = {}
+  local last_user_message_index = nil
+  for i, message in ipairs(options.messages) do
+    if message.role == "user" then
+      last_user_message_index = i
+
+      for url in message.content:gmatch("<llm_sidekick_url>(.-)</llm_sidekick_url>") do
+        if editor_context[url] then
+          goto continue
+        end
+
+        local filename = utils.url_to_filename(url)
+        local content_path = vim.g.llm_sidekick_tmp_dir .. "/" .. filename
+        local content = fs.read_file(content_path)
+
+        if content and content ~= "" then
+          editor_context[url] = string.format("URL: %s\n````\n%s\n````", url, content)
+        end
+      end
+
+      for path in message.content:gmatch("<llm_sidekick_file>(.-)</llm_sidekick_file>") do
+        if editor_context[path] then
+          goto continue
+        end
+
+        local content = fs.read_file(path)
+        if content and content ~= "" then
+          local lang = markdown.filename_to_language(path, "")
+          editor_context[path] = string.format("File: %s\n````%s\n%s\n````", path, lang, content)
+        end
+      end
+
+      message.content = message.content:gsub("<llm_sidekick_url>.-</llm_sidekick_url>", "")
+      message.content = message.content:gsub("<llm_sidekick_file>.-</llm_sidekick_file>", "")
+    end
+
+    ::continue::
+  end
+
+  if last_user_message_index then
+    if not vim.tbl_isempty(editor_context) then
+      options.messages[last_user_message_index].content = "<editor_context>\n"
+          .. table.concat(vim.tbl_values(editor_context), "\n")
+          .. "\n</editor_context>\n\n" .. options.messages[last_user_message_index].content
     end
   end
 

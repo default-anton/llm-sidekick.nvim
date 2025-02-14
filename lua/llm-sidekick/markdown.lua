@@ -62,9 +62,9 @@ local extension_to_language = {
   -- Add more mappings as required
 }
 
-local function filename_to_language(filename)
+local function filename_to_language(filename, default)
   local extension = filename:match("^.+%.(%w+)$")
-  return extension_to_language[extension] or "txt"
+  return extension_to_language[extension] or default
 end
 
 return {

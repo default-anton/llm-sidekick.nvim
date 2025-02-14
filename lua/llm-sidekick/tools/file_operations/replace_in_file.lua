@@ -135,7 +135,7 @@ return {
       tool_call.state.path_written = #tool_call.parameters.path
 
       -- Update the language for syntax highlighting
-      local language = markdown.filename_to_language(tool_call.parameters.path)
+      local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.search_start_line - 2,
         tool_call.state.search_start_line - 1,
         false, { "```" .. language })
