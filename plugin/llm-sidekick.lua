@@ -367,11 +367,23 @@ local function get_content(opts, callback)
     file_path = file_path:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
       "https://raw.githubusercontent.com/%1/%2/%3/%4")
     if file_path:match("^https?://") then
-      local content = require('llm-sidekick.http').get(file_path)
-      if content then
-        callback({ type = "text", content = content }, file_path)
+      -- Handle GitHub URLs
+      if file_path:match("^https://raw.githubusercontent.com") then
+        local content = require('llm-sidekick.http').get(file_path)
+        if content then
+          callback({ type = "text", content = content }, file_path)
+        else
+          error(string.format("Failed to fetch content from '%s'", file_path))
+        end
       else
-        error(string.format("Failed to fetch content from '%s'", file_path))
+        -- Use get_markdown for non-GitHub URLs
+        require('llm-sidekick.markdown').get_markdown(file_path, function(content)
+          if content then
+            callback({ type = "text", content = content }, file_path)
+          else
+            error(string.format("Failed to fetch markdown from '%s'", file_path))
+          end
+        end)
       end
       return
     end
