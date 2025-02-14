@@ -21,10 +21,6 @@ local function find_tool_call_by_id(tool_id, opts)
   return found_tools[1]
 end
 
-local debug_error_handler = function(err)
-  return debug.traceback(err, 3)
-end
-
 local function run_tool_call_at_cursor(opts)
   local buffer = opts.buffer
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
@@ -202,9 +198,8 @@ local function run_all_tool_calls(opts)
           goto continue
         end
 
-        local ok, result = xpcall(
+        local ok, result = pcall(
           tool.run,
-          debug_error_handler,
           tool_call.call,
           { buffer = buffer, start_lnum = current_start_line, end_lnum = current_end_line }
         )

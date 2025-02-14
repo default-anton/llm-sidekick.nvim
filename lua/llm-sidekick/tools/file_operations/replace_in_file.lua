@@ -101,13 +101,10 @@ local function dedent_lines(lines, min_indent)
   return dedented_lines
 end
 
-local function error_handler(err)
-  return debug.traceback(err, 3)
-end
-
 return {
   spec = spec,
   json_props = json_props,
+  show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(_)
     return false
   end,
@@ -211,16 +208,19 @@ return {
   run = function(tool_call, opts)
     local path = vim.trim(tool_call.parameters.path or "")
     local replace = tool_call.parameters.replace
+    local ok, content, content_lines
     local buf = vim.fn.bufnr(path)
-    if buf == -1 then
-      buf = vim.fn.bufadd(path)
-      if buf == 0 then
-        error(string.format("Failed to open file: %s", path))
+    if vim.api.nvim_buf_is_loaded(buf) then
+      content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      content = table.concat(content_lines, "\n")
+    else
+      ok, content_lines = pcall(vim.fn.readfile, path)
+      if ok then
+        content = table.concat(content_lines, "\n")
+      else
+        error(string.format("Failed to read file: %s (%s)", path, vim.inspect(content_lines)))
       end
     end
-    vim.fn.bufload(buf)
-    local content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-    local content = table.concat(content_lines, "\n")
 
     -- Find the exact string match
     local original_search = tool_call.parameters.search
@@ -268,10 +268,6 @@ return {
     end
 
     if not start_pos then
-      -- Unload the buffer if it wasn't open before
-      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
-        vim.api.nvim_buf_delete(buf, { force = true })
-      end
       error(string.format("Could not find the exact match in file: %s", path))
     end
 
@@ -297,20 +293,19 @@ return {
     end
 
     -- Perform the substitution
+    local err
     local modified_content = content:sub(1, start_pos - 1) .. replace .. content:sub(end_pos + 1)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(modified_content, "\n"))
-    local ok, err = xpcall(function()
-      vim.api.nvim_buf_call(buf, function()
+    if vim.api.nvim_buf_is_loaded(buf) then
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(modified_content, "\n"))
+      ok, err = pcall(vim.api.nvim_buf_call, buf, function()
         vim.cmd('write')
       end)
-    end, error_handler)
+    else
+      ok, err = pcall(vim.fn.writefile, vim.split(modified_content, "\n"), path)
+    end
 
     if not ok then
-      -- unload the buffer if it wasn't open before
-      if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
-        vim.api.nvim_buf_delete(buf, { force = true })
-      end
-      error(string.format("Failed to write to file: %s", err))
+      error(string.format("Failed to write file: %s (%s)", path, vim.inspect(err)))
     end
 
     -- Replace the tool call content with success message
@@ -318,21 +313,6 @@ return {
     local lines_added = select(2, tool_call.parameters.replace:gsub("\n", ""))
     vim.api.nvim_buf_set_lines(opts.buffer, opts.start_lnum - 1, opts.end_lnum, false,
       { string.format("✓ Updated %s (-%d/+%d)", path, lines_removed, lines_added) })
-
-    -- Refresh any open windows displaying this file
-    for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local win_buf = vim.api.nvim_win_get_buf(win)
-      if vim.api.nvim_buf_get_name(win_buf) == path then
-        vim.api.nvim_win_call(win, function()
-          vim.cmd('checktime')
-        end)
-      end
-    end
-
-    -- Unload the buffer if it wasn't open before
-    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
-      vim.api.nvim_buf_delete(buf, { force = true })
-    end
 
     return true
   end,

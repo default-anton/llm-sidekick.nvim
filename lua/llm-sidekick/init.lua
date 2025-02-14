@@ -262,18 +262,14 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
         if state == message_types.TOOL_START then
           local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
           local needs_newlines = last_line and vim.trim(last_line) ~= ""
-          if tool.run then
-            chat.paste_at_end(
-              string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
-                needs_newlines and "\n\n" or "",
-                tool_call.id,
-                tool_call.name
-              ),
-              prompt_buffer
-            )
-          else
-            chat.paste_at_end(needs_newlines and "\n\n" or "", prompt_buffer)
-          end
+          chat.paste_at_end(
+            string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
+              needs_newlines and "\n\n" or "",
+              tool_call.id,
+              tool_call.name
+            ),
+            prompt_buffer
+          )
 
           local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
 
@@ -312,21 +308,17 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
             tool_call = tool_call,
           })
 
-          if tool.run then
-            if tool_call.result == nil and not tool.is_auto_acceptable(tool_call) then
-              diagnostic.add_tool_call(
-                tool_call,
-                prompt_buffer,
-                lnum,
-                vim.diagnostic.severity.HINT,
-                string.format("▶ %s (<leader>aa)", tool.spec.name)
-              )
-            end
-
-            chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
-          else
-            chat.paste_at_end("\n\n", prompt_buffer)
+          if tool_call.result == nil and tool.show_diagnostics(tool_call) then
+            diagnostic.add_tool_call(
+              tool_call,
+              prompt_buffer,
+              lnum,
+              vim.diagnostic.severity.HINT,
+              string.format("▶ %s (<leader>aa)", tool.spec.name)
+            )
           end
+
+          chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
         end
 
         return

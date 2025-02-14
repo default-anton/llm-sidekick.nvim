@@ -36,6 +36,7 @@ local json_props = [[{
 return {
   spec = spec,
   json_props = json_props,
+  show_diagnostics = function(_) return false end,
   is_auto_acceptable = function(tool_call)
     return tool_call.parameters.message_type == "chat" or tool_call.parameters.message_type == "progress"
   end,

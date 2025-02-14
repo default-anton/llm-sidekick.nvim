@@ -34,6 +34,7 @@ local json_props = [[{
 return {
   spec = spec,
   json_props = json_props,
+  show_diagnostics = function(_) return false end,
   is_auto_acceptable = function(_)
     return true -- Scratchpad is always auto-acceptable as it's an internal tool
   end,

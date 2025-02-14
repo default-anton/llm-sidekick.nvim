@@ -34,13 +34,10 @@ local json_props = [[{
   "content": { "type": "string" }
 }]]
 
-local function error_handler(err)
-  return debug.traceback(err, 3)
-end
-
 return {
   spec = spec,
   json_props = json_props,
+  show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(_)
     return false
   end,
@@ -101,34 +98,25 @@ return {
 
     local dir = vim.fn.fnamemodify(path, ":h")
     if vim.fn.isdirectory(dir) == 0 then
-      local success = vim.fn.mkdir(dir, "p")
-      if success == 0 then
-        error(string.format("Failed to create directory: %s", dir))
+      local ok, err = pcall(vim.fn.mkdir, dir, "p")
+      if not ok then
+        error(string.format("Failed to create dir: %s (%s)", dir, vim.inspect(err)))
       end
     end
 
+    local ok, err
     local buf = vim.fn.bufnr(path)
-    if buf == -1 then
-      buf = vim.fn.bufadd(path)
-      if buf == 0 then
-        error(string.format("Failed to open file: %s", path))
-      end
-    end
-    vim.fn.bufload(buf)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(content, "\n"))
-    local ok, err = xpcall(function()
-      vim.api.nvim_buf_call(buf, function()
+    if vim.api.nvim_buf_is_loaded(buf) then
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(content, "\n"))
+      ok, err = pcall(vim.api.nvim_buf_call, buf, function()
         vim.cmd("write")
       end)
-    end, error_handler)
-
-    -- Unload the buffer if it wasn't open before
-    if vim.fn.bufloaded(buf) == 1 and vim.fn.bufwinnr(buf) == -1 and vim.api.nvim_buf_is_valid(buf) then
-      vim.api.nvim_buf_delete(buf, { force = true })
+    else
+      ok, err = pcall(vim.fn.writefile, vim.split(content, "\n"), path)
     end
 
     if not ok then
-      error(string.format("Failed to write to file: %s", err))
+      error(string.format("Failed to write file: %s (%s)", path, vim.inspect(err)))
     end
 
     -- Replace the tool call content with success message
