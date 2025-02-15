@@ -31,7 +31,14 @@ local json_props = [[{
 return {
   spec = spec,
   json_props = json_props,
-  show_diagnostics = function(_) return true end,
+  show_diagnostics = function(tool_call)
+    local command = vim.trim(tool_call.parameters.command or "")
+    if command == "" then
+      return true
+    end
+
+    return not require("llm-sidekick.tools.terminal.run_command").is_auto_acceptable(tool_call)
+  end,
   is_auto_acceptable = function(tool_call)
     -- List of commands that are safe to auto-accept
     local safe_commands = {
