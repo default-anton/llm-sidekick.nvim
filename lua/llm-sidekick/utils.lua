@@ -60,6 +60,8 @@ function M.get_temp_dir()
   local stat = vim.loop.fs_stat(tmp_path)
 
   if stat and stat.type == "directory" then
+    tmp_path = tmp_path .. "/llm-sidekick"
+    vim.fn.mkdir(tmp_path, "p")
     return tmp_path
   end
 
@@ -70,14 +72,17 @@ function M.get_temp_dir()
 
     if stat and stat.type == "directory" then
       if vim.endswith(tmp_path, "/") then
-        return tmp_path:sub(1, -2)
+        tmp_path = tmp_path .. "llm-sidekick"
       else
-        return tmp_path
+        tmp_path = tmp_path .. "/llm-sidekick"
       end
+
+      vim.fn.mkdir(tmp_path, "p")
+      return tmp_path
     end
   end
 
-  tmp_path = vim.fn.tempname()
+  tmp_path = vim.fn.tempname() .. "/llm-sidekick"
   vim.fn.mkdir(tmp_path, "p")
 
   return tmp_path
