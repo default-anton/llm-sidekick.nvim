@@ -202,6 +202,12 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
 ```
 
+### Built-in Keybindings
+
+- `<C-c>` (Ctrl-C) - Cancel/stop the current model generation. This is a built-in keybinding that cannot be overridden.
+- `<leader>aa` - Accept the suggestion under the cursor. This is a built-in keybinding that provides quick access to the `:Accept` command.
+- `<leader>A` - Accept all suggestions in the last assistant message. This is a built-in keybinding that provides quick access to the `:AcceptAll` command.
+
 ## Telescope Integration
 
 If you are using [Telescope](https://github.com/nvim-telescope/telescope.nvim), you can easily add a custom action to include selected files directly into your chat buffer using the `:Add` command.

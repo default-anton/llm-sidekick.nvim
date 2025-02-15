@@ -65,7 +65,7 @@ function openai:chat(opts, callback)
 
   local tool = nil
 
-  require('plenary.job'):new({
+  local job = require('plenary.job'):new({
     command = curl,
     args = args,
     on_stdout = function(_, line)
@@ -205,7 +205,11 @@ function openai:chat(opts, callback)
       end
       callback(message_types.DONE, "")
     end,
-  }):start()
+  })
+
+  job:start()
+
+  return job
 end
 
 return openai

@@ -171,7 +171,7 @@ function gemini:chat(opts, callback)
     vim.notify("Request: " .. vim.inspect(data), vim.log.levels.INFO)
   end
 
-  require('plenary.job'):new({
+  local job = require('plenary.job'):new({
     command = curl,
     args = args,
     on_stdout = function(_, line)
@@ -244,7 +244,11 @@ function gemini:chat(opts, callback)
         return
       end
     end,
-  }):start()
+  })
+
+  job:start()
+
+  return job
 end
 
 return gemini

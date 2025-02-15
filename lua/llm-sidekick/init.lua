@@ -286,7 +286,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
 
   local tool_calls = {}
 
-  client:chat(prompt, function(state, chars)
+  local job = client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_valid(prompt_buffer) then
       return
     end
@@ -453,6 +453,8 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
       end
     end
   end)
+
+  vim.b[prompt_buffer].llm_sidekick_job_pid = job.pid
 end
 
 ---Read the entire contents of a file
