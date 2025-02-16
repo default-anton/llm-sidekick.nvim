@@ -37,7 +37,7 @@ local json_props = [[{
 return {
   spec = spec,
   json_props = json_props,
-  show_diagnostics = function(_) return true end,
+  is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(_)
     return false
   end,
@@ -120,8 +120,8 @@ return {
     end
 
     -- Replace the tool call content with success message
-    vim.api.nvim_buf_set_lines(opts.buffer, opts.start_lnum - 1, opts.end_lnum, false,
-      { string.format("✓ Created file: %s", path) })
+    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
+      { string.format("✓ Created file: `%s`", path) })
 
     return true
   end

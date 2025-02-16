@@ -1,12 +1,11 @@
-local chat          = require "llm-sidekick.chat"
-local message_types = require "llm-sidekick.message_types"
-local fs            = require "llm-sidekick.fs"
-local settings      = require "llm-sidekick.settings"
-local diagnostic    = require("llm-sidekick.diagnostic")
-local tool_utils    = require("llm-sidekick.tools.utils")
-local utils         = require("llm-sidekick.utils")
-local markdown      = require("llm-sidekick.markdown")
-
+local chat                   = require "llm-sidekick.chat"
+local message_types          = require "llm-sidekick.message_types"
+local fs                     = require "llm-sidekick.fs"
+local settings               = require "llm-sidekick.settings"
+local diagnostic             = require("llm-sidekick.diagnostic")
+local tool_utils             = require("llm-sidekick.tools.utils")
+local utils                  = require("llm-sidekick.utils")
+local markdown               = require("llm-sidekick.markdown")
 
 MAX_TURNS_WITHOUT_USER_INPUT = 25
 
@@ -32,8 +31,9 @@ function M.parse_prompt(prompt, buffer)
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
   }
   local processed_keys = {}
-  local lines = vim.split(prompt, "\n", { plain = true })
-  for _, line in ipairs(lines) do
+  local assistant_message_lnums = {}
+  local lines = vim.split(prompt, "\n")
+  for lnum, line in ipairs(lines) do
     if line:sub(1, 7) == "SYSTEM:" and not processed_keys.system then
       options.messages[#options.messages + 1] = { role = "system", content = line:sub(8) }
       processed_keys.system = true
@@ -45,6 +45,7 @@ function M.parse_prompt(prompt, buffer)
     end
     if line:sub(1, 10) == "ASSISTANT:" then
       options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
+      table.insert(assistant_message_lnums, { lnum = lnum, end_lnum = lnum })
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -69,57 +70,67 @@ function M.parse_prompt(prompt, buffer)
     end
 
     if #options.messages > 0 then
+      if options.messages[#options.messages].role == "assistant" then
+        assistant_message_lnums[#assistant_message_lnums].end_lnum = lnum
+      end
       options.messages[#options.messages].content = options.messages[#options.messages].content .. "\n" .. line
     end
 
     ::continue::
   end
 
+  local all_tool_calls = tool_utils.find_tool_calls({ buffer = buffer })
+  local tool_call_index = 1
+  local assistant_message_index = 1
+
   for message_index, message in ipairs(options.messages) do
     message.content = vim.trim(message.content or "")
 
     if message.role == "assistant" then
+      local lnum = assistant_message_lnums[assistant_message_index].lnum
+      local end_lnum = assistant_message_lnums[assistant_message_index].end_lnum
+
       -- NOTE: delete all thinking tags
       message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
       message.content = message.content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
+
       -- Extract tool calls from the content
       local tool_calls = {}
       local tool_call_results = {}
-      for id in message.content:gmatch('<llm_sidekick_tool id="(.-)" name=".-">') do
-        local tool_call = tool_utils.find_tool_call_by_id(id, { buffer = buffer })
-        if not tool_call then
-          goto next_tool_call
+      for i = tool_call_index, #all_tool_calls do
+        tool_call_index = i
+
+        local tool_call = all_tool_calls[i]
+        if tool_call.state.lnum >= lnum and tool_call.state.end_lnum <= end_lnum then
+          table.insert(tool_calls, {
+            id = tool_call.id,
+            type = "function",
+            ["function"] = {
+              name = tool_call.name,
+              arguments = vim.json.encode(tool_call.parameters),
+            }
+          })
+
+          local result = tool_call.result
+          if type(result) == "boolean" then
+            result = { success = result }
+          end
+          if not result then
+            result = { result = "User hasn't accepted the tool" }
+          end
+
+          result = vim.json.encode(result)
+
+          table.insert(tool_call_results, {
+            role = "tool",
+            tool_call_id = tool_call.id,
+            content = result,
+          })
+        else
+          break
         end
-
-        table.insert(tool_calls, {
-          id = tool_call.call.id,
-          type = "function",
-          ["function"] = {
-            name = tool_call.call.name,
-            arguments = vim.json.encode(tool_call.call.parameters),
-          }
-        })
-
-        local result = tool_call.call.result
-        if type(result) == "boolean" then
-          result = { success = result }
-        end
-        if not result then
-          result = { result = "User hasn't accepted the tool yet" }
-        end
-
-        result = vim.json.encode(result)
-
-        table.insert(tool_call_results, {
-          role = "tool",
-          tool_call_id = tool_call.call.id,
-          content = result,
-        })
-
-        ::next_tool_call::
       end
 
-      message.content = message.content:gsub("<llm_sidekick_tool id=\".-\" name=\".-\">.-</llm_sidekick_tool>", "")
       message.content = vim.trim(message.content)
 
       if #tool_calls > 0 then
@@ -237,8 +248,10 @@ function M.parse_prompt(prompt, buffer)
   return options
 end
 
-function M.ask(prompt_buffer, max_turns_without_user_input)
-  max_turns_without_user_input = max_turns_without_user_input or MAX_TURNS_WITHOUT_USER_INPUT
+function M.ask(prompt_buffer)
+  local max_turns_without_user_input = vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input or
+      MAX_TURNS_WITHOUT_USER_INPUT
+  vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input
 
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
@@ -267,8 +280,8 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
     end
   end
 
-  -- first assistant message
-  if max_turns_without_user_input == MAX_TURNS_WITHOUT_USER_INPUT then
+  local file_editor = require("llm-sidekick.file_editor")
+  if file_editor.find_last_assistant_start_line(buf_lines) < file_editor.find_last_user_start_line(buf_lines) then
     vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", "ASSISTANT: " })
   end
 
@@ -287,7 +300,7 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
   local tool_calls = {}
 
   local job = client:chat(prompt, function(state, chars)
-    if not vim.api.nvim_buf_is_valid(prompt_buffer) then
+    if not vim.api.nvim_buf_is_loaded(prompt_buffer) then
       return
     end
 
@@ -302,6 +315,13 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
 
       if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
         local tool_call = chars
+        local tc = tool_utils.find_tool_call_by_id(tool_call.id, { buffer = prompt_buffer })
+        if tc then
+          tool_call.state.lnum = tc.state.lnum
+          tool_call.state.end_lnum = tc.state.end_lnum
+          tool_call.state.extmark_id = tc.state.extmark_id
+        end
+
         local tool = tool_utils.find_tool_for_tool_call(tool_call)
 
         if not tool then
@@ -309,24 +329,17 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
         end
 
         if state == message_types.TOOL_START then
-          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-          local needs_newlines = last_line and vim.trim(last_line) ~= ""
-          chat.paste_at_end(
-            string.format("%s<llm_sidekick_tool id=\"%s\" name=\"%s\">\n",
-              needs_newlines and "\n\n" or "",
-              tool_call.id,
-              tool_call.name
-            ),
-            prompt_buffer
-          )
+          local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+          if last_two_lines[#last_two_lines] == "" then
+            if last_two_lines[1] ~= "" then
+              chat.paste_at_end("\n", prompt_buffer)
+            end
+          else
+            chat.paste_at_end("\n\n", prompt_buffer)
+          end
 
-          local line_num = vim.api.nvim_buf_line_count(prompt_buffer)
-
-          tool_utils.add_tool_call_to_buffer({
-            buffer = prompt_buffer,
-            tool_call = tool_call,
-            lnum = line_num,
-          })
+          tool_call.state.lnum = vim.api.nvim_buf_line_count(prompt_buffer)
+          tool_utils.add_tool_call_to_buffer({ buffer = prompt_buffer, tool_call = tool_call })
 
           if tool.start then
             tool.start(tool_call, { buffer = prompt_buffer })
@@ -340,34 +353,29 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
             tool.stop(tool_call, { buffer = prompt_buffer })
           end
 
-          tool_call.tool = tool
+          tool_call.state.end_lnum = math.max(vim.api.nvim_buf_line_count(prompt_buffer), tool_call.state.lnum)
+
+          chat.paste_at_end("\n\n", prompt_buffer)
+
+          tool_call.state.extmark_id = vim.api.nvim_buf_set_extmark(
+            prompt_buffer,
+            vim.g.llm_sidekick_ns,
+            tool_call.state.lnum - 1,
+            0,
+            { invalidate = true }
+          )
           table.insert(tool_calls, tool_call)
+          tool_utils.update_tool_call_in_buffer({ buffer = prompt_buffer, tool_call = tool_call })
+          tool_call.tool = tool
 
-          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-          local needs_newline = last_line and vim.trim(last_line) ~= ""
-          if needs_newline then
-            chat.paste_at_end("\n", prompt_buffer)
-          end
-
-          local lnum = vim.tbl_filter(function(tc) return tc.call.id == tool_call.id end,
-            vim.b[prompt_buffer].llm_sidekick_tool_calls)[1].lnum
-
-          tool_utils.update_tool_call_in_buffer({
-            buffer = prompt_buffer,
-            tool_call = tool_call,
-          })
-
-          if tool_call.result == nil and tool.show_diagnostics(tool_call) then
+          if tool_call.result == nil and tool.is_show_diagnostics(tool_call) then
             diagnostic.add_tool_call(
               tool_call,
               prompt_buffer,
-              lnum,
               vim.diagnostic.severity.HINT,
               string.format("▶ %s (<leader>aa)", tool.spec.name)
             )
           end
-
-          chat.paste_at_end("</llm_sidekick_tool>\n\n", prompt_buffer)
         end
 
         return
@@ -383,72 +391,46 @@ function M.ask(prompt_buffer, max_turns_without_user_input)
         in_reasoning_tag = false
       end
 
-      chat.paste_at_end(chars, prompt_buffer)
+      -- chat.paste_at_end(chars, prompt_buffer)
     end, debug_error_handler)
 
     if not success then
-      vim.notify(vim.insect(err), vim.log.levels.ERROR)
+      vim.notify(vim.inspect(err), vim.log.levels.ERROR)
       return
     end
 
-    if message_types.DONE == state and vim.api.nvim_buf_is_valid(prompt_buffer) then
+    if message_types.DONE == state and vim.api.nvim_buf_is_loaded(prompt_buffer) then
+      -- NOTE: tools must be executed in order. If a tool requires user input,
+      -- the next tool will not be executed even if it is auto acceptable.
       for _, tool_call in ipairs(tool_calls) do
-        if tool_call.tool.run and tool_call.result == nil and tool_call.tool.is_auto_acceptable(tool_call) then
-          tool_call.result = tool_call.tool.run(
-            tool_call,
-            { buffer = prompt_buffer }
-          )
-          tool_utils.update_tool_call_in_buffer({
-            buffer = prompt_buffer,
-            tool_call = tool_call,
-          })
+        if tool_call.tool.is_auto_acceptable(tool_call) then
+          tool_utils.run_tool_call(tool_call, { buffer = prompt_buffer })
+        else
+          break
         end
       end
 
       local requires_user_input = vim.tbl_contains(
         tool_calls,
-        function(tc)
-          return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
-        end,
+        function(tc) return tc.result == nil end,
         { predicate = true }
       )
-
       if not requires_user_input and max_turns_without_user_input > 0 then
-        M.ask(prompt_buffer, max_turns_without_user_input - 1)
+        vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
+        M.ask(prompt_buffer)
         return
       end
 
-      success, err = xpcall(function()
-        chat.paste_at_end("\n\nUSER: ", prompt_buffer)
-      end, debug_error_handler)
-
-      if not success then
-        vim.notify(vim.insect(err), vim.log.levels.ERROR)
-        return
-      end
-
-      local lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
-      local file_editor = require("llm-sidekick.file_editor")
-      local assistant_start_line = file_editor.find_last_assistant_start_line(lines)
-      if assistant_start_line ~= -1 then
-        local assistant_end_line = file_editor.find_assistant_end_line(
-          assistant_start_line,
-          lines
-        )
-        local modification_blocks = file_editor.find_and_parse_modification_blocks(
-          prompt_buffer,
-          assistant_start_line,
-          assistant_end_line
-        )
-        for _, block in ipairs(modification_blocks) do
-          diagnostic.add_diagnostic(
-            prompt_buffer,
-            block.start_line,
-            block.start_line,
-            block.raw_block,
-            vim.diagnostic.severity.HINT,
-            "Suggested Change"
-          )
+      if vim.api.nvim_buf_is_loaded(prompt_buffer) then
+        local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+        if last_two_lines[#last_two_lines] == "" then
+          if last_two_lines[1] == "" then
+            chat.paste_at_end("USER: ", prompt_buffer)
+          else
+            chat.paste_at_end("\nUSER: ", prompt_buffer)
+          end
+        else
+          chat.paste_at_end("\n\nUSER: ", prompt_buffer)
         end
       end
     end
