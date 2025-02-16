@@ -131,7 +131,7 @@ return {
     vim.fn.jobwait({ job_id })
 
     -- Update the command text from "Execute" to "Executed"
-    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.lnum - 1, tool_call.end_lnum, false,
+    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
       { string.format("✓ Executed: `%s`", command) })
 
     -- Format the final output with exit code and command output

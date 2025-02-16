@@ -115,7 +115,7 @@ function M.parse_prompt(prompt, buffer)
         tool_call_index = i
 
         local tool_call = all_tool_calls[i]
-        if tool_call.lnum >= lnum and tool_call.end_lnum <= end_lnum then
+        if tool_call.state.lnum >= lnum and tool_call.state.end_lnum <= end_lnum then
           table.insert(tool_calls, {
             id = tool_call.id,
             type = "function",
@@ -331,9 +331,9 @@ function M.ask(prompt_buffer)
         local tool_call = chars
         local tc = tool_utils.find_tool_call_by_id(tool_call.id, { buffer = prompt_buffer })
         if tc then
-          tool_call.lnum = tc.lnum
-          tool_call.end_lnum = tc.end_lnum
-          tool_call.extmark_id = tc.extmark_id
+          tool_call.state.lnum = tc.state.lnum
+          tool_call.state.end_lnum = tc.state.end_lnum
+          tool_call.state.extmark_id = tc.state.extmark_id
         end
 
         local tool = tool_utils.find_tool_for_tool_call(tool_call)
@@ -343,13 +343,16 @@ function M.ask(prompt_buffer)
         end
 
         if state == message_types.TOOL_START then
-          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-          local needs_new_line = last_line and vim.trim(last_line) ~= "" and not vim.startswith("ASSISTANT:", last_line)
-          if needs_new_line then
+          local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+          if last_two_lines[#last_two_lines] == "" then
+            if last_two_lines[1] ~= "" then
+              chat.paste_at_end("\n", prompt_buffer)
+            end
+          else
             chat.paste_at_end("\n\n", prompt_buffer)
           end
 
-          tool_call.lnum = vim.api.nvim_buf_line_count(prompt_buffer)
+          tool_call.state.lnum = vim.api.nvim_buf_line_count(prompt_buffer)
           tool_utils.add_tool_call_to_buffer({ buffer = prompt_buffer, tool_call = tool_call })
 
           if tool.start then
@@ -364,21 +367,17 @@ function M.ask(prompt_buffer)
             tool.stop(tool_call, { buffer = prompt_buffer })
           end
 
-          tool_call.end_lnum = math.max(vim.api.nvim_buf_line_count(prompt_buffer), tool_call.lnum + 1)
-          tool_call.extmark_id = vim.api.nvim_buf_set_extmark(
+          tool_call.state.end_lnum = math.max(vim.api.nvim_buf_line_count(prompt_buffer), tool_call.state.lnum + 1)
+          tool_call.state.extmark_id = vim.api.nvim_buf_set_extmark(
             prompt_buffer,
             vim.g.llm_sidekick_ns,
-            tool_call.lnum - 1,
+            tool_call.state.lnum - 1,
             0,
             { invalidate = true }
           )
           table.insert(tool_calls, tool_call)
 
-          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-          local needs_new_line = last_line and vim.trim(last_line) ~= ""
-          if needs_new_line then
-            chat.paste_at_end("\n\n", prompt_buffer)
-          end
+          chat.paste_at_end("\n\n", prompt_buffer)
 
           tool_utils.update_tool_call_in_buffer({ buffer = prompt_buffer, tool_call = tool_call })
           tool_call.tool = tool
@@ -387,7 +386,7 @@ function M.ask(prompt_buffer)
             diagnostic.add_tool_call(
               tool_call,
               prompt_buffer,
-              tool_call.lnum,
+              tool_call.state.lnum,
               vim.diagnostic.severity.HINT,
               string.format("▶ %s (<leader>aa)", tool.spec.name)
             )
@@ -407,7 +406,7 @@ function M.ask(prompt_buffer)
         in_reasoning_tag = false
       end
 
-      chat.paste_at_end(chars, prompt_buffer)
+      -- chat.paste_at_end(chars, prompt_buffer)
     end, debug_error_handler)
 
     if not success then

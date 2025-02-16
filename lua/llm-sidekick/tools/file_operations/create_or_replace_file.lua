@@ -120,7 +120,7 @@ return {
     end
 
     -- Replace the tool call content with success message
-    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.lnum - 1, tool_call.end_lnum, false,
+    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
       { string.format("✓ Created file: `%s`", path) })
 
     return true

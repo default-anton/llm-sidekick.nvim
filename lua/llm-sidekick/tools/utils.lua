@@ -20,10 +20,30 @@ end
 
 local function find_tool_call_by_extmark_id(extmark_id, opts)
   for _, tool_call in ipairs(vim.b[opts.buffer].llm_sidekick_tool_calls or {}) do
-    if tool_call.extmark_id == extmark_id then
+    if tool_call.state.extmark_id == extmark_id then
       return tool_call
     end
   end
+end
+
+local function refresh_tool_call_lnums(tool_call, opts)
+  local buffer = opts.buffer
+  local row, _, details = unpack(vim.api.nvim_buf_get_extmark_by_id(
+    buffer,
+    vim.g.llm_sidekick_ns,
+    tool_call.state.extmark_id,
+    { details = true }
+  ))
+
+  if not details or details.invalid then
+    return
+  end
+
+  local line_count = tool_call.state.end_lnum - tool_call.state.lnum
+  tool_call.state.lnum = row + 1
+  tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum + 1)
+
+  return tool_call
 end
 
 local function update_tool_call_in_buffer(opts)
@@ -51,7 +71,7 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.lnum,
+      tool_call.state.lnum,
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: No run function defined", tool_call.name)
     )
@@ -65,15 +85,16 @@ local function run_tool_call(tool_call, opts)
 
   local line_count_after = vim.api.nvim_buf_line_count(buffer)
   if line_count_before ~= line_count_after then
-    tool_call.end_lnum = math.max(tool_call.lnum + (line_count_after - line_count_before), tool_call.lnum + 1)
+    tool_call.state.end_lnum = math.max(tool_call.state.lnum + (line_count_after - line_count_before),
+      tool_call.state.lnum + 1)
   end
 
   vim.api.nvim_buf_set_extmark(
     buffer,
     vim.g.llm_sidekick_ns,
-    tool_call.lnum - 1,
+    tool_call.state.lnum - 1,
     0,
-    { id = tool_call.extmark_id, invalidate = true }
+    { id = tool_call.state.extmark_id, invalidate = true }
   )
 
   update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
@@ -82,7 +103,7 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.lnum,
+      tool_call.state.lnum,
       vim.diagnostic.severity.INFO,
       string.format("✓ %s", tool_call.name)
     )
@@ -90,7 +111,7 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.lnum,
+      tool_call.state.lnum,
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: %s", tool_call.name, vim.inspect(result))
     )
@@ -106,7 +127,7 @@ local function find_tool_calls(opts)
   local buffer = opts.buffer
   local tool_calls = {}
   for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, vim.g.llm_sidekick_ns, 0, -1, { details = true })) do
-    local extmark_id, row, details = mark[1], mark[2], mark[4]
+    local extmark_id, row, _, details = unpack(mark)
 
     if details and details.invalid then
       goto continue
@@ -115,9 +136,9 @@ local function find_tool_calls(opts)
     local tool_call = find_tool_call_by_extmark_id(extmark_id, { buffer = buffer })
     if tool_call then
       tool_call.tool = find_tool_for_tool_call(tool_call)
-      local line_count = tool_call.end_lnum - tool_call.lnum
-      tool_call.lnum = row + 1
-      tool_call.end_lnum = math.max(tool_call.lnum + line_count, tool_call.lnum + 1)
+      local line_count = tool_call.state.end_lnum - tool_call.state.lnum
+      tool_call.state.lnum = row + 1
+      tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum + 1)
       table.insert(tool_calls, tool_call)
     end
 
@@ -132,7 +153,7 @@ local function run_tool_call_at_cursor(opts)
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
 
   for _, tool_call in ipairs(find_tool_calls({ buffer = buffer })) do
-    if cursor_line >= tool_call.lnum and cursor_line <= tool_call.end_lnum then
+    if cursor_line >= tool_call.state.lnum and cursor_line <= tool_call.state.end_lnum then
       run_tool_call(tool_call, { buffer = buffer })
       return
     end
@@ -152,14 +173,17 @@ local function get_tool_calls_in_last_assistant_message(opts)
 
   local tool_calls = find_tool_calls({ buffer = buffer })
   return vim.tbl_filter(
-    function(tc) return tc.lnum >= last_assistant_start_line end,
+    function(tc) return tc.state.lnum >= last_assistant_start_line end,
     tool_calls
   )
 end
 
 local function run_tool_calls_in_last_assistant_message(opts)
   for _, tool_call in ipairs(get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })) do
-    run_tool_call(tool_call, { buffer = opts.buffer })
+    tool_call = refresh_tool_call_lnums(tool_call, { buffer = opts.buffer })
+    if tool_call then
+      run_tool_call(tool_call, { buffer = opts.buffer })
+    end
   end
 end
 
