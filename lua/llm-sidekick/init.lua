@@ -421,20 +421,17 @@ function M.ask(prompt_buffer)
         return
       end
 
-      success, err = xpcall(function()
-        if vim.api.nvim_buf_is_loaded(prompt_buffer) then
-          local last_line = vim.api.nvim_buf_get_lines(prompt_buffer, -2, -1, false)[1]
-          local needs_new_line = last_line and last_line ~= ""
-          if needs_new_line then
-            chat.paste_at_end("\n\nUSER: ", prompt_buffer)
-          else
+      if vim.api.nvim_buf_is_loaded(prompt_buffer) then
+        local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+        if last_two_lines[#last_two_lines] == "" then
+          if last_two_lines[1] == "" then
             chat.paste_at_end("USER: ", prompt_buffer)
+          else
+            chat.paste_at_end("\nUSER: ", prompt_buffer)
           end
+        else
+          chat.paste_at_end("\n\nUSER: ", prompt_buffer)
         end
-      end, debug_error_handler)
-
-      if not success then
-        vim.notify(vim.inspect(err), vim.log.levels.ERROR)
       end
     end
   end)
