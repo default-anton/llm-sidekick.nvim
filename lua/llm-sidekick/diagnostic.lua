@@ -11,11 +11,10 @@ local function add_tool_call(tool_call, buf, severity, message)
     col = 0,
     severity = severity,
     message = message,
-    user_data = { too_call_id = tool_call.id },
+    user_data = { tool_call_id = tool_call.id },
   }
   diagnostics = vim.tbl_filter(function(d) return d.user_data.tool_call_id ~= tool_call.id end, diagnostics)
   table.insert(diagnostics, new_diagnostic)
-  vim.diagnostic.reset(vim.g.llm_sidekick_ns, buf)
   vim.diagnostic.set(vim.g.llm_sidekick_ns, buf, diagnostics)
 end
 
