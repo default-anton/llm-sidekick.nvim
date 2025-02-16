@@ -192,8 +192,20 @@ local function run_tool_call_at_cursor(opts)
     error("No tool found under the cursor")
   end
 
-  for _, tool_call in ipairs(get_tool_calls_in_last_assistant_message({ buffer = buffer })) do
-    if tool_call_at_cursor.id ~= tool_call.id then
+  local tool_calls = get_tool_calls_in_last_assistant_message({ buffer = buffer })
+  -- Run auto-acceptable tool calls after the tool call at the cursor
+  local found_tool_call_at_cursor = false
+  for _, tool_call in ipairs(tool_calls) do
+    if tool_call_at_cursor.id == tool_call.id then
+      found_tool_call_at_cursor = true
+    elseif found_tool_call_at_cursor then
+      if tool_call.tool.is_auto_acceptable(tool_call) then
+        run_tool_call(tool_call, { buffer = buffer })
+      else
+        update_diagnostic(tool_call, { buffer = buffer })
+        found_tool_call_at_cursor = false
+      end
+    else
       update_diagnostic(tool_call, { buffer = buffer })
     end
   end
