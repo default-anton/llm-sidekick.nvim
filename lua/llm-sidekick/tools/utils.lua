@@ -41,7 +41,7 @@ local function refresh_tool_call_lnums(tool_call, opts)
 
   local line_count = tool_call.state.end_lnum - tool_call.state.lnum
   tool_call.state.lnum = row + 1
-  tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum + 1)
+  tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum)
 
   return tool_call
 end
@@ -55,6 +55,33 @@ local function update_tool_call_in_buffer(opts)
     end
   end
   vim.b[opts.buffer].llm_sidekick_tool_calls = updated_tool_calls
+end
+
+local update_diagnostic = function(tool_call, opts)
+  local buffer = opts.buffer
+
+  if not tool_call.result then
+    diagnostic.add_tool_call(
+      tool_call,
+      buffer,
+      vim.diagnostic.severity.HINT,
+      string.format("▶ %s (<leader>aa)", tool_call.name)
+    )
+  elseif tool_call.result.success then
+    diagnostic.add_tool_call(
+      tool_call,
+      buffer,
+      vim.diagnostic.severity.INFO,
+      string.format("✓ %s", tool_call.name)
+    )
+  else
+    diagnostic.add_tool_call(
+      tool_call,
+      buffer,
+      vim.diagnostic.severity.ERROR,
+      string.format("✗ %s: %s", tool_call.name, vim.inspect(tool_call.result.result))
+    )
+  end
 end
 
 local function run_tool_call(tool_call, opts)
@@ -84,8 +111,10 @@ local function run_tool_call(tool_call, opts)
 
   local line_count_after = vim.api.nvim_buf_line_count(buffer)
   if line_count_before ~= line_count_after then
-    tool_call.state.end_lnum = math.max(tool_call.state.lnum + (line_count_after - line_count_before),
-      tool_call.state.lnum + 1)
+    tool_call.state.end_lnum = math.max(
+      tool_call.state.lnum + (line_count_after - line_count_before),
+      tool_call.state.lnum
+    )
   end
 
   vim.api.nvim_buf_set_extmark(
@@ -97,22 +126,7 @@ local function run_tool_call(tool_call, opts)
   )
 
   update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
-
-  if ok then
-    diagnostic.add_tool_call(
-      tool_call,
-      buffer,
-      vim.diagnostic.severity.INFO,
-      string.format("✓ %s", tool_call.name)
-    )
-  else
-    diagnostic.add_tool_call(
-      tool_call,
-      buffer,
-      vim.diagnostic.severity.ERROR,
-      string.format("✗ %s: %s", tool_call.name, vim.inspect(result))
-    )
-  end
+  update_diagnostic(tool_call, { buffer = buffer })
 end
 
 local function add_tool_call_to_buffer(opts)
@@ -135,7 +149,7 @@ local function find_tool_calls(opts)
       tool_call.tool = find_tool_for_tool_call(tool_call)
       local line_count = tool_call.state.end_lnum - tool_call.state.lnum
       tool_call.state.lnum = row + 1
-      tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum + 1)
+      tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum)
       table.insert(tool_calls, tool_call)
     end
 
@@ -143,20 +157,6 @@ local function find_tool_calls(opts)
   end
 
   return tool_calls
-end
-
-local function run_tool_call_at_cursor(opts)
-  local buffer = opts.buffer
-  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
-
-  for _, tool_call in ipairs(find_tool_calls({ buffer = buffer })) do
-    if cursor_line >= tool_call.state.lnum and cursor_line <= tool_call.state.end_lnum then
-      run_tool_call(tool_call, { buffer = buffer })
-      return
-    end
-  end
-
-  error("No tool found under the cursor")
 end
 
 local function get_tool_calls_in_last_assistant_message(opts)
@@ -175,6 +175,30 @@ local function get_tool_calls_in_last_assistant_message(opts)
   )
 end
 
+local function run_tool_call_at_cursor(opts)
+  local buffer = opts.buffer
+  local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+  local tool_call_at_cursor
+
+  for _, tool_call in ipairs(find_tool_calls({ buffer = buffer })) do
+    if cursor_line >= tool_call.state.lnum and cursor_line <= tool_call.state.end_lnum then
+      tool_call_at_cursor = tool_call
+      run_tool_call(tool_call, { buffer = buffer })
+      break
+    end
+  end
+
+  if not tool_call_at_cursor then
+    error("No tool found under the cursor")
+  end
+
+  for _, tool_call in ipairs(get_tool_calls_in_last_assistant_message({ buffer = buffer })) do
+    if tool_call_at_cursor.id ~= tool_call.id then
+      update_diagnostic(tool_call, { buffer = buffer })
+    end
+  end
+end
+
 local function run_tool_calls_in_last_assistant_message(opts)
   for _, tool_call in ipairs(get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })) do
     tool_call = refresh_tool_call_lnums(tool_call, { buffer = opts.buffer })
@@ -188,7 +212,6 @@ return {
   run_tool_call = run_tool_call,
   find_tool_calls = find_tool_calls,
   find_tool_call_by_id = find_tool_call_by_id,
-  find_tool_call_by_extmark_id = find_tool_call_by_extmark_id,
   run_tool_call_at_cursor = run_tool_call_at_cursor,
   run_tool_calls_in_last_assistant_message = run_tool_calls_in_last_assistant_message,
   add_tool_call_to_buffer = add_tool_call_to_buffer,
