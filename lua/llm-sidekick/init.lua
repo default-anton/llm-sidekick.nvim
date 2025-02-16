@@ -31,35 +31,21 @@ function M.parse_prompt(prompt, buffer)
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
   }
   local processed_keys = {}
-  local message_lnums = {}
+  local assistant_message_lnums = {}
   local lines = vim.split(prompt, "\n")
   for lnum, line in ipairs(lines) do
     if line:sub(1, 7) == "SYSTEM:" and not processed_keys.system then
-      local prev_message_index = #options.messages
       options.messages[#options.messages + 1] = { role = "system", content = line:sub(8) }
       processed_keys.system = true
-      table.insert(message_lnums, { lnum = lnum })
-      if prev_message_index > 0 then
-        message_lnums[prev_message_index].end_lnum = lnum - 1
-      end
       goto continue
     end
     if line:sub(1, 5) == "USER:" then
-      local prev_message_index = #options.messages
       options.messages[#options.messages + 1] = { role = "user", content = line:sub(6) }
-      table.insert(message_lnums, { lnum = lnum })
-      if prev_message_index > 0 then
-        message_lnums[prev_message_index].end_lnum = lnum - 1
-      end
       goto continue
     end
     if line:sub(1, 10) == "ASSISTANT:" then
-      local prev_message_index = #options.messages
       options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
-      table.insert(message_lnums, { lnum = lnum })
-      if prev_message_index > 0 then
-        message_lnums[prev_message_index].end_lnum = lnum - 1
-      end
+      table.insert(assistant_message_lnums, { lnum = lnum, end_lnum = lnum })
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -84,25 +70,25 @@ function M.parse_prompt(prompt, buffer)
     end
 
     if #options.messages > 0 then
+      if options.messages[#options.messages].role == "assistant" then
+        assistant_message_lnums[#assistant_message_lnums].end_lnum = lnum
+      end
       options.messages[#options.messages].content = options.messages[#options.messages].content .. "\n" .. line
     end
 
     ::continue::
   end
 
-  if #message_lnums > 0 then
-    message_lnums[#message_lnums].end_lnum = #lines
-  end
-
   local all_tool_calls = tool_utils.find_tool_calls({ buffer = buffer })
   local tool_call_index = 1
+  local assistant_message_index = 1
 
   for message_index, message in ipairs(options.messages) do
     message.content = vim.trim(message.content or "")
 
     if message.role == "assistant" then
-      local lnum = message_lnums[message_index].lnum
-      local end_lnum = message_lnums[message_index].end_lnum
+      local lnum = assistant_message_lnums[assistant_message_index].lnum
+      local end_lnum = assistant_message_lnums[assistant_message_index].end_lnum
 
       -- NOTE: delete all thinking tags
       message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
@@ -367,7 +353,10 @@ function M.ask(prompt_buffer)
             tool.stop(tool_call, { buffer = prompt_buffer })
           end
 
-          tool_call.state.end_lnum = math.max(vim.api.nvim_buf_line_count(prompt_buffer), tool_call.state.lnum + 1)
+          tool_call.state.end_lnum = math.max(vim.api.nvim_buf_line_count(prompt_buffer), tool_call.state.lnum)
+
+          chat.paste_at_end("\n\n", prompt_buffer)
+
           tool_call.state.extmark_id = vim.api.nvim_buf_set_extmark(
             prompt_buffer,
             vim.g.llm_sidekick_ns,
@@ -376,9 +365,6 @@ function M.ask(prompt_buffer)
             { invalidate = true }
           )
           table.insert(tool_calls, tool_call)
-
-          chat.paste_at_end("\n\n", prompt_buffer)
-
           tool_utils.update_tool_call_in_buffer({ buffer = prompt_buffer, tool_call = tool_call })
           tool_call.tool = tool
 
