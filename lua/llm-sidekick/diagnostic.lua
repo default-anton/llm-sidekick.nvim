@@ -1,14 +1,13 @@
 ---Add a diagnostic entry for a modification block
 ---@param tool_call table Tool call object
 ---@param buf integer Buffer number
----@param lnum integer Starting line number (1-based)
 ---@param severity integer Diagnostic severity (vim.diagnostic.severity)
 ---@param message string Diagnostic message
 ---@return nil
-local function add_tool_call(tool_call, buf, lnum, severity, message)
+local function add_tool_call(tool_call, buf, severity, message)
   local diagnostics = vim.diagnostic.get(buf, { namespace = vim.g.llm_sidekick_ns })
   local new_diagnostic = {
-    lnum = lnum - 1,
+    lnum = tool_call.state.lnum - 1,
     col = 0,
     severity = severity,
     message = message,
@@ -16,6 +15,7 @@ local function add_tool_call(tool_call, buf, lnum, severity, message)
   }
   diagnostics = vim.tbl_filter(function(d) return d.user_data.tool_call_id ~= tool_call.id end, diagnostics)
   table.insert(diagnostics, new_diagnostic)
+  vim.diagnostic.reset(vim.g.llm_sidekick_ns, buf)
   vim.diagnostic.set(vim.g.llm_sidekick_ns, buf, diagnostics)
 end
 

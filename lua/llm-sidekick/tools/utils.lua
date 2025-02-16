@@ -71,7 +71,6 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.state.lnum,
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: No run function defined", tool_call.name)
     )
@@ -103,7 +102,6 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.state.lnum,
       vim.diagnostic.severity.INFO,
       string.format("✓ %s", tool_call.name)
     )
@@ -111,7 +109,6 @@ local function run_tool_call(tool_call, opts)
     diagnostic.add_tool_call(
       tool_call,
       buffer,
-      tool_call.state.lnum,
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: %s", tool_call.name, vim.inspect(result))
     )

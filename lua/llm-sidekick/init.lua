@@ -386,7 +386,6 @@ function M.ask(prompt_buffer)
             diagnostic.add_tool_call(
               tool_call,
               prompt_buffer,
-              tool_call.state.lnum,
               vim.diagnostic.severity.HINT,
               string.format("▶ %s (<leader>aa)", tool.spec.name)
             )
