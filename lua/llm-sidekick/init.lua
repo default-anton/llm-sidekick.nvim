@@ -267,8 +267,6 @@ function M.ask(prompt_buffer)
       MAX_TURNS_WITHOUT_USER_INPUT
   vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input
 
-  vim.api.nvim_echo({ { "max turns: " .. max_turns_without_user_input, "Comment" } }, true, {})
-
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt, prompt_buffer)

@@ -133,7 +133,6 @@ local function run_tool_call_at_cursor(opts)
 
   for _, tool_call in ipairs(find_tool_calls({ buffer = buffer })) do
     if cursor_line >= tool_call.lnum and cursor_line <= tool_call.end_lnum then
-      vim.notify(string.format("lnum: %d, end_lnum: %d", tool_call.lnum, tool_call.end_lnum), vim.log.levels.INFO)
       run_tool_call(tool_call, { buffer = buffer })
       return
     end
