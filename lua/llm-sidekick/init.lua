@@ -400,9 +400,13 @@ function M.ask(prompt_buffer)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_loaded(prompt_buffer) then
+      -- NOTE: tools must be executed in order. If a tool requires user input,
+      -- the next tool will not be executed even if it is auto acceptable.
       for _, tool_call in ipairs(tool_calls) do
         if tool_call.tool.is_auto_acceptable(tool_call) then
           tool_utils.run_tool_call(tool_call, { buffer = prompt_buffer })
+        else
+          break
         end
       end
 
