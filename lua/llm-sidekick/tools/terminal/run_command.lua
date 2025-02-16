@@ -2,15 +2,7 @@ local chat = require("llm-sidekick.chat")
 
 local spec = {
   name = "run_command",
-  description = [[
-Execute a shell command and get its output.
-
-Available tools include standard shell commands as well as:
-- ripgrep (rg) for fast code searching
-- fd for file finding
-
-CRITICAL REQUIREMENTS:
-- `command`: The command to execute.]],
+  description = "Execute a shell command and get its exit code and output.",
   input_schema = {
     type = "object",
     properties = {
