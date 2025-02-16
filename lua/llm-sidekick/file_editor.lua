@@ -515,10 +515,6 @@ local function remove_trailing_user_prompt(buffer)
   -- Check if last non-empty line is "USER:" and adjust accordingly
   if last_content_line > 0 and vim.trim(lines[last_content_line]) == "USER:" then
     last_content_line = last_content_line - 1
-    -- Find last non-empty line before "USER:"
-    while last_content_line > 0 and vim.trim(lines[last_content_line]) == "" do
-      last_content_line = last_content_line - 1
-    end
   end
 
   -- Only modify buffer if we need to remove lines
@@ -530,47 +526,55 @@ end
 local function create_apply_modifications_command(buffer)
   local tool_utils = require 'llm-sidekick.tools.utils'
 
-  vim.api.nvim_buf_create_user_command(buffer, "Accept", function()
+  local run_tool_call_at_cursor = function()
     tool_utils.run_tool_call_at_cursor({ buffer = buffer })
-  end, {
-    desc = "Accept tool under the cursor",
-  })
 
-  vim.api.nvim_buf_create_user_command(buffer, "AcceptAll", function()
-    tool_utils.run_all_tool_calls({ buffer = buffer })
-  end, {
-    desc = "Accept all tools in the last assistant message",
-  })
+    local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
+    local requires_user_input = vim.tbl_contains(
+      tool_calls,
+      function(tc)
+        return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
+      end,
+      { predicate = true }
+    )
+    if not requires_user_input then
+      remove_trailing_user_prompt(buffer)
+      -- vim.b[buffer].llm_sidekick_max_turns_without_user_input = nil
+      require("llm-sidekick").ask(buffer)
+    end
+  end
+
+  local run_tool_calls_in_last_assistant_message = function()
+    tool_utils.run_tool_calls_in_last_assistant_message({ buffer = buffer })
+    remove_trailing_user_prompt(buffer)
+    -- vim.b[buffer].llm_sidekick_max_turns_without_user_input = nil
+    require("llm-sidekick").ask(buffer)
+  end
+
+  vim.api.nvim_buf_create_user_command(
+    buffer,
+    "Accept",
+    run_tool_call_at_cursor,
+    { desc = "Accept tool under the cursor" }
+  )
+
+  vim.api.nvim_buf_create_user_command(
+    buffer,
+    "AcceptAll",
+    run_tool_calls_in_last_assistant_message,
+    { desc = "Accept all tools in the last assistant message" }
+  )
 
   vim.keymap.set(
     'n',
     '<leader>aa',
-    function()
-      tool_utils.run_tool_call_at_cursor({ buffer = buffer })
-
-      local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
-      local requires_user_input = vim.tbl_contains(
-        tool_calls,
-        function(tc)
-          return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
-        end,
-        { predicate = true }
-      )
-      if not requires_user_input then
-        remove_trailing_user_prompt(buffer)
-        require("llm-sidekick").ask(buffer)
-      end
-    end,
+    run_tool_call_at_cursor,
     { buffer = buffer, desc = "Accept tool under the cursor" }
   )
   vim.keymap.set(
     'n',
     '<leader>A',
-    function()
-      tool_utils.run_all_tool_calls({ buffer = buffer })
-      remove_trailing_user_prompt(buffer)
-      require("llm-sidekick").ask(buffer)
-    end,
+    run_tool_calls_in_last_assistant_message,
     { buffer = buffer, desc = "Accept all tools in the last assistant message" }
   )
 end
@@ -581,4 +585,5 @@ return {
   find_and_parse_modification_blocks = find_and_parse_modification_blocks,
   find_last_assistant_start_line = find_last_assistant_start_line,
   find_assistant_end_line = find_assistant_end_line,
+  find_last_user_start_line = find_last_user_start_line,
 }

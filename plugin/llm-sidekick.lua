@@ -133,14 +133,6 @@ local function set_llm_sidekick_options()
   vim.opt_local.textwidth = 0
   vim.opt_local.scrollbind = false
   vim.opt_local.signcolumn = "no"
-
-  -- Set up syntax concealing
-  vim.opt_local.conceallevel = 3
-  vim.opt_local.concealcursor = "nvic"
-  vim.cmd([[
-    syntax match LlmSidekickToolStart /^<llm_sidekick_tool\s\+.*>$/ conceal cchar=""
-    syntax match LlmSidekickToolEnd /^<\/llm_sidekick_tool>$/ conceal cchar=""
-  ]])
 end
 
 -- Function to fold all editor context tags in a given buffer
@@ -306,6 +298,7 @@ The following additional instructions are provided by the user, and should be fo
       "<CR>",
       function()
         vim.cmd('stopinsert!')
+        vim.b[buf].llm_sidekick_max_turns_without_user_input = nil
         llm_sidekick.ask(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }
@@ -520,7 +513,7 @@ vim.api.nvim_create_user_command("Stt", function()
     if vim.api.nvim_win_is_valid(winnr) then
       vim.api.nvim_win_close(winnr, true)
     end
-    if vim.api.nvim_buf_is_valid(bufnr) then
+    if vim.api.nvim_buf_is_loaded(bufnr) then
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end
     if job and not job.is_shutdown then
@@ -578,7 +571,7 @@ end, {})
 
 vim.api.nvim_create_user_command("Add", function(opts)
   local ask_buf = vim.g.llm_sidekick_last_chat_buffer
-  if not ask_buf or not vim.api.nvim_buf_is_valid(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_chat then
+  if not ask_buf or not vim.api.nvim_buf_is_loaded(ask_buf) or not vim.b[ask_buf] or not vim.b[ask_buf].is_llm_sidekick_chat then
     vim.api.nvim_err_writeln("No valid Ask buffer found. Please run the Ask command first.")
     return
   end

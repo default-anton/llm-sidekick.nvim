@@ -104,7 +104,7 @@ end
 return {
   spec = spec,
   json_props = json_props,
-  show_diagnostics = function(_) return true end,
+  is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(_)
     return false
   end,
@@ -311,8 +311,8 @@ return {
     -- Replace the tool call content with success message
     local lines_removed = select(2, tool_call.parameters.search:gsub("\n", ""))
     local lines_added = select(2, tool_call.parameters.replace:gsub("\n", ""))
-    vim.api.nvim_buf_set_lines(opts.buffer, opts.start_lnum - 1, opts.end_lnum, false,
-      { string.format("✓ Updated %s (-%d/+%d)", path, lines_removed, lines_added) })
+    vim.api.nvim_buf_set_lines(opts.buffer, opts.lnum - 1, opts.end_lnum, false,
+      { string.format("✓ Updated `%s` (-%d/+%d)", path, lines_removed, lines_added) })
 
     return true
   end,

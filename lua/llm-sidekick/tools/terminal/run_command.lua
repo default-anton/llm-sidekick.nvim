@@ -31,7 +31,7 @@ local json_props = [[{
 return {
   spec = spec,
   json_props = json_props,
-  show_diagnostics = function(tool_call)
+  is_show_diagnostics = function(tool_call)
     local command = vim.trim(tool_call.parameters.command or "")
     if command == "" then
       return true
@@ -53,7 +53,7 @@ return {
     local command = vim.trim(tool_call.parameters.command or "")
 
     -- Basic safety checks
-    if command:find("|") or command:find(";") or command:find("&&") or command:find(">") then
+    if command:find(";") or command:find("&&") or command:find(">") then
       return false
     end
 
@@ -99,7 +99,7 @@ return {
     end
   end,
   -- Execute the command
-  run = function(tool_call, _)
+  run = function(tool_call, opts)
     local command = vim.trim(tool_call.parameters.command or "")
     local shell = vim.o.shell or "bash"
     local cwd = vim.fn.getcwd()
@@ -129,6 +129,10 @@ return {
 
     -- Wait for the job to complete
     vim.fn.jobwait({ job_id })
+
+    -- Update the command text from "Execute" to "Executed"
+    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.lnum - 1, tool_call.end_lnum, false,
+      { string.format("✓ Executed: `%s`", command) })
 
     -- Format the final output with exit code and command output
     return string.format("Exit Code: %d\nOutput:\n%s", exit_code, output)
