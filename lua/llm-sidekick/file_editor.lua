@@ -539,7 +539,6 @@ local function create_apply_modifications_command(buffer)
     )
     if not requires_user_input then
       remove_trailing_user_prompt(buffer)
-      -- vim.b[buffer].llm_sidekick_max_turns_without_user_input = nil
       require("llm-sidekick").ask(buffer)
     end
   end
@@ -547,7 +546,6 @@ local function create_apply_modifications_command(buffer)
   local run_tool_calls_in_last_assistant_message = function()
     tool_utils.run_tool_calls_in_last_assistant_message({ buffer = buffer })
     remove_trailing_user_prompt(buffer)
-    -- vim.b[buffer].llm_sidekick_max_turns_without_user_input = nil
     require("llm-sidekick").ask(buffer)
   end
 
