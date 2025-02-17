@@ -1,7 +1,7 @@
 local chat = require("llm-sidekick.chat")
 local Job = require('plenary.job')
 
-local TIMEOUT = 5000
+local TIMEOUT = 60000
 
 local spec = {
   name = "run_command",
