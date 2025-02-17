@@ -1,4 +1,7 @@
 local chat = require("llm-sidekick.chat")
+local Job = require('plenary.job')
+
+local TIMEOUT = 5000
 
 local spec = {
   name = "run_command",
@@ -92,41 +95,37 @@ return {
   end,
   -- Execute the command
   run = function(tool_call, opts)
-    local command = vim.trim(tool_call.parameters.command or "")
-    local shell = vim.o.shell or "bash"
     local cwd = vim.fn.getcwd()
-
-    -- Ensure the working directory exists
-    if not vim.fn.isdirectory(cwd) then
-      error(string.format("Working directory does not exist: %s", cwd))
-    end
-
-    local output_file = vim.fn.tempname()
-    local full_command = string.format('%s -c "%s > %s 2>&1"', shell, command, output_file)
+    local shell = vim.o.shell or "bash"
+    local command = vim.trim(tool_call.parameters.command or "")
     local output = ""
     local exit_code = nil
 
-    local job_id = vim.fn.jobstart(full_command, {
+    Job:new({
       cwd = cwd,
-      on_exit = function(_, code)
-        output = table.concat(vim.fn.readfile(output_file), "\n")
-        vim.fn.delete(output_file)
-        exit_code = code
-      end
-    })
+      command = shell,
+      args = { "-c", command },
+      interactive = false,
+      on_exit = function(j, return_val)
+        exit_code = return_val
 
-    if job_id <= 0 then
-      error(string.format("Failed to start command: %s", command))
-    end
+        local stdout = j:result()
+        if stdout and not vim.tbl_isempty(stdout) then
+          output = "Stdout: " .. table.concat(stdout, "\n")
+        end
 
-    -- Wait for the job to complete
-    vim.fn.jobwait({ job_id })
+        local stderr = j:stderr_result()
+        if stderr and not vim.tbl_isempty(stderr) then
+          output = output .. "\nStderr: " .. table.concat(stderr, "\n")
+        end
+      end,
+    }):sync(TIMEOUT)
 
     -- Update the command text from "Execute" to "Executed"
     vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
       { string.format("✓ Executed: `%s`", command) })
 
     -- Format the final output with exit code and command output
-    return string.format("Exit Code: %d\nOutput:\n%s", exit_code, output)
+    return string.format("Exit code: %d\n%s", exit_code, output)
   end
 }
