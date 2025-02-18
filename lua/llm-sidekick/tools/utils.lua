@@ -166,7 +166,7 @@ end
 local function get_tool_calls_in_last_assistant_message(opts)
   local buffer = opts.buffer
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-  local last_assistant_start_line = file_editor.find_last_assistant_start_line(buffer_lines)
+  local last_assistant_start_line = opts.lnum or file_editor.find_last_assistant_start_line(buffer_lines)
 
   if last_assistant_start_line == -1 then
     error("No \"ASSISTANT:\" message found")

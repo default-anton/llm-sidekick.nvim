@@ -256,6 +256,22 @@ function M.ask(prompt_buffer)
   vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input
 
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
+
+  local file_editor = require("llm-sidekick.file_editor")
+  local last_assistant_lnum = file_editor.find_last_assistant_start_line(buf_lines)
+  local last_user_lnum = file_editor.find_last_user_start_line(buf_lines)
+
+  if last_assistant_lnum ~= -1 and last_assistant_lnum < last_user_lnum then
+    local tools = tool_utils.get_tool_calls_in_last_assistant_message(
+      { buffer = prompt_buffer, lnum = last_assistant_lnum }
+    )
+    for _, tool in ipairs(tools) do
+      if tool.name == "send_message_to_user" then
+        tool_utils.run_tool_call(tool, { buffer = prompt_buffer })
+      end
+    end
+  end
+
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt, prompt_buffer)
 
@@ -282,8 +298,7 @@ function M.ask(prompt_buffer)
     end
   end
 
-  local file_editor = require("llm-sidekick.file_editor")
-  if file_editor.find_last_assistant_start_line(buf_lines) < file_editor.find_last_user_start_line(buf_lines) then
+  if last_assistant_lnum < last_user_lnum then
     vim.api.nvim_buf_set_lines(prompt_buffer, -1, -1, false, { "", "ASSISTANT: " })
   end
 
