@@ -157,8 +157,10 @@ function M.parse_prompt(prompt, buffer)
   local editor_context = {}
   local last_user_message_index = nil
   for i, message in ipairs(options.messages) do
-    if message.role == "user" then
-      last_user_message_index = i
+    if message.role == "user" or message.role == "system" then
+      if message.role == "user" then
+        last_user_message_index = i
+      end
 
       for url in message.content:gmatch("<llm_sidekick_url>(.-)</llm_sidekick_url>") do
         if editor_context[url] then

@@ -246,6 +246,12 @@ local ask_command = function()
         cwd = vim.fn.getcwd(),
       })
 
+      if vim.fn.filereadable("plan.md") == 1 then
+        system_prompt = system_prompt .. "\n\n<llm_sidekick_file>plan.md</llm_sidekick_file>"
+        system_prompt = system_prompt .. [[
+]]
+      end
+
       local guidelines = vim.trim(current_project_config.guidelines or "")
       local technologies = vim.trim(current_project_config.technologies or "")
 
