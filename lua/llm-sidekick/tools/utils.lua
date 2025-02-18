@@ -60,6 +60,10 @@ end
 local update_diagnostic = function(tool_call, opts)
   local buffer = opts.buffer
 
+  if not tool_call.tool.is_show_diagnostics(tool_call) then
+    return
+  end
+
   if not tool_call.result then
     diagnostic.add_tool_call(
       tool_call,
