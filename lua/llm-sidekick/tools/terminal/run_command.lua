@@ -11,16 +11,19 @@ local spec = {
     properties = {
       command = {
         type = "string"
+      },
+      explanation = {
+        type = "string",
+        description = "One sentence explanation of why this command needs to be run and how it contributes to the goal"
       }
     },
-    required = {
-      "command"
-    }
+    required = { "command", "explanation" }
   }
 }
 
 local json_props = [[{
-  "command": { "type": "string" }
+  "command": { "type": "string" },
+  "explanation": { "type": "string" }
 }]]
 
 return {
@@ -73,17 +76,30 @@ return {
   start = function(tool_call, opts)
     chat.paste_at_end("**Execute:** ``", opts.buffer)
     tool_call.state.command_line = vim.api.nvim_buf_line_count(opts.buffer)
+
+    chat.paste_at_end("\n> ", opts.buffer)
+    tool_call.state.explanation_line = vim.api.nvim_buf_line_count(opts.buffer)
   end,
   -- Handle incremental updates for streaming command and output
   delta = function(tool_call, opts)
     local command = vim.trim(tool_call.parameters.command or "")
     local command_written = tool_call.state.command_written or 0
+    local explanation = vim.trim(tool_call.parameters.explanation or "")
+    local explanation_written = tool_call.state.explanation_written or 0
 
     -- Update command display
     if command and command_written < #command then
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.command_line - 1, tool_call.state.command_line, false,
         { string.format("**Execute:** `%s`", command) })
       tool_call.state.command_written = #command
+    end
+
+    -- Update explanation if provided and not yet written
+    if explanation and explanation_written < #explanation then
+      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.explanation_line - 1, tool_call.state.explanation_line,
+        false,
+        { string.format("> %s", explanation:gsub("\n", " ")) })
+      tool_call.state.explanation_written = #explanation
     end
   end,
   -- Execute the command
@@ -104,19 +120,25 @@ return {
 
         local stdout = j:result()
         if stdout and not vim.tbl_isempty(stdout) then
-          output = "Stdout: " .. table.concat(stdout, "\n")
+          output = "Stdout:\n```" .. table.concat(stdout, "\n") .. "```"
         end
 
         local stderr = j:stderr_result()
         if stderr and not vim.tbl_isempty(stderr) then
-          output = output .. "\nStderr: " .. table.concat(stderr, "\n")
+          output = output .. "\n\nStderr:\n```" .. table.concat(stderr, "\n") .. "```"
         end
       end,
     }):sync(TIMEOUT)
 
     -- Update the command text from "Execute" to "Executed"
-    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-      { string.format("✓ Executed: `%s`", command) })
+    local final_lines = { string.format("✓ Executed: `%s`", command) }
+
+    -- Include explanation in final display if provided
+    if tool_call.parameters.explanation then
+      table.insert(final_lines, string.format("> %s", tool_call.parameters.explanation))
+    end
+
+    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
 
     -- Format the final output with exit code and command output
     return string.format("Exit code: %d\n%s", exit_code, output)
