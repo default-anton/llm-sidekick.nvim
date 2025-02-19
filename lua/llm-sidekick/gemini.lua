@@ -7,7 +7,7 @@ function gemini.new()
   local api_key = require("llm-sidekick.settings").get_gemini_api_key()
 
   return setmetatable({
-      base_url = 'https://generativelanguage.googleapis.com/v1beta/models',
+      base_url = 'https://generativelanguage.googleapis.com/v1alpha/models',
       api_key = api_key,
     },
     { __index = gemini }
@@ -105,7 +105,6 @@ function gemini:chat(opts, callback)
     end
   end
 
-  local gemini_converter = require("llm-sidekick.tools.gemini")
   local data = {
     contents = contents,
     generationConfig = {
@@ -122,15 +121,19 @@ function gemini:chat(opts, callback)
       { category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" },
       { category = "HARM_CATEGORY_CIVIC_INTEGRITY",   threshold = "BLOCK_NONE" }
     },
-    tools = {
+  }
+
+  if opts.tools then
+    local gemini_converter = require("llm-sidekick.tools.gemini")
+    data.tools = {
       { functionDeclarations = vim.tbl_map(function(tool) return gemini_converter.convert_spec(tool.spec) end, opts.tools) },
-    },
-    toolConfig = {
+    }
+    data.toolConfig = {
       functionCallingConfig = {
         mode = "ANY"
       }
-    },
-  }
+    }
+  end
 
   -- Include thoughts for thinking models
   if model_settings.reasoning then
@@ -154,8 +157,10 @@ function gemini:chat(opts, callback)
   )
 
   local body = vim.json.encode(data)
-  for _, tool in ipairs(opts.tools) do
-    body = body:gsub(vim.json.encode(tool.spec.input_schema.properties), tool.json_props)
+  if opts.tools then
+    for _, tool in ipairs(opts.tools) do
+      body = body:gsub(vim.json.encode(tool.spec.input_schema.properties), tool.json_props)
+    end
   end
 
   local curl = require("llm-sidekick.executables").get_curl_executable()
