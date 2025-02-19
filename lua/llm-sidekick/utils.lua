@@ -88,4 +88,8 @@ function M.get_temp_dir()
   return tmp_path
 end
 
+function M.stop(buffer)
+  pcall(vim.loop.kill, vim.b[buffer].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
+end
+
 return M

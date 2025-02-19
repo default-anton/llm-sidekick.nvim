@@ -330,6 +330,7 @@ function M.ask(prompt_buffer)
 
   local job = client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_loaded(prompt_buffer) then
+      utils.stop(prompt_buffer)
       return
     end
 
@@ -425,6 +426,7 @@ function M.ask(prompt_buffer)
 
     if not success then
       vim.notify(vim.inspect(err), vim.log.levels.ERROR)
+      utils.stop(prompt_buffer)
       return
     end
 

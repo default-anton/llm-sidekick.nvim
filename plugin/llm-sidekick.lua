@@ -314,7 +314,7 @@ The following additional instructions are provided by the user, and should be fo
       { "n", "i" },
       "<C-c>",
       function()
-        pcall(vim.loop.kill, vim.b[buf].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
+        utils.stop(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }
     )
