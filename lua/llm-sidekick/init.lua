@@ -89,6 +89,7 @@ function M.parse_prompt(prompt, buffer)
     if message.role == "assistant" then
       local lnum = assistant_message_lnums[assistant_message_index].lnum
       local end_lnum = assistant_message_lnums[assistant_message_index].end_lnum
+      assistant_message_index = assistant_message_index + 1
 
       -- NOTE: delete all thinking tags
       message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
