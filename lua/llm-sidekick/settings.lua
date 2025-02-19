@@ -8,6 +8,10 @@ local settings = {
   },
   default = "sonnet",
   models = vim.deepcopy(MODELS),
+  yolo_mode = {
+    file_operations = false, -- Automatically accept file operations
+    terminal_commands = false, -- Automatically accept terminal commands
+  },
 }
 
 function M.get_models()
@@ -39,6 +43,7 @@ function M.setup(opts)
     })
 
     opts.models = vim.tbl_deep_extend("force", settings.models, opts.models or {})
+    opts.yolo_mode = vim.tbl_deep_extend("force", settings.yolo_mode, opts.yolo_mode or {})
 
     settings = opts
   end
@@ -82,6 +87,14 @@ end
 
 function M.get_aliases()
   return vim.tbl_keys(settings.aliases)
+end
+
+function M.auto_accept_file_operations()
+  return settings.yolo_mode.file_operations
+end
+
+function M.auto_accept_terminal_commands()
+  return settings.yolo_mode.terminal_commands
 end
 
 function M.get_openai_api_key()

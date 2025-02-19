@@ -31,6 +31,10 @@ return {
   json_props = json_props,
   is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(tool_call)
+    if require("llm-sidekick.settings").auto_accept_terminal_commands() then
+      return true
+    end
+
     -- List of commands that are safe to auto-accept
     local safe_commands = {
       -- File viewing/searching

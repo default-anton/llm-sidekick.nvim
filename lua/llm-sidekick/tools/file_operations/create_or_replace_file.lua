@@ -39,7 +39,7 @@ return {
   json_props = json_props,
   is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(_)
-    return false
+    return require("llm-sidekick.settings").auto_accept_file_operations()
   end,
   -- Initialize the streaming display with markdown formatting
   start = function(tool_call, opts)

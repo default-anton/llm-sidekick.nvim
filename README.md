@@ -104,6 +104,10 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         low_o3_mini = "o3-mini-low",
         medium_o3_mini = "o3-mini-medium",
       },
+      yolo_mode = {
+        file_operations = false, -- Automatically accept file operations
+        terminal_commands = false, -- Automatically accept terminal commands
+      },
       default = "sonnet",
     })
   end,
