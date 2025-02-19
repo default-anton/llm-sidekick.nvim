@@ -58,21 +58,21 @@ return {
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o1-medium-chat"] = {
     name = "openai/o1",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o1-high-chat"] = {
     name = "openai/o1",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,         -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o3-mini-low"] = {
     name = "openai/o3-mini",
@@ -97,21 +97,21 @@ return {
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o3-mini-medium-chat"] = {
     name = "openai/o3-mini",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o3-mini-high-chat"] = {
     name = "openai/o3-mini",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,         -- temperature is not supported
     reasoning = true,
-    just_chat = true,
+    just_chatting = true,
   },
   ["o1-preview"] = {
     name = "openai/o1-preview",
@@ -124,7 +124,7 @@ return {
     temperature = nil, -- temperature is not supported
     reasoning = true,
     no_system_prompt = true,
-    just_chat = true
+    just_chatting = true
   },
   ["gpt-4o"] = {
     name = "openai/gpt-4o",
@@ -169,6 +169,6 @@ return {
     top_k = 64,
     temperature = 0.7,
     reasoning = true,
-    just_chat = true
+    just_chatting = true
   },
 }

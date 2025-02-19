@@ -286,7 +286,7 @@ function M.ask(prompt_buffer)
 
   local model_settings = settings.get_model_settings(prompt.settings.model)
 
-  if not model_settings.just_chat then
+  if not model_settings.just_chatting then
     prompt.tools = require("llm-sidekick.tools")
   end
 
@@ -421,7 +421,7 @@ function M.ask(prompt_buffer)
         in_reasoning_tag = false
       end
 
-      -- chat.paste_at_end(chars, prompt_buffer)
+      chat.paste_at_end(chars, prompt_buffer)
     end, debug_error_handler)
 
     if not success then
@@ -446,7 +446,7 @@ function M.ask(prompt_buffer)
         function(tc) return tc.result == nil end,
         { predicate = true }
       )
-      if not requires_user_input and max_turns_without_user_input > 0 then
+      if not model_settings.just_chatting and not requires_user_input and max_turns_without_user_input > 0 then
         vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
         M.ask(prompt_buffer)
         return
