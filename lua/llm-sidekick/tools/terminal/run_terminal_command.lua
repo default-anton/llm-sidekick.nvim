@@ -4,7 +4,7 @@ local Job = require('plenary.job')
 local TIMEOUT = 60000
 
 local spec = {
-  name = "run_command",
+  name = "run_terminal_command",
   description = "Execute a shell command and get its exit code and output.",
   input_schema = {
     type = "object",

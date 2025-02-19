@@ -1,3 +1,3 @@
 return {
-  require("llm-sidekick.tools.terminal.run_command"),
+  require("llm-sidekick.tools.terminal.run_terminal_command"),
 }
