@@ -31,8 +31,11 @@ function M.parse_prompt(prompt, buffer)
     settings = vim.deepcopy(DEFAULT_SETTTINGS),
   }
   local processed_keys = {}
-  local assistant_message_lnums = {}
   local lines = vim.split(prompt, "\n")
+
+  local all_tool_calls = tool_utils.find_tool_calls({ buffer = buffer })
+  local tool_call_index = 1
+
   for lnum, line in ipairs(lines) do
     if line:sub(1, 7) == "SYSTEM:" and not processed_keys.system then
       options.messages[#options.messages + 1] = { role = "system", content = line:sub(8) }
@@ -45,7 +48,6 @@ function M.parse_prompt(prompt, buffer)
     end
     if line:sub(1, 10) == "ASSISTANT:" then
       options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
-      table.insert(assistant_message_lnums, { lnum = lnum, end_lnum = lnum })
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -69,81 +71,80 @@ function M.parse_prompt(prompt, buffer)
       goto continue
     end
 
-    if #options.messages > 0 then
-      if options.messages[#options.messages].role == "assistant" then
-        assistant_message_lnums[#assistant_message_lnums].end_lnum = lnum
-      end
-      options.messages[#options.messages].content = options.messages[#options.messages].content .. "\n" .. line
+    if #options.messages == 0 then
+      goto continue
     end
+
+    local message = options.messages[#options.messages]
+
+    if message.role ~= "assistant" or #all_tool_calls == 0 then
+      message.content = message.content .. "\n" .. line
+      goto continue
+    end
+
+    while tool_call_index <= #all_tool_calls and all_tool_calls[tool_call_index].state.end_lnum < lnum do
+      tool_call_index = tool_call_index + 1
+    end
+
+    local tool_call = all_tool_calls[tool_call_index]
+
+    if tool_call_index > #all_tool_calls or tool_call.state.lnum > lnum then
+      message.content = message.content .. "\n" .. line
+      goto continue
+    end
+
+    if tool_call.state.lnum ~= lnum then
+      goto continue
+    end
+
+    message.tool_calls = message.tool_calls or {}
+    table.insert(
+      message.tool_calls,
+      {
+        id = tool_call.id,
+        type = "function",
+        ["function"] = {
+          name = tool_call.name,
+          arguments = vim.json.encode(tool_call.parameters),
+        },
+      }
+    )
+
+    local result = tool_call.result
+    if type(result) == "boolean" then
+      result = { success = result }
+    end
+    if not result then
+      result = { result = "User hasn't accepted the tool" }
+    end
+
+    message.tool_call_results = message.tool_call_results or {}
+    table.insert(
+      message.tool_call_results,
+      {
+        role = "tool",
+        tool_call_id = tool_call.id,
+        content = vim.json.encode(result),
+      }
+    )
 
     ::continue::
   end
 
-  local all_tool_calls = tool_utils.find_tool_calls({ buffer = buffer })
-  local tool_call_index = 1
-  local assistant_message_index = 1
-
   for message_index, message in ipairs(options.messages) do
-    message.content = vim.trim(message.content or "")
-
     if message.role == "assistant" then
-      local lnum = assistant_message_lnums[assistant_message_index].lnum
-      local end_lnum = assistant_message_lnums[assistant_message_index].end_lnum
-      assistant_message_index = assistant_message_index + 1
-
       -- NOTE: delete all thinking tags
       message.content = message.content:gsub("<llm_sidekick_thinking>.-</llm_sidekick_thinking>", "")
       message.content = message.content:gsub("<think>.-</think>", "") -- for deepseek-r1-distill-llama-70b
 
-      -- Extract tool calls from the content
-      local tool_calls = {}
-      local tool_call_results = {}
-      for i = tool_call_index, #all_tool_calls do
-        tool_call_index = i
-
-        local tool_call = all_tool_calls[i]
-        if tool_call.state.lnum >= lnum and tool_call.state.end_lnum <= end_lnum then
-          table.insert(tool_calls, {
-            id = tool_call.id,
-            type = "function",
-            ["function"] = {
-              name = tool_call.name,
-              arguments = vim.json.encode(tool_call.parameters),
-            }
-          })
-
-          local result = tool_call.result
-          if type(result) == "boolean" then
-            result = { success = result }
-          end
-          if not result then
-            result = { result = "User hasn't accepted the tool" }
-          end
-
-          result = vim.json.encode(result)
-
-          table.insert(tool_call_results, {
-            role = "tool",
-            tool_call_id = tool_call.id,
-            content = result,
-          })
-        else
-          break
-        end
-      end
-
-      message.content = vim.trim(message.content)
-
-      if #tool_calls > 0 then
-        message.tool_calls = tool_calls
-      end
-
-      if #tool_call_results > 0 then
-        for j, tool_call_result in ipairs(tool_call_results) do
+      if message.tool_call_results and #message.tool_call_results > 0 then
+        for j, tool_call_result in ipairs(message.tool_call_results) do
           table.insert(options.messages, message_index + j, tool_call_result)
         end
       end
     end
+
+    message.content = vim.trim(message.content)
   end
 
   -- Remove last empty user message if the last message is a tool result
@@ -191,6 +192,7 @@ function M.parse_prompt(prompt, buffer)
 
       message.content = message.content:gsub("<llm_sidekick_url>.-</llm_sidekick_url>", "")
       message.content = message.content:gsub("<llm_sidekick_file>.-</llm_sidekick_file>", "")
+      message.content = vim.trim(message.content)
     end
 
     ::continue::
