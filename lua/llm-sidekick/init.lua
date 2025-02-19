@@ -38,16 +38,16 @@ function M.parse_prompt(prompt, buffer)
 
   for lnum, line in ipairs(lines) do
     if line:sub(1, 7) == "SYSTEM:" and not processed_keys.system then
-      options.messages[#options.messages + 1] = { role = "system", content = line:sub(8) }
+      table.insert(options.messages, { role = "system", content = line:sub(8) })
       processed_keys.system = true
       goto continue
     end
     if line:sub(1, 5) == "USER:" then
-      options.messages[#options.messages + 1] = { role = "user", content = line:sub(6) }
+      table.insert(options.messages, { role = "user", content = line:sub(6) })
       goto continue
     end
     if line:sub(1, 10) == "ASSISTANT:" then
-      options.messages[#options.messages + 1] = { role = "assistant", content = line:sub(11) }
+      table.insert(options.messages, { role = "assistant", content = line:sub(11) })
       goto continue
     end
     if line:sub(1, 6) == "MODEL:" and not processed_keys.model then
@@ -98,6 +98,12 @@ function M.parse_prompt(prompt, buffer)
     end
 
     message.tool_calls = message.tool_calls or {}
+
+    if #message.tool_calls > 0 then
+      message = { role = "assistant", tool_calls = {}, content = "" }
+      table.insert(options.messages, message)
+    end
+
     table.insert(
       message.tool_calls,
       {
