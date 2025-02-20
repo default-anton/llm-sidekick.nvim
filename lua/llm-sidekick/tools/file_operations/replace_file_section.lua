@@ -3,7 +3,7 @@ local chat = require("llm-sidekick.chat")
 local signs = require("llm-sidekick.signs")
 
 local spec = {
-  name = "replace_in_file",
+  name = "replace_file_section",
   description = [[
 Makes precise, targeted changes to specific parts of a file. Default choice for most file modifications.
 
@@ -158,7 +158,7 @@ return {
       -- Place signs for the search section
       search_start_line = tool_call.state.search_start_line
       local search_end_line = search_start_line + select(2, tool_call.parameters.search:gsub("\n", ""))
-      local sign_group = string.format("%s-replace_in_file-search", tool_call.id)
+      local sign_group = string.format("%s-replace_file_section-search", tool_call.id)
       signs.place(opts.buffer, sign_group, search_start_line, search_end_line, "llm_sidekick_red")
     end
 
@@ -189,7 +189,7 @@ return {
         replace_start_line = replace_start_line + select(2, tool_call.parameters.search:gsub("\n", ""))
       end
       local replace_end_line = replace_start_line + select(2, tool_call.parameters.replace:gsub("\n", ""))
-      local sign_group = string.format("%s-replace_in_file-replace", tool_call.id)
+      local sign_group = string.format("%s-replace_file_section-replace", tool_call.id)
       signs.place(opts.buffer, sign_group, replace_start_line, replace_end_line, "llm_sidekick_green")
     end
   end,
