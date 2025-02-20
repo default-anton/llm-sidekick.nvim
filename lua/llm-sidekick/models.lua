@@ -171,4 +171,11 @@ return {
     reasoning = true,
     just_chatting = true
   },
+  ["deepseek-r1-distill-llama-70b"] = {
+    name = "groq/deepseek-r1-distill-llama-70b",
+    max_tokens = 32768,
+    temperature = 0.6,
+    reasoning = true,
+    no_system_prompt = true,
+  }
 }
