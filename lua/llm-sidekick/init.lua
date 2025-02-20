@@ -148,6 +148,8 @@ function M.parse_prompt(prompt, buffer)
           table.insert(options.messages, message_index + j, tool_call_result)
         end
       end
+
+      message.tool_call_results = nil
     end
 
     message.content = vim.trim(message.content)
