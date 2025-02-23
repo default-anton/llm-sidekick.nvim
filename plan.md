@@ -50,13 +50,26 @@ flowchart LR
   - [ ] Track file modification times for incremental updates
 
 - [ ] **Indexing Pipeline**
-  - [ ] File discovery: `fd --type f --hidden --exclude .git`
+  - [x] File discovery implementation:
+    - [x] Created `file_discovery.py` with `FileDiscovery` and `FileBatcher` classes
+    - [x] Default extensions support (.py, .js, .ts, .jsx, .tsx, .vue, .rs, .go, .java, .cpp, .c, .h, .hpp, .cs, .rb, .php, .scala, .kt, .lua)
+    - [x] Efficient file discovery using `fd --type f --hidden --exclude .git --exclude node_modules -e <extensions>`
+    - [x] Implemented batched processing (50 files per batch)
+    - [x] Added error handling and logging
   - [ ] Code parsing:
-    - [ ] Use Tree-sitter for supported languages
-    - [ ] Fallback: 100-line chunks if needed
+    - [ ] Initial implementation: 100-line chunks
+    - [ ] Future: Tree-sitter integration planned for Phase 2
   - [ ] **Embedding Generation**:
     - [ ] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
-    - [ ] Implement batch processing
+    - [ ] Implement batch processing:
+      - [x] File batching: Process 50 files at a time (implemented in FileBatcher)
+      - [ ] Embedding batching: Generate embeddings in batches of 32 chunks
+
+Next Steps:
+1. Implement code chunking functionality
+2. Integrate FileDiscovery with CodeIndexer
+3. Add tests for FileDiscovery and FileBatcher
+4. Implement embedding generation with batching
 
 - [ ] **Milvus-Lite Integration**
   - [x] Define collection schema in Python:
