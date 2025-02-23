@@ -57,8 +57,16 @@ flowchart LR
     - [x] Implemented batched processing (50 files per batch)
     - [x] Added error handling and logging
   - [ ] Code parsing:
-    - [ ] Initial implementation: 100-line chunks
-    - [ ] Future: Tree-sitter integration planned for Phase 2
+    - [x] Tree-sitter queries implementation:
+      - [x] Created language-specific queries for 19+ languages
+      - [x] Support for classes, functions, methods extraction
+      - [x] Documentation comment capture
+      - [x] Structural parsing (nested definitions, references)
+    - [ ] Implement smart chunking:
+      - [ ] Use tree-sitter to extract meaningful code blocks
+      - [ ] Preserve context hierarchy (class/function relationships)
+      - [ ] Include associated documentation
+      - [ ] Fallback to 100-line chunks for unsupported languages
   - [ ] **Embedding Generation**:
     - [ ] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
     - [ ] Implement batch processing:
