@@ -1,4 +1,3 @@
-````markdown
 # Vector Similarity Search Implementation Plan (Auto Context)
 
 ## 1. Architecture Overview
@@ -7,10 +6,11 @@
 flowchart LR
     subgraph Neovim[Neovim Plugin]
         LUA[Lua Modules]
-        API_CALL[[Python API Call]]
+        API_CALL[[Search API Call]]
     end
     
     subgraph Python[Python Service]
+        WATCHER[File Watcher]
         INDEXER[Indexing Service]
         SEARCH[Search API]
         MILVUS[(Milvus-Lite)]
@@ -18,8 +18,8 @@ flowchart LR
     end
 
     LUA --> API_CALL
-    API_CALL --> INDEXER
     API_CALL --> SEARCH
+    WATCHER --> INDEXER
     INDEXER --> MILVUS
     SEARCH --> MILVUS
     EMBEDDINGS --> INDEXER
@@ -29,7 +29,7 @@ flowchart LR
 ## 2. Implementation Phases
 
 ### Phase 1: Core Indexing Service
-- [ ] **Python Service Setup**
+- [x] **Python Service Setup**
   - [x] Create new service under `python/auto_context`
   - [x] Setup uv dependency management:
     ```toml
@@ -39,6 +39,15 @@ flowchart LR
     python-dotenv
     watchdog
     ```
+
+- [ ] **Periodic File Indexing**
+  - [ ] Implement timer-based indexing (every 5-10 minutes)
+  - [ ] Use git for change detection:
+    ```bash
+    git ls-files --modified --others --exclude-standard
+    ```
+  - [ ] Fallback to `fd` for non-git repos and initial indexing
+  - [ ] Track file modification times for incremental updates
 
 - [ ] **Indexing Pipeline**
   - [ ] File discovery: `fd --type f --hidden --exclude .git`
@@ -50,7 +59,7 @@ flowchart LR
     - [ ] Implement batch processing
 
 - [ ] **Milvus-Lite Integration**
-  - [ ] Define collection schema in Python:
+  - [x] Define collection schema in Python:
     ```python
     fields = [
         FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
@@ -89,28 +98,14 @@ flowchart LR
 
 ### Phase 2: Neovim Integration
 - [ ] **Python Service Management**
-  - [ ] Integrate service with UV, matching `litellm.lua` example:
-    ```lua
-    local uv = require("llm-sidekick.utils.uv")
-    local auto_context = uv.new_service({
-        name = "auto_context",
-        command = "python -m auto_context",
-        cwd = "python/auto_context"
-    })
-    ```
+  - [ ] Create `auto_context.lua` service, matching `lua/llm-sidekick/litellm.lua` example
+  - [ ] Implement service lifecycle management (start/stop)
 
-- [ ] **API Endpoints**
-  - [ ] Implement endpoints:
-    - [ ] POST /index/update - Trigger full reindex
-    - [ ] POST /index/incremental - Handle buffer writes
-    - [ ] GET /search?query= - Return top 10 results
-
-- [ ] **Update Strategies**
-  - [ ] Real-time update via autocmd: 
-    ```lua
-    autocmd BufWritePost * lua require('auto_context').handle_write(vim.fn.expand('<afile>'))
-    ```
-  - [ ] Periodic update using UV timer every 10 minutes
+- [ ] **API Integration**
+  - [ ] Implement search endpoint:
+    - [ ] GET /search?query= - Return search results
+  - [ ] Add error handling and retry logic
+  - [ ] Implement response caching
 
 ### Phase 3: Auto Context Service Integration
 - [ ] **Service Setup**
@@ -139,25 +134,27 @@ flowchart LR
 - [ ] **Performance Considerations**
   - [ ] Setup async indexing queue
   - [ ] Implement LRU cache for frequent queries
+  - [ ] Optimize file watcher performance
 
 - [ ] **Error Handling**
   - [ ] Fallback to keyword search on embedding failure
   - [ ] Apply circuit breaker pattern for API calls
+  - [ ] Handle file watcher errors gracefully
 
 ## 4. Development Milestones
 
 | Milestone | Description | ETA |
 |-----------|-------------|-----|
-| M1        | Core indexing service | 3d |
-| M2        | Neovim API integration | 2d |
-| M3        | Buffer update tracking | 1d |
-| M4        | Performance optimizations | 2d |
+| M1        | Core indexing service with file watcher | 4d |
+| M2        | Search API integration | 2d |
+| M3        | Performance optimizations | 2d |
 
 ## 5. Risk Mitigation
 
 - [ ] **Large Codebases**:
   - [ ] Implement progressive indexing
   - [ ] Set up memory monitoring
+  - [ ] Optimize file watcher for large directories
 
 - [ ] **Unsupported Files**:
   - [ ] Use line-based chunk fallback
@@ -186,4 +183,3 @@ flowchart LR
 - [ ] Use `uv run` for consistent Python version management
 - [ ] Prefer `uv sync` for reproducible environments
 - [ ] Refer to UV installation instructions in README.md
-````

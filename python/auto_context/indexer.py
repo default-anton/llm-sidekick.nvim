@@ -64,7 +64,7 @@ class CodeIndexer:
                     dim=768
                 ),
                 FieldSchema(
-                    name="code",
+                    name="source_code",
                     dtype=DataType.VARCHAR,
                     max_length=65535
                 ),
