@@ -5,12 +5,14 @@ from pathlib import Path
 from collections.abc import Iterator
 import logging
 
+from .code_chunker import EXTENSION_TO_LANGUAGE
+
 logger = logging.getLogger(__name__)
 
 class FileBatcher:
     """Handles batched processing of files."""
 
-    def __init__(self, batch_size: int = 50):
+    def __init__(self, batch_size: int = 30):
         """Initialize the file batcher.
 
         Args:
@@ -33,17 +35,12 @@ class FileBatcher:
 class FileDiscovery:
     """Handles file discovery and filtering."""
 
-    SUPPORTED_EXTENSIONS: list[str] = [
-        "py", "js", "ts", "jsx", "tsx", "vue",
-        "rs", "go", "java", "cpp", "c", "h", "hpp",
-        "cs", "rb", "php", "scala", "kt", "lua",
-        "erb", "haml", "slim", "builder"
-    ]
+    SUPPORTED_EXTENSIONS: list[str] = list(EXTENSION_TO_LANGUAGE.keys())
 
     def __init__(
         self,
         extensions: list[str] | None = None,
-        batch_size: int = 50
+        batch_size: int = 30
     ):
         """Initialize the file discovery service.
 
