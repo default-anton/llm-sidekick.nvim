@@ -97,7 +97,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         pro = "gemini-2.0-pro",
         flash = "gemini-2.0-flash",
         sonnet = "claude-3-5-sonnet-latest",
-        bedrock_sonnet = "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        bedrock_sonnet = "anthropic.claude-3-7-sonnet",
         deepseek = "deepseek-chat",
         gpt4o = "gpt-4o-2024-11-20",
         high_o3_mini = "o3-mini-high",
