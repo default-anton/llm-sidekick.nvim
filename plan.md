@@ -51,7 +51,7 @@ flowchart LR
 
 - [ ] **Indexing Pipeline**
   - [x] File discovery implementation:
-    - [x] Created `file_discovery.py` with `FileDiscovery` and `FileBatcher` classes
+    - [x] Created `file_discovery.py` with `FileDiscovery` and `python/auto_context/chunker.py` classes
     - [x] Default extensions support (.py, .js, .ts, .jsx, .tsx, .vue, .rs, .go, .java, .cpp, .c, .h, .hpp, .cs, .rb, .php, .scala, .kt, .lua)
     - [x] Efficient file discovery using `fd --type f --hidden --exclude .git --exclude node_modules -e <extensions>`
     - [x] Implemented batched processing (50 files per batch)
@@ -62,11 +62,11 @@ flowchart LR
       - [x] Support for classes, functions, methods extraction
       - [x] Documentation comment capture
       - [x] Structural parsing (nested definitions, references)
-    - [ ] Implement smart chunking:
-      - [ ] Use tree-sitter to extract meaningful code blocks
-      - [ ] Preserve context hierarchy (class/function relationships)
-      - [ ] Include associated documentation
-      - [ ] Fallback to 100-line chunks for unsupported languages
+    - [x] Implement smart chunking:
+      - [x] Use tree-sitter to extract meaningful code blocks
+      - [x] Preserve context hierarchy (class/function relationships)
+      - [x] Include associated documentation
+      - [x] Fallback to 100-line chunks for unsupported languages
   - [ ] **Embedding Generation**:
     - [ ] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
     - [ ] Implement batch processing:
