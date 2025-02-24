@@ -254,6 +254,11 @@ local ask_command = function()
       end
 
       local guidelines = vim.trim(current_project_config.guidelines or "")
+      local global_guidelines = settings.get_global_guidelines()
+      if global_guidelines and global_guidelines ~= "" then
+        guidelines = vim.trim(global_guidelines .. "\n" .. guidelines)
+      end
+
       local technologies = vim.trim(current_project_config.technologies or "")
 
       if guidelines ~= "" or technologies ~= "" then
