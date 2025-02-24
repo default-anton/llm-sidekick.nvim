@@ -56,7 +56,7 @@ flowchart LR
     - [x] Efficient file discovery using `fd --type f --hidden --exclude .git --exclude node_modules -e <extensions>`
     - [x] Implemented batched processing (50 files per batch)
     - [x] Added error handling and logging
-  - [ ] Code parsing:
+  - [x] Code parsing:
     - [x] Tree-sitter queries implementation:
       - [x] Created language-specific queries for 19+ languages
       - [x] Support for classes, functions, methods extraction
@@ -66,7 +66,11 @@ flowchart LR
       - [x] Use tree-sitter to extract meaningful code blocks
       - [x] Preserve context hierarchy (class/function relationships)
       - [x] Include associated documentation
-      - [x] Fallback to 100-line chunks for unsupported languages
+      - [x] Fallback to naive chunking for unsupported languages
+      - [x] Implemented span-based chunk management
+      - [x] Added support for 100+ programming languages
+      - [x] Optimized chunk size handling and coalescing
+      - [x] Added line number tracking and extraction
   - [ ] **Embedding Generation**:
     - [ ] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
     - [ ] Implement batch processing:
@@ -74,10 +78,22 @@ flowchart LR
       - [ ] Embedding batching: Generate embeddings in batches of 32 chunks
 
 Next Steps:
-1. Implement code chunking functionality
-2. Integrate FileDiscovery with CodeIndexer
-3. Add tests for FileDiscovery and FileBatcher
-4. Implement embedding generation with batching
+1. Complete embedding generation with batching:
+   - Implement batch processing for embeddings (32 chunks per batch)
+   - Add progress tracking and error handling
+   - Optimize memory usage during batch processing
+2. Integrate FileDiscovery with CodeIndexer:
+   - Connect file discovery pipeline to indexing service
+   - Implement incremental updates
+   - Add file change detection
+3. Add comprehensive tests:
+   - Unit tests for FileDiscovery and FileBatcher
+   - Integration tests for the complete indexing pipeline
+   - Performance benchmarks for large codebases
+4. Implement file watcher component:
+   - Set up watchdog integration
+   - Add debouncing for file system events
+   - Implement efficient change detection
 
 - [ ] **Milvus-Lite Integration**
   - [x] Define collection schema in Python:
