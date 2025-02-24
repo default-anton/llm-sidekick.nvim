@@ -15,6 +15,11 @@ return {
     max_tokens = 8192,
     temperature = 0.6,
   },
+  ["anthropic.claude-3-7-sonnet"] = {
+    name = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
   ["anthropic.claude-3-5-sonnet-20241022-v2:0"] = {
     name = "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
     max_tokens = 8192,
