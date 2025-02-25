@@ -84,7 +84,10 @@ end]]
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
 
       -- Run the function
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       -- Assert that the function ran successfully
       assert.is_true(success)
@@ -129,7 +132,10 @@ end]]
       }
 
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       assert.is_true(success)
       local expected_content = "New first line\nSecond line\nThird line"
@@ -159,7 +165,10 @@ end]]
       }
 
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       assert.is_true(success)
       local expected_content = "First line\nSecond line\nNew third line"
@@ -189,7 +198,10 @@ end]]
       }
 
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       assert.is_true(success)
       local expected_content = "Line 1\n\nLine 3\nNew Line 4\nLine 5"
@@ -201,8 +213,8 @@ end]]
       local file_path = test_dir:joinpath('special_chars.txt'):absolute()
       local original_content =
       "Line with (parentheses), [brackets] and {braces}\nSecond line with * special ^ characters $ and % percent"
-      local search_text = "[brackets]"
-      local replace_text = "[square brackets]"
+      local search_text = "Line with (parentheses), [brackets] and {braces}"
+      local replace_text = "Line with (parentheses), [square brackets] and {braces}"
 
       Path:new(file_path):write(original_content, 'w')
       assert.is_true(Path:new(file_path):exists())
@@ -220,7 +232,10 @@ end]]
       }
 
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       assert.is_true(success)
       local expected_content =
@@ -251,12 +266,73 @@ end]]
       }
 
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       assert.is_true(success)
       local expected_content = "Modified line\nSome other content\nRepeated line"
       local content = Path:new(file_path):read()
       assert.equals(expected_content .. "\n", content)
+    end)
+
+    it("should handle very large files efficiently", function()
+      local file_path = test_dir:joinpath('large_file.txt'):absolute()
+
+      -- Create a large file (100,000 lines)
+      local file = io.open(file_path, 'w')
+      assert.is_not_nil(file)
+
+      -- Write 99,998 lines of filler content
+      for i = 1, 99998 do
+        file:write("Line " .. i .. "\n")
+      end
+
+      -- Write target content to replace
+      file:write("This is the target line 1\n")
+      file:write("This is the target line 2\n")
+      file:close()
+
+      assert.is_true(Path:new(file_path):exists())
+
+      -- Create a mock tool_call object
+      local tool_call = {
+        parameters = {
+          path = file_path,
+          search = "This is the target line 1\nThis is the target line 2",
+          replace = "This line has been replaced 1\nThis line has been replaced 2"
+        },
+        state = {
+          lnum = 1,
+          end_lnum = 5
+        }
+      }
+
+      -- Create a mock chat buffer
+      local chat_bufnr = vim.api.nvim_create_buf(true, true)
+
+      -- Run the function and measure memory usage
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
+
+      -- Assert that the function ran successfully
+      assert.is_true(success)
+
+      -- Verify the last two lines were replaced correctly
+      local file_handle = io.open(file_path, 'r')
+      assert.is_not_nil(file_handle)
+
+      -- Go to the end of the file
+      file_handle:seek("end", -100) -- Go near the end
+      local last_lines = file_handle:read("*a")
+      file_handle:close()
+
+      -- Check that the replacement text is in the file
+      assert.is_not_nil(last_lines:match("This line has been replaced 1"))
+      assert.is_not_nil(last_lines:match("This line has been replaced 2"))
     end)
   end)
 end)

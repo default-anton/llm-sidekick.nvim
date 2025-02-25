@@ -101,6 +101,130 @@ local function dedent_lines(lines, min_indent)
   return dedented_lines
 end
 
+-- Helper function to adjust indentation of replace lines to match search indentation
+local function adjust_replace_indentation(replace_lines, replace_min_indent, target_indent)
+  local indent_diff = target_indent - replace_min_indent
+  local adjusted_lines = {}
+
+  if indent_diff ~= 0 then
+    if indent_diff > 0 then
+      -- Add indentation to match original
+      for _, line in ipairs(replace_lines) do
+        if line:match("^%s*$") then
+          table.insert(adjusted_lines, line)
+        else
+          table.insert(adjusted_lines, string.rep(" ", indent_diff) .. line)
+        end
+      end
+    else
+      -- Remove excess indentation
+      local remove_spaces = -indent_diff
+      local indent_pattern = "^" .. string.rep(" ", remove_spaces)
+      for _, line in ipairs(replace_lines) do
+        if line:match("^%s*$") then
+          table.insert(adjusted_lines, line)
+        else
+          -- Capture only the first return value from gsub (the modified string)
+          local modified_line = line:gsub(indent_pattern, "", 1)
+          table.insert(adjusted_lines, modified_line)
+        end
+      end
+    end
+  else
+    -- No adjustment needed
+    adjusted_lines = replace_lines
+  end
+
+  return adjusted_lines
+end
+
+-- Helper function to find match in content lines
+local function find_match_in_lines(content_lines, search_lines)
+  if #search_lines > #content_lines then
+    return nil
+  end
+
+  for i = 1, #content_lines - #search_lines + 1 do
+    local matched = true
+    for j = 1, #search_lines do
+      -- Handle empty lines specially - they might have different whitespace
+      if search_lines[j]:match("^%s*$") and content_lines[i + j - 1]:match("^%s*$") then
+        -- Both are empty lines (possibly with whitespace), consider them matching
+      elseif content_lines[i + j - 1] ~= search_lines[j] then
+        matched = false
+        break
+      end
+    end
+    if matched then
+      return i, i + #search_lines - 1
+    end
+  end
+
+  return nil
+end
+
+-- Helper function to try different indentation patterns
+local function find_match_with_indentation_variations(content_lines, search_lines, max_indent)
+  local original_search_min_indent = find_min_indentation(search_lines)
+
+  -- First try exact match
+  local start_line, end_line = find_match_in_lines(content_lines, search_lines)
+  if start_line then
+    return start_line, end_line, search_lines
+  end
+
+  -- Try all possible dedent levels at once
+  -- This is important for cases where search has more indentation than file content
+  local max_dedent = original_search_min_indent
+  for dedent = 1, max_dedent do
+    local adjusted_search_lines = dedent_lines(search_lines, dedent)
+    start_line, end_line = find_match_in_lines(content_lines, adjusted_search_lines)
+    if start_line then
+      return start_line, end_line, adjusted_search_lines
+    end
+  end
+
+  -- Try indenting
+  for indent = 1, max_indent do
+    local adjusted_search_lines = {}
+    for _, line in ipairs(search_lines) do
+      if line:match("^%s*$") then
+        table.insert(adjusted_search_lines, line)
+      else
+        table.insert(adjusted_search_lines, string.rep(" ", indent) .. line)
+      end
+    end
+    start_line, end_line = find_match_in_lines(content_lines, adjusted_search_lines)
+    if start_line then
+      return start_line, end_line, adjusted_search_lines
+    end
+  end
+
+  -- If still not found, try more aggressive matching by normalizing whitespace
+  for i = 1, #content_lines - #search_lines + 1 do
+    local matched = true
+    for j = 1, #search_lines do
+      local content_line_normalized = content_lines[i + j - 1]:gsub("^%s+", "")
+      local search_line_normalized = search_lines[j]:gsub("^%s+", "")
+
+      if content_line_normalized ~= search_line_normalized then
+        matched = false
+        break
+      end
+    end
+    if matched then
+      -- Create a version of search_lines that matches the actual indentation
+      local matched_search_lines = {}
+      for j = 1, #search_lines do
+        matched_search_lines[j] = content_lines[i + j - 1]
+      end
+      return i, i + #search_lines - 1, matched_search_lines
+    end
+  end
+
+  return nil, nil, nil
+end
+
 return {
   spec = spec,
   json_props = json_props,
@@ -207,101 +331,81 @@ return {
   end,
   run = function(tool_call, opts)
     local path = vim.trim(tool_call.parameters.path or "")
+    local search = tool_call.parameters.search
     local replace = tool_call.parameters.replace
-    local ok, content, content_lines
+
+    -- Split search and replace into lines for line-by-line processing
+    local search_lines = vim.split(search, "\n")
+    local replace_lines = vim.split(replace, "\n")
+
+    local content_lines = {}
     local buf = vim.fn.bufnr(path)
-    if vim.api.nvim_buf_is_loaded(buf) then
+    local is_buffer_loaded = vim.api.nvim_buf_is_loaded(buf)
+
+    -- Get content lines from buffer or file
+    if is_buffer_loaded then
       content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-      content = table.concat(content_lines, "\n")
     else
-      ok, content_lines = pcall(vim.fn.readfile, path)
-      if ok then
-        content = table.concat(content_lines, "\n")
-      else
-        error(string.format("Failed to read file: %s (%s)", path, vim.inspect(content_lines)))
+      local ok, lines = pcall(vim.fn.readfile, path)
+      if not ok then
+        error(string.format("Failed to read file: %s (%s)", path, vim.inspect(lines)))
       end
+      content_lines = lines
     end
 
-    -- Find the exact string match
-    local original_search = tool_call.parameters.search
-    local original_search_lines = vim.split(original_search, "\n")
-    local original_search_min_indent = find_min_indentation(original_search_lines)
+    -- Find the maximum indentation in the file for search pattern adjustments
     local max_indent = find_max_indentation(content_lines)
 
-    local start_pos, end_pos = content:find(original_search, 1, true)
-    local adjusted_search = original_search
-    local adjusted_search_lines = original_search_lines
-    local adjusted_search_min_indent = original_search_min_indent
+    -- Find the match with possible indentation variations
+    local start_line, end_line, matched_search_lines = find_match_with_indentation_variations(
+      content_lines,
+      search_lines,
+      max_indent
+    )
 
-    -- Try dedenting up to the max indent
-    if not start_pos then
-      local max_dedent = math.min(original_search_min_indent, max_indent)
-      for dedent = 1, max_dedent do
-        adjusted_search_lines = dedent_lines(original_search_lines, dedent)
-        adjusted_search = table.concat(adjusted_search_lines, "\n")
-        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
-        start_pos, end_pos = content:find(adjusted_search, 1, true)
-        if start_pos then
-          break
-        end
-      end
-    end
-
-    -- Try indenting up to the max indent
-    if not start_pos then
-      for indent = 1, max_indent do
-        adjusted_search_lines = {}
-        for _, line in ipairs(original_search_lines) do
-          if line:match("^%s*$") then
-            table.insert(adjusted_search_lines, line)
-          else
-            table.insert(adjusted_search_lines, string.rep(" ", indent) .. line)
-          end
-        end
-        adjusted_search = table.concat(adjusted_search_lines, "\n")
-        adjusted_search_min_indent = find_min_indentation(adjusted_search_lines)
-        start_pos, end_pos = content:find(adjusted_search, 1, true)
-        if start_pos then
-          break
-        end
-      end
-    end
-
-    if not start_pos then
+    if not start_line then
       error(string.format("Could not find the exact match in file: %s", path))
     end
 
-    -- match the indentation of the search pattern
-    local replace_lines = vim.split(replace, "\n")
+    -- Calculate the indentation to apply to the replacement text
+    local matched_search_min_indent = find_min_indentation(matched_search_lines)
     local replace_min_indent = find_min_indentation(replace_lines)
-    local indent_diff = adjusted_search_min_indent - replace_min_indent
-    if indent_diff ~= 0 then
-      if indent_diff > 0 then
-        -- Add indentation to match original
-        for i, line in ipairs(replace_lines) do
-          replace_lines[i] = string.rep(" ", indent_diff) .. line
-        end
-      else
-        -- Remove excess indentation
-        local remove_spaces = -indent_diff
-        local indent_pattern = "^" .. string.rep(" ", remove_spaces)
-        for i, line in ipairs(replace_lines) do
-          replace_lines[i] = line:gsub(indent_pattern, "", 1)
-        end
-      end
-      replace = table.concat(replace_lines, "\n")
+
+    -- Adjust the indentation of the replacement text to match the search text
+    local adjusted_replace_lines = adjust_replace_indentation(
+      replace_lines,
+      replace_min_indent,
+      matched_search_min_indent
+    )
+
+    -- Create the modified content by replacing the matched lines
+    local modified_lines = {}
+
+    -- Copy lines before the match
+    for i = 1, start_line - 1 do
+      table.insert(modified_lines, content_lines[i])
     end
 
-    -- Perform the substitution
+    -- Insert the replacement lines
+    for _, line in ipairs(adjusted_replace_lines) do
+      table.insert(modified_lines, line)
+    end
+
+    -- Copy lines after the match
+    for i = end_line + 1, #content_lines do
+      table.insert(modified_lines, content_lines[i])
+    end
+
+    -- Write the modified content back
     local err
-    local modified_content = content:sub(1, start_pos - 1) .. replace .. content:sub(end_pos + 1)
-    if vim.api.nvim_buf_is_loaded(buf) then
-      vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(modified_content, "\n"))
+    local ok
+    if is_buffer_loaded then
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, modified_lines)
       ok, err = pcall(vim.api.nvim_buf_call, buf, function()
         vim.cmd('write')
       end)
     else
-      ok, err = pcall(vim.fn.writefile, vim.split(modified_content, "\n"), path)
+      ok, err = pcall(vim.fn.writefile, modified_lines, path)
     end
 
     if not ok then
@@ -309,8 +413,8 @@ return {
     end
 
     -- Replace the tool call content with success message
-    local lines_removed = select(2, tool_call.parameters.search:gsub("\n", ""))
-    local lines_added = select(2, tool_call.parameters.replace:gsub("\n", ""))
+    local lines_removed = #search_lines
+    local lines_added = #replace_lines
     vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
       { string.format("✓ Updated `%s` (-%d/+%d)", path, lines_removed, lines_added) })
 

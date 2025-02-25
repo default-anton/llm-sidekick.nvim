@@ -58,7 +58,10 @@ describe("edit_file_section", function()
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
 
       -- Run the function
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       -- Assert that the function ran successfully
       assert.is_true(success)
@@ -94,9 +97,11 @@ describe("edit_file_section", function()
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
 
       -- Run the function
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
-      -- Assert that the function ran successfully
       assert.is_true(success)
 
       -- Verify the file content maintains original indentation
@@ -130,7 +135,10 @@ describe("edit_file_section", function()
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
 
       -- Run the function
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       -- Assert that the function ran successfully
       assert.is_true(success)
@@ -210,7 +218,10 @@ describe("edit_file_section", function()
       local chat_bufnr = vim.api.nvim_create_buf(true, true)
 
       -- Run the function
-      local success, _ = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
 
       -- Assert that the function ran successfully
       assert.is_true(success)
