@@ -63,8 +63,9 @@ class CodeSnippet:
 def chunk_tree(
     tree: Tree,
     source_code: str,
-    max_chars=512 * 3,
-    coalesce=50,  # Any chunk less than 50 characters long gets coalesced with the next chunk
+    max_chars=1200,
+    min_chars=200,  # Minimum characters for a chunk to be considered complete
+    coalesce=150,   # Chunks less than this get coalesced
 ) -> list[Span]:
 
     # 1. Recursively form chunks based on the last post (https://docs.sweep.dev/blogs/chunking-2m-files)
@@ -73,16 +74,24 @@ def chunk_tree(
         current_chunk: Span = Span(node.start_byte, node.start_byte)
         node_children = node.children
         for child in node_children:
+            # If this child is already too big, chunk it separately
             if child.end_byte - child.start_byte > max_chars:
-                chunks.append(current_chunk)
+                # Only add the current chunk if it has content
+                if current_chunk.end > current_chunk.start:
+                    chunks.append(current_chunk)
                 current_chunk = Span(child.end_byte, child.end_byte)
                 chunks.extend(chunk_node(child))
+            # If adding this child would make the chunk too big, start a new chunk
             elif child.end_byte - child.start_byte + len(current_chunk) > max_chars:
                 chunks.append(current_chunk)
                 current_chunk = Span(child.start_byte, child.end_byte)
+            # Otherwise, add this child to the current chunk
             else:
                 current_chunk += Span(child.start_byte, child.end_byte)
-        chunks.append(current_chunk)
+
+        # Add the final chunk if it has content
+        if current_chunk.end > current_chunk.start:
+            chunks.append(current_chunk)
         return chunks
 
     chunks = chunk_node(tree.root_node)
@@ -93,24 +102,37 @@ def chunk_tree(
     if len(chunks) < 2:
         end = get_line_number(chunks[0].end, source_code)
         return [Span(0, end)]
+
+    # Fill in gaps between chunks
     for i in range(len(chunks) - 1):
         chunks[i].end = chunks[i + 1].start
     chunks[-1].end = tree.root_node.end_byte
 
-    # 3. Combining small chunks with bigger ones
+    # 3. Combining small chunks with bigger ones - improved coalescing logic
     new_chunks = []
     current_chunk = Span(0, 0)
-    for chunk in chunks:
+
+    for i, chunk in enumerate(chunks):
         current_chunk += chunk
-        if non_whitespace_len(
-            current_chunk.extract(source_code)
-        ) > coalesce and "\n" in current_chunk.extract(source_code):
+        chunk_content = current_chunk.extract(source_code)
+        non_ws_len = non_whitespace_len(chunk_content)
+
+        # Decide whether to keep accumulating or create a new chunk
+        # We create a new chunk if:
+        # 1. The current chunk is large enough (exceeds coalesce threshold)
+        # 2. AND contains at least one newline (to avoid breaking in the middle of a line)
+        # 3. AND either meets the minimum size or we're at the last chunk
+        if (non_ws_len > coalesce and
+            "\n" in chunk_content and
+            (non_ws_len >= min_chars or i == len(chunks) - 1)):
             new_chunks.append(current_chunk)
             current_chunk = Span(chunk.end, chunk.end)
-    if len(current_chunk) > 0:
+
+    # Add any remaining content
+    if current_chunk.end > current_chunk.start:
         new_chunks.append(current_chunk)
 
-    # 4. Changing line numbers
+    # 4. Changing to line numbers
     line_chunks = [
         Span(
             get_line_number(chunk.start, source_code),
@@ -122,14 +144,25 @@ def chunk_tree(
     # 5. Eliminating empty chunks
     line_chunks = [chunk for chunk in line_chunks if len(chunk) > 0]
 
-    # 6. Coalescing last chunk if it's too small
-    if len(line_chunks) > 1 and len(line_chunks[-1]) < coalesce:
+    # 6. Coalescing very small chunks with nearby chunks
+    # First, coalesce with previous chunk if possible
+    i = 1
+    while i < len(line_chunks):
+        if len(line_chunks[i]) < min(coalesce // 10, 15):  # Very small chunks
+            line_chunks[i-1] += line_chunks[i]
+            line_chunks.pop(i)
+        else:
+            i += 1
+
+    # Finally, coalesce the last chunk if it's too small
+    if len(line_chunks) > 1 and len(line_chunks[-1]) < min(coalesce // 5, 30):
         line_chunks[-2] += line_chunks[-1]
         line_chunks.pop()
 
     return line_chunks
 
-def naive_chunker(code: str, line_count: int = 25, overlap: int = 0):
+def naive_chunker(code: str, line_count: int = 40, overlap: int = 5):
+    """Fallback chunker that uses line-based chunking with overlap."""
     if overlap >= line_count:
         raise ValueError("Overlap should be smaller than line_count.")
     lines = code.split("\n")
@@ -328,19 +361,42 @@ EXTENSION_TO_LANGUAGE = {
     "magik": "magik"
 }
 
+def is_top_level_node(node: Node) -> bool:
+    """Check if a node is a top-level definition (class, function, etc.)"""
+    node_type = node.type
+    return node_type in {
+        'class_definition', 'function_definition',  # Python
+        'method_definition', 'class_declaration',   # JavaScript/TypeScript
+        'struct_definition', 'impl_item',           # Rust
+        'function_item', 'trait_definition',        # Rust
+        'method_declaration', 'class_declaration',  # Java
+        'function_declaration', 'interface_declaration',  # TypeScript
+        'function', 'class',                        # Generic
+    }
+
 def chunk_code(code: str, path: str) -> list[CodeSnippet]:
+    """
+    Chunk code into semantically meaningful pieces.
+
+    Args:
+        code: Source code to chunk
+        path: Path to the source file
+
+    Returns:
+        List of CodeSnippet objects
+    """
     ext = path.split(".")[-1]
 
     if ext in EXTENSION_TO_LANGUAGE:
         language = EXTENSION_TO_LANGUAGE[ext]
     else:
         # Fallback to naive chunking if tree_sitter fails
-        line_count = 30
-        overlap = 0
+        line_count = 40
+        overlap = 5      # Added overlap for context
         chunks = naive_chunker(code, line_count, overlap)
         snippets = []
         for idx, chunk in enumerate(chunks):
-            end = min((idx + 1) * (line_count - overlap), len(code.split("\n")))
+            end = min((idx + 1) * (line_count - overlap) + overlap, len(code.split("\n")))
             new_snippet = CodeSnippet(
                 content=chunk,
                 start=idx * (line_count - overlap),
@@ -353,6 +409,8 @@ def chunk_code(code: str, path: str) -> list[CodeSnippet]:
     try:
         parser = get_parser(language)
         tree = parser.parse(code.encode("utf-8"))
+
+        # Regular chunking
         chunks = chunk_tree(tree, code)
         snippets = []
         for chunk in chunks:
@@ -366,4 +424,18 @@ def chunk_code(code: str, path: str) -> list[CodeSnippet]:
         return snippets
     except Exception:
         logging.error(traceback.format_exc())
-        return []
+        # Fallback to naive chunking
+        line_count = 40
+        overlap = 5
+        chunks = naive_chunker(code, line_count, overlap)
+        snippets = []
+        for idx, chunk in enumerate(chunks):
+            end = min((idx + 1) * (line_count - overlap) + overlap, len(code.split("\n")))
+            new_snippet = CodeSnippet(
+                content=chunk,
+                start=idx * (line_count - overlap),
+                end=end,
+                file_path=path,
+            )
+            snippets.append(new_snippet)
+        return snippets
