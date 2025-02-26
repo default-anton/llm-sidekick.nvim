@@ -35,15 +35,13 @@ class Span:
             return Span(self.start + other, self.end + other)
         elif isinstance(other, Span):
             return Span(self.start, other.end)
-        else:
-            raise NotImplementedError()
 
     def __len__(self) -> int:
         # i.e. Span(a, b) = b - a
         return self.end - self.start
 
 def non_whitespace_len(s: str) -> int:  # new len function
-    return len(re.sub("\s", "", s))
+    return len(re.sub(r"\s", "", s))
 
 def get_line_number(index: int, source_code: str) -> int:
     total_chars = 0
@@ -51,6 +49,7 @@ def get_line_number(index: int, source_code: str) -> int:
         total_chars += len(line)
         if total_chars > index:
             return line_number - 1
+
     return line_number
 
 @dataclass
