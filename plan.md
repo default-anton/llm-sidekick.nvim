@@ -75,7 +75,7 @@ flowchart LR
       - [x] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
       - [x] Implement batch processing:
         - [x] File batching: Process 50 files at a time (implemented in FileBatcher)
-        - [x] Embedding batching: Generate embeddings in batches of 8 chunks
+        - [x] Embedding batching: Generate embeddings in batches of 16 chunks
         - [x] Implemented memory management to prevent leaks:
           - [x] Explicit tensor cleanup
           - [x] Device-specific memory clearing (CUDA/MPS)
@@ -83,7 +83,7 @@ flowchart LR
 
 Next Steps:
 1. Complete embedding generation with batching:
-   - Implement batch processing for embeddings (32 chunks per batch)
+   - Implement batch processing for embeddings (16 chunks per batch)
    - Add progress tracking and error handling
    - Optimize memory usage during batch processing
 2. Integrate FileDiscovery with CodeIndexer:
