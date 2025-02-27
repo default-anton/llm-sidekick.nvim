@@ -131,7 +131,7 @@ class CodeIndexer:
                 texts,
                 padding=True,
                 truncation=True,
-                max_length=8192,
+                max_length=512,
                 return_tensors="pt"
             ).to(self.device)
 
@@ -185,7 +185,7 @@ class CodeIndexer:
         if not (len(source_codes) == len(file_paths) == len(languages) == len(metadatas)):
             raise ValueError("All input lists must have the same length")
 
-        batch_size = 8
+        batch_size = 16
         total_chunks = len(source_codes)
         total_batches = (total_chunks + batch_size - 1) // batch_size  # Ceiling division
 
