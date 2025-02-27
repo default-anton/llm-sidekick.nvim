@@ -21,7 +21,7 @@ def get_default_db_path() -> str:
         str: Path to the default Milvus database directory
     """
     plugin_path = get_plugin_path()
-    db_path = os.path.join(plugin_path, "milvus-lite.db")
+    db_path = os.path.join(plugin_path, "milvus_lite.db")
 
     # Ensure the directory exists
     os.makedirs(os.path.dirname(db_path), exist_ok=True)

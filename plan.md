@@ -71,11 +71,15 @@ flowchart LR
       - [x] Added support for 100+ programming languages
       - [x] Optimized chunk size handling and coalescing
       - [x] Added line number tracking and extraction
-  - [ ] **Embedding Generation**:
-    - [ ] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
-    - [ ] Implement batch processing:
-      - [x] File batching: Process 50 files at a time (implemented in FileBatcher)
-      - [ ] Embedding batching: Generate embeddings in batches of 32 chunks
+  - [x] **Embedding Generation**:
+      - [x] Use `gte-modernbert-base` model from https://huggingface.co/Alibaba-NLP/gte-modernbert-base
+      - [x] Implement batch processing:
+        - [x] File batching: Process 50 files at a time (implemented in FileBatcher)
+        - [x] Embedding batching: Generate embeddings in batches of 8 chunks
+        - [x] Implemented memory management to prevent leaks:
+          - [x] Explicit tensor cleanup
+          - [x] Device-specific memory clearing (CUDA/MPS)
+          - [x] Forced garbage collection between batches
 
 Next Steps:
 1. Complete embedding generation with batching:

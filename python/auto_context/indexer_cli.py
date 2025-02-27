@@ -7,10 +7,10 @@ import os
 import sys
 from typing import Any
 
-from .file_discovery import FileDiscovery
-from .code_chunker import chunk_code, EXTENSION_TO_LANGUAGE
-from .code_indexer import CodeIndexer
-from .utils import get_default_db_path
+from auto_context.file_discovery import FileDiscovery
+from auto_context.code_chunker import chunk_code, EXTENSION_TO_LANGUAGE
+from auto_context.code_indexer import CodeIndexer
+from auto_context.utils import get_default_db_path
 
 # Configure logging
 logging.basicConfig(
@@ -140,7 +140,7 @@ def index_repository(
                 )
                 logger.info(f"Indexed {len(source_codes)} chunks from batch {batch_num}")
             except Exception as e:
-                logger.error(f"Error indexing batch {batch_num}: {e}")
+                logger.error(f"Error indexing batch {batch_num}: {e}", exc_info=True)
     
     logger.info(f"Indexing completed. Processed {total_files_processed} files and indexed {total_chunks_indexed} chunks.")
 
@@ -169,7 +169,7 @@ def main():
     parser.add_argument(
         "--db-path",
         type=str,
-        help="Path to Milvus database files (default: ~/.local/state/nvim/llm-sidekick/milvus-lite.db)"
+        help="Path to Milvus database files (default: ~/.local/state/nvim/llm-sidekick/milvus_lite.db)"
     )
     parser.add_argument(
         "--verbose",
@@ -199,7 +199,7 @@ def main():
             db_path=args.db_path
         )
     except Exception as e:
-        logger.error(f"Indexing failed: {e}")
+        logger.error(f"Indexing failed: {e}", exc_info=True)
         sys.exit(1)
 
 

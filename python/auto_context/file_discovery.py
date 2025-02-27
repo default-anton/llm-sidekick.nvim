@@ -5,7 +5,7 @@ from pathlib import Path
 from collections.abc import Iterator
 import logging
 
-from .code_chunker import EXTENSION_TO_LANGUAGE
+from auto_context.code_chunker import EXTENSION_TO_LANGUAGE
 
 logger = logging.getLogger(__name__)
 

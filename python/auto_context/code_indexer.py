@@ -3,8 +3,9 @@
 from pathlib import Path
 from typing import Any
 import logging
+import gc
 
-from milvus import MilvusClient, FieldSchema, DataType, CollectionSchema
+from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 import torch
@@ -29,7 +30,7 @@ class CodeIndexer:
         """
         self.model_name: str = model_name
         self.collection_name: str = collection_name
-        self.db_path: str = db_path or str(Path.home() / ".milvus-lite.db")
+        self.db_path: str = db_path or str(Path.home() / ".milvus_lite.db")
 
         self.device: str
         if torch.cuda.is_available():
@@ -44,14 +45,16 @@ class CodeIndexer:
         self.tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
 
         self.milvus: MilvusClient = MilvusClient(
-            uri="lite://" + self.db_path,
+            uri=self.db_path,
         )
 
         self._setup_collection()
 
     def _setup_collection(self):
         """Create Milvus collection if it doesn't exist."""
-        if not self.milvus.list_collections().get(self.collection_name):
+        if self.milvus.has_collection(self.collection_name):
+            logger.info(f"Using existing collection: {self.collection_name}")
+        else:
             fields: list[FieldSchema] = [
                 FieldSchema(
                     name="id",
@@ -96,7 +99,7 @@ class CodeIndexer:
                 enable_dynamic_field=False
             )
 
-            self.collection = self.milvus.create_collection(
+            self.milvus.create_collection(
                 collection_name=self.collection_name,
                 schema=schema,
                 index_params={
@@ -107,28 +110,56 @@ class CodeIndexer:
                 }
             )
             logger.info(f"Created collection: {self.collection_name}")
-        else:
-            self.collection = self.milvus.get_collection(self.collection_name)
-            logger.info(f"Using existing collection: {self.collection_name}")
+
+    def _clear_gpu_memory(self):
+        """Clear GPU memory cache based on the device type."""
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+        elif self.device == "mps":
+            # MPS (Apple Silicon) doesn't have a direct equivalent to empty_cache
+            # But we can force garbage collection to help free memory
+            gc.collect()
+        
+        # Force Python garbage collection regardless of device
+        gc.collect()
 
     def _generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a batch of texts using the model."""
-        # Tokenize and encode
-        inputs: dict[str, torch.Tensor] = self.tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=8192,
-            return_tensors="pt"
-        ).to(self.device)
+        try:
+            # Tokenize and encode
+            inputs: dict[str, torch.Tensor] = self.tokenizer(
+                texts,
+                padding=True,
+                truncation=True,
+                max_length=8192,
+                return_tensors="pt"
+            ).to(self.device)
 
-        # Generate embeddings
-        with torch.no_grad():
-            outputs: torch.Tensor = self.model(**inputs)
-            embeddings: torch.Tensor = outputs.last_hidden_state[:, 0]
-            embeddings = F.normalize(embeddings, p=2, dim=1)
-
-        return embeddings.cpu().numpy().tolist()
+            # Generate embeddings
+            with torch.no_grad():
+                outputs: torch.Tensor = self.model(**inputs)
+                embeddings: torch.Tensor = outputs.last_hidden_state[:, 0]
+                embeddings = F.normalize(embeddings, p=2, dim=1)
+                
+                # Move to CPU and convert to Python list
+                result = embeddings.cpu().numpy().tolist()
+                
+                # Explicitly delete tensors to free memory
+                del outputs
+                del embeddings
+                for tensor in inputs.values():
+                    del tensor
+                del inputs
+                
+                # Clear GPU memory cache
+                self._clear_gpu_memory()
+                
+                return result
+        except Exception as e:
+            logger.error(f"Error generating embeddings: {str(e)}")
+            # Clear GPU memory on error as well
+            self._clear_gpu_memory()
+            raise
 
     def index_code(
         self,
@@ -154,18 +185,61 @@ class CodeIndexer:
         if not (len(source_codes) == len(file_paths) == len(languages) == len(metadatas)):
             raise ValueError("All input lists must have the same length")
 
-        embeddings = self._generate_embeddings(source_codes)
+        batch_size = 8
+        total_chunks = len(source_codes)
+        total_batches = (total_chunks + batch_size - 1) // batch_size  # Ceiling division
 
-        self.milvus.insert(
-            collection_name=self.collection_name,
-            data={
-                "embedding": embeddings,
-                "source_code": source_codes,
-                "file_path": file_paths,
-                "language": languages,
-                "metadata": [m or {} for m in metadatas]
-            }
-        )
+        logger.info(f"Indexing {total_chunks} code chunks in {total_batches} batches (size: {batch_size})")
+
+        for batch_idx in range(0, total_chunks, batch_size):
+            batch_end = min(batch_idx + batch_size, total_chunks)
+            batch_num = batch_idx // batch_size + 1
+
+            logger.debug(f"Processing batch {batch_num}/{total_batches} (chunks {batch_idx+1}-{batch_end})")
+
+            # Extract the current batch
+            batch_source_codes = source_codes[batch_idx:batch_end]
+            batch_file_paths = file_paths[batch_idx:batch_end]
+            batch_languages = languages[batch_idx:batch_end]
+            batch_metadatas = metadatas[batch_idx:batch_end]
+
+            try:
+                # Generate embeddings for this batch
+                batch_embeddings = self._generate_embeddings(batch_source_codes)
+
+                # Create records for this batch
+                batch_data = [
+                    {
+                        "embedding": batch_embeddings[i],
+                        "source_code": batch_source_codes[i],
+                        "file_path": batch_file_paths[i],
+                        "language": batch_languages[i],
+                        "metadata": batch_metadatas[i] or {}
+                    }
+                    for i in range(len(batch_source_codes))
+                ]
+
+                # Insert this batch into Milvus
+                self.milvus.insert(collection_name=self.collection_name, data=batch_data)
+
+                logger.debug(f"Successfully indexed batch {batch_num}/{total_batches}")
+                
+                # Clean up references to help garbage collection
+                del batch_embeddings
+                del batch_data
+                
+                # Force garbage collection after each batch
+                gc.collect()
+                self._clear_gpu_memory()
+
+            except Exception as e:
+                logger.error(f"Error processing batch {batch_num}/{total_batches}: {str(e)}")
+                # Clear memory on error
+                self._clear_gpu_memory()
+                # Continue with the next batch instead of failing completely
+                continue
+
+        logger.info(f"Completed indexing {total_chunks} code chunks")
 
     def search(
         self,
@@ -187,5 +261,9 @@ class CodeIndexer:
             expr=expr,
             output_fields=["source_code", "file_path", "language", "metadata"]
         )
+        
+        # Clean up after search
+        del query_embeddings
+        self._clear_gpu_memory()
 
         return results[0]
