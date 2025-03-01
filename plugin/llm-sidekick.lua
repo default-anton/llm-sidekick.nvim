@@ -640,7 +640,7 @@ vim.api.nvim_create_user_command("Add", function(opts)
       local editor_context = vim.split(render_editor_context(snippet), "\n")
       local lines = { "USER: Here is what I'm working on:", "" }
       vim.list_extend(lines, editor_context)
-      vim.list_extend(lines, { "", "", content_of_user_line })
+      vim.list_extend(lines, { "", content_of_user_line })
 
       vim.api.nvim_buf_set_lines(
         ask_buf,

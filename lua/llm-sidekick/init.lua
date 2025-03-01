@@ -210,7 +210,7 @@ function M.parse_prompt(prompt, buffer)
     if not vim.tbl_isempty(editor_context) then
       options.messages[last_user_message_index].content = "<editor_context>\n"
           .. table.concat(vim.tbl_values(editor_context), "\n")
-          .. "\n</editor_context>\n\n" .. options.messages[last_user_message_index].content
+          .. "\n</editor_context>\n" .. options.messages[last_user_message_index].content
     end
   end
 
