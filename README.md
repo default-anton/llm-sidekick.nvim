@@ -12,6 +12,12 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
 - `:Stt` - Use speech-to-text input instead of typing
 
+## Built-in Keybindings
+
+- `<C-c>` (Ctrl-C) - Cancel/stop the current model generation. This is a built-in keybinding that cannot be overridden.
+- `<leader>aa` - Accept the suggestion under the cursor. This is a built-in keybinding that provides quick access to the `:Accept` command.
+- `<leader>A` - Accept all suggestions in the last assistant message. This is a built-in keybinding that provides quick access to the `:AcceptAll` command.
+
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
 
 ## Requirements
@@ -210,12 +216,6 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
 -- Speech to text
 vim.keymap.set('i', '<C-o>', '<cmd>Stt<CR>', { noremap = true, silent = true, desc = "Speech to text" })
 ```
-
-### Built-in Keybindings
-
-- `<C-c>` (Ctrl-C) - Cancel/stop the current model generation. This is a built-in keybinding that cannot be overridden.
-- `<leader>aa` - Accept the suggestion under the cursor. This is a built-in keybinding that provides quick access to the `:Accept` command.
-- `<leader>A` - Accept all suggestions in the last assistant message. This is a built-in keybinding that provides quick access to the `:AcceptAll` command.
 
 ## Telescope Integration
 
