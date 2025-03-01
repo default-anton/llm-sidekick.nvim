@@ -55,7 +55,7 @@ return {
     end
 
     local command = string.format(
-      'ddgr --num 10 --noprompt --noua --nocolor --expand --unsafe --json "%s"',
+      'ddgr --num 5 --noprompt --noua --nocolor --expand --unsafe --json "%s"',
       vim.json.encode(query)
     )
 
