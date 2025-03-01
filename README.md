@@ -18,9 +18,16 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 
 ### Core Requirements
 - Neovim >= 0.5.0
-- curl (for API requests)
 - plenary.nvim
-- uv (for AWS Bedrock integration)
+- uv (Python package manager)
+- curl (for API requests)
+- ddgr (for DuckDuckGo search tool)
+
+#### Installing uv
+Follow the [installation instructions](https://docs.astral.sh/uv/getting-started/installation/) for your platform.
+
+#### Installing ddgr
+- Using uv (recommended): `uv tool install ddgr`
 
 #### Installing curl
 - Ubuntu/Debian: `sudo apt-get install curl`
@@ -46,8 +53,6 @@ AWS Bedrock requires several environment variables for authentication and config
   - ARN of an IAM role to assume for AWS operations
 - `LLM_SIDEKICK_ROLE_SESSION_NAME` or `AWS_ROLE_SESSION_NAME`
   - Session name when assuming an IAM role
-
-Additionally, AWS Bedrock models require the `uv` package. Follow the [installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
 
 #### Anthropic (Claude models)
 Set one of these environment variables:
