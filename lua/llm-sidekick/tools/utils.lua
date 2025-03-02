@@ -15,7 +15,26 @@ local function initialize_tool_queue(buffer)
   return vim.b[buffer].llm_sidekick_tool_queue
 end
 
-local function queue_tool_call(tool_call, opts)
+M.add_completion_callback = function(buffer, callback)
+  local queue = initialize_tool_queue(buffer)
+
+  if not queue.completion_callbacks then
+    queue.completion_callbacks = {}
+  end
+
+  table.insert(queue.completion_callbacks, callback)
+  vim.b[buffer].llm_sidekick_tool_queue = queue
+end
+
+M.queue_tool_call = function(tool_call, opts)
+  if tool_call.result then
+    return
+  end
+
+  if not tool_call.tool then
+    tool_call.tool = M.find_tool_for_tool_call(tool_call)
+  end
+
   local buffer = opts.buffer
   local queue = initialize_tool_queue(buffer)
 
@@ -96,10 +115,14 @@ local function refresh_tool_call_lnums(tool_call, opts)
   return tool_call
 end
 
-local function process_next_in_queue(buffer)
-  local queue = initialize_tool_queue(buffer)
+M.process_next_in_queue = function(buffer)
+  local queue = vim.b[buffer].llm_sidekick_tool_queue
 
-  if not queue or queue.running or #queue.pending == 0 then
+  if not queue or queue.running then
+    return
+  end
+
+  if #queue.pending == 0 then
     -- Check if there are any completion callbacks
     if queue.completion_callbacks and #queue.completion_callbacks > 0 then
       -- If there are no more pending tools, execute all completion callbacks
@@ -122,7 +145,7 @@ local function process_next_in_queue(buffer)
   if not tool_call then
     queue.running = false
     vim.b[buffer].llm_sidekick_tool_queue = queue
-    process_next_in_queue(buffer)
+    M.process_next_in_queue(buffer)
     return
   end
 
@@ -131,7 +154,7 @@ local function process_next_in_queue(buffer)
 end
 
 -- Helper function to run auto-acceptable tools after a specific tool
-local function maybe_run_next_auto_acceptable_tools(completed_tool, buffer)
+local function maybe_queue_next_auto_acceptable_tools(completed_tool, buffer)
   local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = buffer })
   local found_completed_tool = false
 
@@ -140,7 +163,7 @@ local function maybe_run_next_auto_acceptable_tools(completed_tool, buffer)
       found_completed_tool = true
     elseif found_completed_tool then
       if tool_call.tool.is_auto_acceptable(tool_call) then
-        M.run_tool_call(tool_call, { buffer = buffer })
+        M.queue_tool_call(tool_call, { buffer = buffer })
       else
         break
       end
@@ -156,41 +179,18 @@ end
 -- @param filter_fn: Optional function to filter which tools to run
 M.run_tools_with_callback = function(tool_calls, opts, callback, filter_fn)
   local buffer = opts.buffer
-  local queue = initialize_tool_queue(buffer)
-
-  -- Setup completion tracking
-  if not queue.completion_callbacks then
-    queue.completion_callbacks = {}
-  end
-
-  -- Add our callback to the queue's completion callbacks
-  table.insert(queue.completion_callbacks, callback)
-  vim.b[buffer].llm_sidekick_tool_queue = queue
-
-  -- Track if any tools were actually queued
-  local tools_queued = false
+  M.add_completion_callback(buffer, callback)
 
   -- Run tools that match the filter
   for _, tool_call in ipairs(tool_calls) do
     if not tool_call.result then
       if not filter_fn or filter_fn(tool_call) then
-        M.run_tool_call(tool_call, { buffer = buffer })
-        tools_queued = true
+        M.queue_tool_call(tool_call, { buffer = buffer })
       end
     end
   end
 
-  -- If no tools were queued call the callback immediately
-  if not tools_queued then
-    -- Execute and remove our callback
-    queue = initialize_tool_queue(buffer)
-    local callbacks = queue.completion_callbacks
-    queue.completion_callbacks = {}
-    vim.b[buffer].llm_sidekick_tool_queue = queue
-    for _, cb in ipairs(callbacks) do
-      cb()
-    end
-  end
+  M.process_next_in_queue(buffer)
 end
 
 -- Run auto-acceptable tools with a callback when all tools have completed
@@ -302,7 +302,7 @@ M._run_tool_call_internal = function(tool_call, opts)
     if queue then
       queue.running = false
       vim.b[opts.buffer].llm_sidekick_tool_queue = queue
-      process_next_in_queue(opts.buffer)
+      M.process_next_in_queue(opts.buffer)
     end
     return
   end
@@ -324,7 +324,7 @@ M._run_tool_call_internal = function(tool_call, opts)
     if queue then
       queue.running = false
       vim.b[buffer].llm_sidekick_tool_queue = queue
-      process_next_in_queue(buffer)
+      M.process_next_in_queue(buffer)
     end
     return
   end
@@ -371,7 +371,7 @@ M._run_tool_call_internal = function(tool_call, opts)
         if queue then
           queue.running = false
           vim.b[buffer].llm_sidekick_tool_queue = queue
-          process_next_in_queue(buffer)
+          M.process_next_in_queue(buffer)
         end
       end)
     end)
@@ -393,7 +393,7 @@ M._run_tool_call_internal = function(tool_call, opts)
         if queue then
           queue.running = false
           vim.b[buffer].llm_sidekick_tool_queue = queue
-          process_next_in_queue(buffer)
+          M.process_next_in_queue(buffer)
         end
       end)
     end)
@@ -440,24 +440,8 @@ M._run_tool_call_internal = function(tool_call, opts)
   if queue then
     queue.running = false
     vim.b[buffer].llm_sidekick_tool_queue = queue
-    process_next_in_queue(buffer)
+    M.process_next_in_queue(buffer)
   end
-end
-
--- Public function that adds tools to the queue and starts processing
-M.run_tool_call = function(tool_call, opts)
-  if tool_call.result then
-    return
-  end
-
-  local buffer = opts.buffer
-  if not tool_call.tool then
-    tool_call.tool = M.find_tool_for_tool_call(tool_call)
-  end
-
-  -- Add to queue and start processing
-  queue_tool_call(tool_call, opts)
-  process_next_in_queue(buffer)
 end
 
 M.add_tool_call_to_buffer = function(opts)
@@ -473,23 +457,36 @@ M.run_tool_call_at_cursor = function(opts)
   for _, tool_call in ipairs(M.find_tool_calls({ buffer = buffer })) do
     if cursor_line >= tool_call.state.lnum and cursor_line <= tool_call.state.end_lnum then
       tool_call_at_cursor = tool_call
-      M.run_tool_call(tool_call, { buffer = buffer })
+      M.queue_tool_call(tool_call, { buffer = buffer })
       break
     end
   end
 
   if not tool_call_at_cursor then
-    error("No tool found under the cursor")
+    vim.notify("No tool call found at cursor", vim.log.levels.WARN)
+    return
   end
 
+  M.add_completion_callback(buffer, opts.callback)
+
   -- Check if there are auto-acceptable tools that should run after this one
-  maybe_run_next_auto_acceptable_tools(tool_call_at_cursor, buffer)
+  maybe_queue_next_auto_acceptable_tools(tool_call_at_cursor, buffer)
+
+  M.process_next_in_queue(buffer)
 end
 
 M.run_tool_calls_in_last_assistant_message = function(opts)
-  for _, tool_call in ipairs(M.get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })) do
-    M.run_tool_call(tool_call, { buffer = opts.buffer })
+  local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })
+  if #tool_calls == 0 then
+    vim.notify("No tools found in last assistant message", vim.log.levels.WARN)
+    return
   end
+
+  for _, tool_call in ipairs(tool_calls) do
+    M.queue_tool_call(tool_call, { buffer = opts.buffer })
+  end
+
+  M.process_next_in_queue(opts.buffer)
 end
 
 return M

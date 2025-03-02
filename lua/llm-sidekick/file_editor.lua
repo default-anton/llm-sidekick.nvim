@@ -527,26 +527,33 @@ local function create_apply_modifications_command(buffer)
   local tool_utils = require 'llm-sidekick.tools.utils'
 
   local run_tool_call_at_cursor = function()
-    tool_utils.run_tool_call_at_cursor({ buffer = buffer })
-
-    local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
-    local requires_user_input = vim.tbl_contains(
-      tool_calls,
-      function(tc)
-        return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
-      end,
-      { predicate = true }
-    )
-    if not requires_user_input then
-      remove_trailing_user_prompt(buffer)
-      require("llm-sidekick").ask(buffer)
-    end
+    tool_utils.run_tool_call_at_cursor({
+      buffer = buffer,
+      callback = function()
+        local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
+        local requires_user_input = vim.tbl_contains(
+          tool_calls,
+          function(tc)
+            return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
+          end,
+          { predicate = true }
+        )
+        if not requires_user_input then
+          remove_trailing_user_prompt(buffer)
+          require("llm-sidekick").ask(buffer)
+        end
+      end
+    })
   end
 
   local run_tool_calls_in_last_assistant_message = function()
-    tool_utils.run_tool_calls_in_last_assistant_message({ buffer = buffer })
-    remove_trailing_user_prompt(buffer)
-    require("llm-sidekick").ask(buffer)
+    tool_utils.run_tool_calls_in_last_assistant_message({
+      buffer = buffer,
+      callback = function()
+        remove_trailing_user_prompt(buffer)
+        require("llm-sidekick").ask(buffer)
+      end
+    })
   end
 
   vim.api.nvim_buf_create_user_command(

@@ -278,9 +278,10 @@ function M.ask(prompt_buffer)
     )
     for _, tool in ipairs(tools) do
       if tool.name == "send_message_to_user" then
-        tool_utils.run_tool_call(tool, { buffer = prompt_buffer })
+        tool_utils.queue_tool_call(tool, { buffer = prompt_buffer })
       end
     end
+    tool_utils.process_next_in_queue(prompt_buffer)
   end
 
   local full_prompt = table.concat(buf_lines, "\n")
