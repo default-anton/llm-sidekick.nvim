@@ -1,8 +1,6 @@
 local chat = require("llm-sidekick.chat")
 local Job = require('plenary.job')
 
-local TIMEOUT = 60000
-
 local spec = {
   name = "run_terminal_command",
   description = "Execute a shell command and get its exit code and output.",
@@ -106,21 +104,23 @@ return {
       tool_call.state.explanation_written = #explanation
     end
   end,
-  -- Execute the command
+  -- Execute the command asynchronously
   run = function(tool_call, opts)
     local cwd = vim.fn.getcwd()
     local shell = vim.o.shell or "bash"
     local command = vim.trim(tool_call.parameters.command or "")
-    local output = ""
-    local exit_code = nil
 
-    Job:new({
+    -- Store initial state
+    tool_call.state.output = ""
+
+    local job = Job:new({
       cwd = cwd,
       command = shell,
       args = { "-c", command },
       interactive = false,
       on_exit = function(j, return_val)
-        exit_code = return_val
+        local exit_code = return_val
+        local output = ""
 
         local stdout = j:result()
         if stdout and not vim.tbl_isempty(stdout) then
@@ -131,20 +131,25 @@ return {
         if stderr and not vim.tbl_isempty(stderr) then
           output = output .. "\n\nStderr:\n```" .. table.concat(stderr, "\n") .. "```"
         end
+
+        -- Store the output in tool_call state for access in the after_success callback
+        tool_call.state.output = string.format("Exit code: %d\n%s", exit_code, output)
+
+        -- Update the command text from "Execute" to "Executed"
+        vim.schedule(function()
+          local final_lines = { string.format("✓ Executed: `%s`", command) }
+
+          -- Include explanation in final display if provided
+          if tool_call.parameters.explanation then
+            table.insert(final_lines, string.format("> %s", tool_call.parameters.explanation))
+          end
+
+          vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
+        end)
       end,
-    }):sync(TIMEOUT)
+    })
 
-    -- Update the command text from "Execute" to "Executed"
-    local final_lines = { string.format("✓ Executed: `%s`", command) }
-
-    -- Include explanation in final display if provided
-    if tool_call.parameters.explanation then
-      table.insert(final_lines, string.format("> %s", tool_call.parameters.explanation))
-    end
-
-    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
-
-    -- Format the final output with exit code and command output
-    return string.format("Exit code: %d\n%s", exit_code, output)
+    -- Return the job object for async execution
+    return job
   end
 }

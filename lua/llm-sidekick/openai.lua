@@ -1,5 +1,6 @@
 local message_types = require("llm-sidekick.message_types")
 local sjson = require("llm-sidekick.sjson")
+local utils = require("llm-sidekick.utils")
 local openai = {}
 
 function openai.new(opts)
@@ -66,7 +67,7 @@ function openai:chat(opts, callback)
   table.insert(args, self.url)
 
   if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
-    vim.notify("Request: " .. vim.inspect(data), vim.log.levels.INFO)
+    utils.log("Request: " .. vim.inspect(data), vim.log.levels.DEBUG)
   end
 
   local tool = nil
@@ -81,16 +82,11 @@ function openai:chat(opts, callback)
 
       -- Remove "data: " prefix if present
       line = line:gsub("^data: ", "")
-      if line == "[DONE]" then
-        callback(message_types.DONE, "")
-        return
-      end
-      if line == "" then
+      if line == "[DONE]" or line == "" then
         return
       end
 
       local ok, decoded = pcall(vim.json.decode, line, { luanil = { object = true, array = true } })
-
       if not ok or not decoded then
         vim.schedule(function()
           vim.notify(line, vim.log.levels.ERROR)
@@ -99,7 +95,7 @@ function openai:chat(opts, callback)
 
       if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
         vim.schedule(function()
-          vim.notify("Decoded: " .. vim.inspect(decoded))
+          utils.log("Decoded: " .. vim.inspect(decoded), vim.log.levels.DEBUG)
         end)
       end
 
@@ -155,16 +151,11 @@ function openai:chat(opts, callback)
         tool = nil
       end
     end,
-    on_stderr = function(_, text)
-      if not text or text == "" then
-        return
+    on_exit = function(j, return_val)
+      if data.stream then
+        callback(message_types.DONE, "")
       end
 
-      vim.schedule(function()
-        vim.api.nvim_err_writeln("Error: " .. vim.inspect(text))
-      end)
-    end,
-    on_exit = function(j, return_val)
       if j:result() and not vim.tbl_isempty(j:result()) then
         vim.schedule(function()
           local ok, res = pcall(sjson.decode, table.concat(j:result(), "\n"))
@@ -195,7 +186,7 @@ function openai:chat(opts, callback)
       local ok, decoded = pcall(sjson.decode, result)
       if not ok or not decoded or not decoded.choices or not decoded.choices[1] or not decoded.choices[1].message then
         vim.schedule(function()
-          vim.api.nvim_err_writeln("Error: Failed to parse API response: " .. result)
+          vim.notify("Error: Failed to parse API response: " .. result, vim.log.levels.ERROR)
         end)
         return
       end

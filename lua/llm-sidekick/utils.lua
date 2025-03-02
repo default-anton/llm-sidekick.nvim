@@ -88,6 +88,36 @@ function M.get_temp_dir()
   return tmp_path
 end
 
+function M.log(msg, level)
+  if type(msg) ~= "string" then
+    msg = vim.inspect(msg)
+  end
+
+  local log_file = io.open(vim.g.llm_sidekick_log_path, "a")
+
+  if not log_file then
+    vim.notify(msg, level)
+    return
+  end
+
+  -- Convert log level to string representation
+  local level_str = "INFO"
+  if level then
+    if level == vim.log.levels.DEBUG then
+      level_str = "DEBUG"
+    elseif level == vim.log.levels.INFO then
+      level_str = "INFO"
+    elseif level == vim.log.levels.WARN then
+      level_str = "WARN"
+    elseif level == vim.log.levels.ERROR then
+      level_str = "ERROR"
+    end
+  end
+
+  log_file:write(string.format("%s [%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), level_str, msg))
+  log_file:close()
+end
+
 function M.stop(buffer)
   pcall(vim.loop.kill, vim.b[buffer].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
 end

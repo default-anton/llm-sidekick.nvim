@@ -8,6 +8,11 @@ vim.g.loaded_llm_sidekick = 1
 vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 vim.g.llm_sidekick_tmp_dir = utils.get_temp_dir()
+vim.g.llm_sidekick_log_path = vim.g.llm_sidekick_tmp_dir .. "/llm_sidekick.log"
+
+if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+  vim.print("Log file: " .. vim.g.llm_sidekick_log_path)
+end
 
 local litellm = require "llm-sidekick.litellm"
 -- Start the web server when the plugin loads

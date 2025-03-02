@@ -433,39 +433,45 @@ function M.ask(prompt_buffer)
     end
 
     if message_types.DONE == state and vim.api.nvim_buf_is_loaded(prompt_buffer) then
-      -- NOTE: tools must be executed in order. If a tool requires user input,
-      -- the next tool will not be executed even if it is auto acceptable.
-      for _, tool_call in ipairs(tool_calls) do
-        if tool_call.tool.is_auto_acceptable(tool_call) then
-          tool_utils.run_tool_call(tool_call, { buffer = prompt_buffer })
-        else
-          break
-        end
-      end
-
-      local requires_user_input = vim.tbl_contains(
-        tool_calls,
-        function(tc) return tc.result == nil end,
-        { predicate = true }
-      )
-      if not model_settings.just_chatting and not requires_user_input and max_turns_without_user_input > 0 then
-        vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
-        M.ask(prompt_buffer)
-        return
-      end
-
-      if vim.api.nvim_buf_is_loaded(prompt_buffer) then
-        local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
-        if last_two_lines[#last_two_lines] == "" then
-          if last_two_lines[1] == "" then
-            chat.paste_at_end("USER: ", prompt_buffer)
-          else
-            chat.paste_at_end("\nUSER: ", prompt_buffer)
+      -- Run auto-acceptable tools until we find one that's not auto-acceptable
+      -- and execute the callback when all tools have completed
+      tool_utils.run_auto_acceptable_tools_with_callback(tool_calls, { buffer = prompt_buffer },
+        function()
+          if not vim.api.nvim_buf_is_loaded(prompt_buffer) then
+            return
           end
-        else
-          chat.paste_at_end("\n\nUSER: ", prompt_buffer)
-        end
-      end
+
+          local tool_call_ids = vim.tbl_values(vim.tbl_map(function(tc) return tc.id end, tool_calls))
+          local last_assistant_tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = prompt_buffer })
+          last_assistant_tool_calls = vim.tbl_filter(
+            function(tc) return vim.tbl_contains(tool_call_ids, tc.id) end,
+            last_assistant_tool_calls
+          )
+          local requires_user_input = vim.tbl_isempty(last_assistant_tool_calls) or vim.tbl_contains(
+            last_assistant_tool_calls,
+            function(tc) return tc.result == nil end,
+            { predicate = true }
+          )
+
+          -- If no user input is required and we still have turns left, ask again
+          if not model_settings.just_chatting and not requires_user_input and max_turns_without_user_input > 0 then
+            vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
+            M.ask(prompt_buffer)
+            return
+          end
+
+          -- Otherwise, add the USER: prompt
+          local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+          if last_two_lines[#last_two_lines] == "" then
+            if last_two_lines[1] == "" then
+              chat.paste_at_end("USER: ", prompt_buffer)
+            else
+              chat.paste_at_end("\nUSER: ", prompt_buffer)
+            end
+          else
+            chat.paste_at_end("\n\nUSER: ", prompt_buffer)
+          end
+        end)
     end
   end)
 
