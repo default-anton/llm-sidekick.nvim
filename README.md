@@ -23,7 +23,7 @@ The plugin is designed to be fast, stay out of your way, and integrate naturally
 ## Requirements
 
 ### Core Requirements
-- Neovim >= 0.5.0
+- Neovim >= 0.10.0
 - plenary.nvim
 - uv (Python package manager)
 - curl (for API requests)
