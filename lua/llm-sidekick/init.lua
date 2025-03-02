@@ -441,9 +441,14 @@ function M.ask(prompt_buffer)
             return
           end
 
-          tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = prompt_buffer })
-          local requires_user_input = vim.tbl_contains(
-            tool_calls,
+          local tool_call_ids = vim.tbl_values(vim.tbl_map(function(tc) return tc.id end, tool_calls))
+          local last_assistant_tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = prompt_buffer })
+          last_assistant_tool_calls = vim.tbl_filter(
+            function(tc) return vim.tbl_contains(tool_call_ids, tc.id) end,
+            last_assistant_tool_calls
+          )
+          local requires_user_input = vim.tbl_isempty(last_assistant_tool_calls) or vim.tbl_contains(
+            last_assistant_tool_calls,
             function(tc) return tc.result == nil end,
             { predicate = true }
           )
