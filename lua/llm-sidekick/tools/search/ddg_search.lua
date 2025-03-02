@@ -1,8 +1,6 @@
 local chat = require("llm-sidekick.chat")
 local Job = require('plenary.job')
 
-local TIMEOUT = 60000
-
 local spec = {
   name = "ddg_search",
   description = [[
@@ -47,8 +45,10 @@ return {
       tool_call.state.query_written = #query
     end
   end,
-  -- Execute the search
+  -- Execute the search asynchronously
   run = function(tool_call, opts)
+    local cwd = vim.fn.getcwd()
+    local shell = vim.o.shell or "bash"
     local query = vim.trim(tool_call.parameters.query or "")
     if query == "" then
       return "Error: Empty search query"
@@ -59,15 +59,17 @@ return {
       vim.json.encode(query)
     )
 
-    local output = ""
-    local exit_code = nil
+    -- Store initial state
+    tool_call.state.output = ""
 
-    Job:new({
-      command = "bash",
+    local job = Job:new({
+      cwd = cwd,
+      command = shell,
       args = { "-c", command },
       interactive = false,
       on_exit = function(j, return_val)
-        exit_code = return_val
+        local exit_code = return_val
+        local output = ""
 
         local stdout = j:result()
         if stdout and not vim.tbl_isempty(stdout) then
@@ -94,18 +96,23 @@ return {
         if stderr and not vim.tbl_isempty(stderr) then
           output = output .. "\n\nErrors:\n```" .. table.concat(stderr, "\n") .. "```"
         end
+
+        -- Format the final output with exit code if there was an error
+        if exit_code ~= 0 then
+          tool_call.state.output = string.format("Search failed (exit code: %d)\n%s", exit_code, output)
+        else
+          tool_call.state.output = output
+        end
+
+        -- Update the search text to show it's completed
+        vim.schedule(function()
+          local final_lines = { string.format("✓ DuckDuckGo search: `%s`", query) }
+          vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
+        end)
       end,
-    }):sync(TIMEOUT)
+    })
 
-    -- Update the search text to show it's completed
-    local final_lines = { string.format("✓ DuckDuckGo search: `%s`", query) }
-    vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
-
-    -- Return formatted output with exit code
-    if exit_code ~= 0 then
-      return string.format("Search failed (exit code: %d)\n%s", exit_code, output)
-    end
-
-    return output
+    -- Return the job object for async execution
+    return job
   end
 }
