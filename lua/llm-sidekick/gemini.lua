@@ -1,5 +1,6 @@
 local message_types = require("llm-sidekick.message_types")
 local sjson = require("llm-sidekick.sjson")
+local utils = require("llm-sidekick.utils")
 
 local gemini = {}
 
@@ -173,7 +174,7 @@ function gemini:chat(opts, callback)
   }
 
   if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
-    vim.notify("Request: " .. vim.inspect(data), vim.log.levels.INFO)
+    utils.log("Request: " .. vim.inspect(data), vim.log.levels.DEBUG)
   end
 
   local job = require('plenary.job'):new({
@@ -195,7 +196,7 @@ function gemini:chat(opts, callback)
 
       if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
         vim.schedule(function()
-          vim.notify("Decoded: " .. vim.inspect(decoded))
+          utils.log("Decoded: " .. vim.inspect(decoded), vim.log.levels.DEBUG)
         end)
       end
 
