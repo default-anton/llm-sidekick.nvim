@@ -4,6 +4,30 @@ local file_editor = require("llm-sidekick.file_editor")
 
 local M = {}
 
+-- Queue management functions
+local function initialize_tool_queue(buffer)
+  if not vim.b[buffer].llm_sidekick_tool_queue then
+    vim.b[buffer].llm_sidekick_tool_queue = {
+      pending = {},
+      running = false,
+    }
+  end
+  return vim.b[buffer].llm_sidekick_tool_queue
+end
+
+local function queue_tool_call(tool_call, opts)
+  local buffer = opts.buffer
+  local queue = initialize_tool_queue(buffer)
+
+  table.insert(queue.pending, {
+    tool_call = tool_call,
+    opts = opts,
+  })
+  vim.b[buffer].llm_sidekick_tool_queue = queue
+
+  return queue
+end
+
 local update_diagnostic = function(tool_call, opts)
   local buffer = opts.buffer
 
@@ -72,6 +96,40 @@ local function refresh_tool_call_lnums(tool_call, opts)
   return tool_call
 end
 
+local function process_next_in_queue(buffer)
+  local queue = initialize_tool_queue(buffer)
+
+  if not queue or queue.running or #queue.pending == 0 then
+    -- Check if there are any completion callbacks
+    if queue.completion_callbacks and #queue.completion_callbacks > 0 then
+      -- If there are no more pending tools, execute all completion callbacks
+      local callbacks = queue.completion_callbacks
+      queue.completion_callbacks = {}
+      vim.b[buffer].llm_sidekick_tool_queue = queue
+      for _, cb in ipairs(callbacks) do
+        cb()
+      end
+    end
+
+    return
+  end
+
+  queue.running = true
+  local next_item = table.remove(queue.pending, 1)
+  vim.b[buffer].llm_sidekick_tool_queue = queue
+
+  local tool_call = refresh_tool_call_lnums(next_item.tool_call, { buffer = buffer })
+  if not tool_call then
+    queue.running = false
+    vim.b[buffer].llm_sidekick_tool_queue = queue
+    process_next_in_queue(buffer)
+    return
+  end
+
+  -- We'll call the internal run function which doesn't interact with the queue
+  M._run_tool_call_internal(tool_call, next_item.opts)
+end
+
 -- Helper function to run auto-acceptable tools after a specific tool
 local function maybe_run_next_auto_acceptable_tools(completed_tool, buffer)
   local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = buffer })
@@ -84,13 +142,89 @@ local function maybe_run_next_auto_acceptable_tools(completed_tool, buffer)
       if tool_call.tool.is_auto_acceptable(tool_call) then
         M.run_tool_call(tool_call, { buffer = buffer })
       else
-        update_diagnostic(tool_call, { buffer = buffer })
-        found_completed_tool = false
+        break
       end
-    else
-      update_diagnostic(tool_call, { buffer = buffer })
     end
   end
+end
+
+-- Run tools with a callback when all tools have completed
+-- This is a generic function that can be used to run any tools and execute a callback when they're all done
+-- @param tool_calls: List of tool calls to run
+-- @param opts: Options including buffer
+-- @param callback: Function to call when all tools have completed
+-- @param filter_fn: Optional function to filter which tools to run
+M.run_tools_with_callback = function(tool_calls, opts, callback, filter_fn)
+  local buffer = opts.buffer
+  local queue = initialize_tool_queue(buffer)
+
+  -- Setup completion tracking
+  if not queue.completion_callbacks then
+    queue.completion_callbacks = {}
+  end
+
+  -- Add our callback to the queue's completion callbacks
+  table.insert(queue.completion_callbacks, callback)
+  vim.b[buffer].llm_sidekick_tool_queue = queue
+
+  -- Track if any tools were actually queued
+  local tools_queued = false
+
+  -- Run tools that match the filter
+  for _, tool_call in ipairs(tool_calls) do
+    if not tool_call.result then
+      if not filter_fn or filter_fn(tool_call) then
+        M.run_tool_call(tool_call, { buffer = buffer })
+        tools_queued = true
+      end
+    end
+  end
+
+  -- If no tools were queued call the callback immediately
+  if not tools_queued then
+    -- Execute and remove our callback
+    queue = initialize_tool_queue(buffer)
+    local callbacks = queue.completion_callbacks
+    queue.completion_callbacks = {}
+    vim.b[buffer].llm_sidekick_tool_queue = queue
+    for _, cb in ipairs(callbacks) do
+      cb()
+    end
+  end
+end
+
+-- Run auto-acceptable tools with a callback when all tools have completed
+-- This function will run tools until it finds one that's not auto-acceptable
+-- and then execute the callback when all queued tools have completed
+M.run_auto_acceptable_tools_with_callback = function(tool_calls, opts, callback)
+  local first_non_auto = nil
+
+  -- Find the first non-auto-acceptable tool
+  for i, tool_call in ipairs(tool_calls) do
+    if not tool_call.result and not tool_call.tool.is_auto_acceptable(tool_call) then
+      first_non_auto = i
+      break
+    end
+  end
+
+  -- Create a filter function that only accepts tools before the first non-auto-acceptable one
+  local filter_fn = function(tool_call)
+    if not first_non_auto then
+      return tool_call.tool.is_auto_acceptable(tool_call)
+    end
+
+    -- Find the index of this tool_call
+    for i, tc in ipairs(tool_calls) do
+      if tc.id == tool_call.id then
+        return i < first_non_auto and tool_call.tool.is_auto_acceptable(tool_call)
+      end
+    end
+
+    return false
+  end
+
+  -- Run the tools with our filter
+  M.run_tools_with_callback(tool_calls, opts, callback, filter_fn)
 end
 
 M.find_tool_for_tool_call = function(tool_call)
@@ -161,8 +295,15 @@ M.get_tool_calls_in_last_assistant_message = function(opts)
   )
 end
 
-M.run_tool_call = function(tool_call, opts)
+-- Internal function to run a tool call without queue interaction
+M._run_tool_call_internal = function(tool_call, opts)
   if tool_call.result then
+    local queue = initialize_tool_queue(opts.buffer)
+    if queue then
+      queue.running = false
+      vim.b[opts.buffer].llm_sidekick_tool_queue = queue
+      process_next_in_queue(opts.buffer)
+    end
     return
   end
 
@@ -178,6 +319,13 @@ M.run_tool_call = function(tool_call, opts)
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: No run function defined", tool_call.name)
     )
+
+    local queue = initialize_tool_queue(buffer)
+    if queue then
+      queue.running = false
+      vim.b[buffer].llm_sidekick_tool_queue = queue
+      process_next_in_queue(buffer)
+    end
     return
   end
 
@@ -192,7 +340,7 @@ M.run_tool_call = function(tool_call, opts)
   -- Handle async tool execution (when a Job is returned)
   if ok and type(result_or_job) == "table" and result_or_job.start and type(result_or_job.start) == "function" then
     -- It's a Job object, set up completion callback
-    result_or_job:after_success(function(j)
+    result_or_job:after_success(function(_)
       vim.schedule(function()
         -- Update tool call with results
         tool_call.result = { success = true, result = tool_call.state.output or "Success" }
@@ -218,22 +366,35 @@ M.run_tool_call = function(tool_call, opts)
         M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
         update_diagnostic(tool_call, { buffer = buffer })
 
-        -- Check if there are auto-acceptable tools that should run after this one
-        maybe_run_next_auto_acceptable_tools(tool_call, buffer)
+        -- Process next tool in queue
+        local queue = initialize_tool_queue(buffer)
+        if queue then
+          queue.running = false
+          vim.b[buffer].llm_sidekick_tool_queue = queue
+          process_next_in_queue(buffer)
+        end
       end)
     end)
 
-    result_or_job:after_failure(function(j, code, signal)
+    result_or_job:after_failure(function(_, code, _)
       vim.schedule(function()
-        local error_msg = table.concat(j:stderr_result(), "\n")
-        tool_call.result = { success = false, result = error_msg or "Failed with code: " .. code }
+        tool_call.result = {
+          success = false,
+          result = tool_call.state.output or
+              string.format("Failed with code: %d", code)
+        }
         tool_call.state.is_running = false
 
         M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
         update_diagnostic(tool_call, { buffer = buffer })
 
-        -- Check if there are auto-acceptable tools that should run after this one
-        maybe_run_next_auto_acceptable_tools(tool_call, buffer)
+        -- Process next tool in queue
+        local queue = initialize_tool_queue(buffer)
+        if queue then
+          queue.running = false
+          vim.b[buffer].llm_sidekick_tool_queue = queue
+          process_next_in_queue(buffer)
+        end
       end)
     end)
 
@@ -249,11 +410,11 @@ M.run_tool_call = function(tool_call, opts)
     )
 
     return
-  else
-    -- Synchronous execution or error
-    tool_call.result = { success = ok, result = result_or_job }
-    tool_call.state.is_running = false
   end
+
+  -- Synchronous execution or error
+  tool_call.result = { success = ok, result = result_or_job }
+  tool_call.state.is_running = false
 
   local line_count_after = vim.api.nvim_buf_line_count(buffer)
   if line_count_before ~= line_count_after then
@@ -273,6 +434,30 @@ M.run_tool_call = function(tool_call, opts)
 
   M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
   update_diagnostic(tool_call, { buffer = buffer })
+
+  -- Process next tool in queue for synchronous tools
+  local queue = initialize_tool_queue(buffer)
+  if queue then
+    queue.running = false
+    vim.b[buffer].llm_sidekick_tool_queue = queue
+    process_next_in_queue(buffer)
+  end
+end
+
+-- Public function that adds tools to the queue and starts processing
+M.run_tool_call = function(tool_call, opts)
+  if tool_call.result then
+    return
+  end
+
+  local buffer = opts.buffer
+  if not tool_call.tool then
+    tool_call.tool = M.find_tool_for_tool_call(tool_call)
+  end
+
+  -- Add to queue and start processing
+  queue_tool_call(tool_call, opts)
+  process_next_in_queue(buffer)
 end
 
 M.add_tool_call_to_buffer = function(opts)
@@ -297,35 +482,13 @@ M.run_tool_call_at_cursor = function(opts)
     error("No tool found under the cursor")
   end
 
-  -- For sync tools, auto-acceptable tools are handled in maybe_run_next_auto_acceptable_tools
-  -- For async tools, they'll be handled in the completion callback
-  if not tool_call_at_cursor.state.is_running then
-    -- Update diagnostics for other tools
-    local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = buffer })
-    for _, tool_call in ipairs(tool_calls) do
-      if tool_call_at_cursor.id ~= tool_call.id then
-        update_diagnostic(tool_call, { buffer = buffer })
-      end
-    end
-  end
+  -- Check if there are auto-acceptable tools that should run after this one
+  maybe_run_next_auto_acceptable_tools(tool_call_at_cursor, buffer)
 end
 
 M.run_tool_calls_in_last_assistant_message = function(opts)
-  local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })
-  local pending_async_tools = 0
-
-  for _, tool_call in ipairs(tool_calls) do
-    tool_call = refresh_tool_call_lnums(tool_call, { buffer = opts.buffer })
-    if tool_call then
-      M.run_tool_call(tool_call, { buffer = opts.buffer })
-      if tool_call.state.is_running then
-        pending_async_tools = pending_async_tools + 1
-      end
-    end
-  end
-
-  if pending_async_tools > 0 then
-    vim.notify(string.format("Running %d async tool(s)...", pending_async_tools), vim.log.levels.INFO)
+  for _, tool_call in ipairs(M.get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })) do
+    M.run_tool_call(tool_call, { buffer = opts.buffer })
   end
 end
 
