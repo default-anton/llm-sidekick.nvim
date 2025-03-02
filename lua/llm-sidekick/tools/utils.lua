@@ -26,6 +26,31 @@ local function find_tool_call_by_extmark_id(extmark_id, opts)
   end
 end
 
+local function find_tool_calls(opts)
+  local buffer = opts.buffer
+  local tool_calls = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, vim.g.llm_sidekick_ns, 0, -1, { details = true })) do
+    local extmark_id, row, _, details = unpack(mark)
+
+    if details and details.invalid then
+      goto continue
+    end
+
+    local tool_call = find_tool_call_by_extmark_id(extmark_id, { buffer = buffer })
+    if tool_call then
+      tool_call.tool = find_tool_for_tool_call(tool_call)
+      local line_count = tool_call.state.end_lnum - tool_call.state.lnum
+      tool_call.state.lnum = row + 1
+      tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum)
+      table.insert(tool_calls, tool_call)
+    end
+
+    ::continue::
+  end
+
+  return tool_calls
+end
+
 local function refresh_tool_call_lnums(tool_call, opts)
   local buffer = opts.buffer
   local row, _, details = unpack(vim.api.nvim_buf_get_extmark_by_id(
@@ -65,12 +90,21 @@ local update_diagnostic = function(tool_call, opts)
   end
 
   if not tool_call.result then
-    diagnostic.add_tool_call(
-      tool_call,
-      buffer,
-      vim.diagnostic.severity.HINT,
-      string.format("▶ %s (<leader>aa)", tool_call.name)
-    )
+    if tool_call.state and tool_call.state.is_running then
+      diagnostic.add_tool_call(
+        tool_call,
+        buffer,
+        vim.diagnostic.severity.HINT,
+        string.format("⟳ %s (running...)", tool_call.name)
+      )
+    else
+      diagnostic.add_tool_call(
+        tool_call,
+        buffer,
+        vim.diagnostic.severity.HINT,
+        string.format("▶ %s (<leader>aa)", tool_call.name)
+      )
+    end
   elseif tool_call.result.success then
     diagnostic.add_tool_call(
       tool_call,
@@ -85,6 +119,43 @@ local update_diagnostic = function(tool_call, opts)
       vim.diagnostic.severity.ERROR,
       string.format("✗ %s: %s", tool_call.name, vim.inspect(tool_call.result.result))
     )
+  end
+end
+
+local function get_tool_calls_in_last_assistant_message(opts)
+  local buffer = opts.buffer
+  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local last_assistant_start_line = opts.lnum or file_editor.find_last_assistant_start_line(buffer_lines)
+
+  if last_assistant_start_line == -1 then
+    error("No \"ASSISTANT:\" message found")
+  end
+
+  local tool_calls = find_tool_calls({ buffer = buffer })
+  return vim.tbl_filter(
+    function(tc) return tc.state.lnum >= last_assistant_start_line end,
+    tool_calls
+  )
+end
+
+-- Helper function to run auto-acceptable tools after a specific tool
+local function maybe_run_next_auto_acceptable_tools(completed_tool, buffer)
+  local tool_calls = get_tool_calls_in_last_assistant_message({ buffer = buffer })
+  local found_completed_tool = false
+
+  for _, tool_call in ipairs(tool_calls) do
+    if completed_tool.id == tool_call.id then
+      found_completed_tool = true
+    elseif found_completed_tool then
+      if tool_call.tool.is_auto_acceptable(tool_call) then
+        require('llm-sidekick.tools.utils').run_tool_call(tool_call, { buffer = buffer })
+      else
+        update_diagnostic(tool_call, { buffer = buffer })
+        found_completed_tool = false
+      end
+    else
+      update_diagnostic(tool_call, { buffer = buffer })
+    end
   end
 end
 
@@ -110,8 +181,77 @@ local function run_tool_call(tool_call, opts)
 
   local line_count_before = vim.api.nvim_buf_line_count(buffer)
 
-  local ok, result = pcall(tool_call.tool.run, tool_call, { buffer = buffer })
-  tool_call.result = { success = ok, result = result }
+  -- Mark tool as running
+  tool_call.state.is_running = true
+
+  -- Execute the tool
+  local ok, result_or_job = pcall(tool_call.tool.run, tool_call, { buffer = buffer })
+
+  -- Handle async tool execution (when a Job is returned)
+  if ok and type(result_or_job) == "table" and result_or_job.start and type(result_or_job.start) == "function" then
+    -- It's a Job object, set up completion callback
+    result_or_job:after_success(function(j)
+      vim.schedule(function()
+        -- Update tool call with results
+        tool_call.result = { success = true, result = tool_call.state.output or "Success" }
+        tool_call.state.is_running = false
+
+        -- Update line counts and extmark
+        local line_count_after = vim.api.nvim_buf_line_count(buffer)
+        if line_count_before ~= line_count_after then
+          tool_call.state.end_lnum = math.max(
+            tool_call.state.lnum + (line_count_after - line_count_before),
+            tool_call.state.lnum
+          )
+        end
+
+        vim.api.nvim_buf_set_extmark(
+          buffer,
+          vim.g.llm_sidekick_ns,
+          tool_call.state.lnum - 1,
+          0,
+          { id = tool_call.state.extmark_id, invalidate = true }
+        )
+
+        update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
+        update_diagnostic(tool_call, { buffer = buffer })
+
+        -- Check if there are auto-acceptable tools that should run after this one
+        maybe_run_next_auto_acceptable_tools(tool_call, buffer)
+      end)
+    end)
+
+    result_or_job:after_failure(function(j, code, signal)
+      vim.schedule(function()
+        local error_msg = table.concat(j:stderr_result(), "\n")
+        tool_call.result = { success = false, result = error_msg or "Failed with code: " .. code }
+        tool_call.state.is_running = false
+
+        update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
+        update_diagnostic(tool_call, { buffer = buffer })
+
+        -- Check if there are auto-acceptable tools that should run after this one
+        maybe_run_next_auto_acceptable_tools(tool_call, buffer)
+      end)
+    end)
+
+    -- Start the job
+    result_or_job:start()
+
+    -- Set temporary diagnostic to show it's running
+    diagnostic.add_tool_call(
+      tool_call,
+      buffer,
+      vim.diagnostic.severity.HINT,
+      string.format("⟳ %s (running...)", tool_call.name)
+    )
+
+    return
+  else
+    -- Synchronous execution or error
+    tool_call.result = { success = ok, result = result_or_job }
+    tool_call.state.is_running = false
+  end
 
   local line_count_after = vim.api.nvim_buf_line_count(buffer)
   if line_count_before ~= line_count_after then
@@ -138,47 +278,6 @@ local function add_tool_call_to_buffer(opts)
   vim.b[opts.buffer].llm_sidekick_tool_calls = vim.list_extend(tool_calls, { opts.tool_call })
 end
 
-local function find_tool_calls(opts)
-  local buffer = opts.buffer
-  local tool_calls = {}
-  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, vim.g.llm_sidekick_ns, 0, -1, { details = true })) do
-    local extmark_id, row, _, details = unpack(mark)
-
-    if details and details.invalid then
-      goto continue
-    end
-
-    local tool_call = find_tool_call_by_extmark_id(extmark_id, { buffer = buffer })
-    if tool_call then
-      tool_call.tool = find_tool_for_tool_call(tool_call)
-      local line_count = tool_call.state.end_lnum - tool_call.state.lnum
-      tool_call.state.lnum = row + 1
-      tool_call.state.end_lnum = math.max(tool_call.state.lnum + line_count, tool_call.state.lnum)
-      table.insert(tool_calls, tool_call)
-    end
-
-    ::continue::
-  end
-
-  return tool_calls
-end
-
-local function get_tool_calls_in_last_assistant_message(opts)
-  local buffer = opts.buffer
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-  local last_assistant_start_line = opts.lnum or file_editor.find_last_assistant_start_line(buffer_lines)
-
-  if last_assistant_start_line == -1 then
-    error("No \"ASSISTANT:\" message found")
-  end
-
-  local tool_calls = find_tool_calls({ buffer = buffer })
-  return vim.tbl_filter(
-    function(tc) return tc.state.lnum >= last_assistant_start_line end,
-    tool_calls
-  )
-end
-
 local function run_tool_call_at_cursor(opts)
   local buffer = opts.buffer
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
@@ -196,31 +295,35 @@ local function run_tool_call_at_cursor(opts)
     error("No tool found under the cursor")
   end
 
-  local tool_calls = get_tool_calls_in_last_assistant_message({ buffer = buffer })
-  -- Run auto-acceptable tool calls after the tool call at the cursor
-  local found_tool_call_at_cursor = false
-  for _, tool_call in ipairs(tool_calls) do
-    if tool_call_at_cursor.id == tool_call.id then
-      found_tool_call_at_cursor = true
-    elseif found_tool_call_at_cursor then
-      if tool_call.tool.is_auto_acceptable(tool_call) then
-        run_tool_call(tool_call, { buffer = buffer })
-      else
+  -- For sync tools, auto-acceptable tools are handled in maybe_run_next_auto_acceptable_tools
+  -- For async tools, they'll be handled in the completion callback
+  if not tool_call_at_cursor.state.is_running then
+    -- Update diagnostics for other tools
+    local tool_calls = get_tool_calls_in_last_assistant_message({ buffer = buffer })
+    for _, tool_call in ipairs(tool_calls) do
+      if tool_call_at_cursor.id ~= tool_call.id then
         update_diagnostic(tool_call, { buffer = buffer })
-        found_tool_call_at_cursor = false
       end
-    else
-      update_diagnostic(tool_call, { buffer = buffer })
     end
   end
 end
 
 local function run_tool_calls_in_last_assistant_message(opts)
-  for _, tool_call in ipairs(get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })) do
+  local tool_calls = get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })
+  local pending_async_tools = 0
+
+  for _, tool_call in ipairs(tool_calls) do
     tool_call = refresh_tool_call_lnums(tool_call, { buffer = opts.buffer })
     if tool_call then
       run_tool_call(tool_call, { buffer = opts.buffer })
+      if tool_call.state.is_running then
+        pending_async_tools = pending_async_tools + 1
+      end
     end
+  end
+
+  if pending_async_tools > 0 then
+    vim.notify(string.format("Running %d async tool(s)...", pending_async_tools), vim.log.levels.INFO)
   end
 end
 
@@ -234,4 +337,5 @@ return {
   update_tool_call_in_buffer = update_tool_call_in_buffer,
   find_tool_for_tool_call = find_tool_for_tool_call,
   get_tool_calls_in_last_assistant_message = get_tool_calls_in_last_assistant_message,
+  maybe_run_next_auto_acceptable_tools = maybe_run_next_auto_acceptable_tools,
 }
