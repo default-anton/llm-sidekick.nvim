@@ -448,29 +448,29 @@ function M.ask(prompt_buffer)
             function(tc) return vim.tbl_contains(tool_call_ids, tc.id) end,
             last_assistant_tool_calls
           )
-          local requires_user_input = vim.tbl_isempty(last_assistant_tool_calls) or vim.tbl_contains(
+          local has_pending_tools = vim.tbl_contains(
             last_assistant_tool_calls,
             function(tc) return tc.result == nil end,
             { predicate = true }
           )
+          local no_tool_calls = vim.tbl_isempty(last_assistant_tool_calls)
 
-          -- If no user input is required and we still have turns left, ask again
-          if not model_settings.just_chatting and not requires_user_input and max_turns_without_user_input > 0 then
-            vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
-            M.ask(prompt_buffer)
-            return
-          end
+          max_turns_without_user_input = vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input
 
-          -- Otherwise, add the USER: prompt
-          local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
-          if last_two_lines[#last_two_lines] == "" then
-            if last_two_lines[1] == "" then
-              chat.paste_at_end("USER: ", prompt_buffer)
+          if no_tool_calls or has_pending_tools or max_turns_without_user_input <= 0 or model_settings.just_chatting then
+            local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
+            if last_two_lines[#last_two_lines] == "" then
+              if last_two_lines[1] == "" then
+                chat.paste_at_end("USER: ", prompt_buffer)
+              else
+                chat.paste_at_end("\nUSER: ", prompt_buffer)
+              end
             else
-              chat.paste_at_end("\nUSER: ", prompt_buffer)
+              chat.paste_at_end("\n\nUSER: ", prompt_buffer)
             end
           else
-            chat.paste_at_end("\n\nUSER: ", prompt_buffer)
+            vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
+            M.ask(prompt_buffer)
           end
         end)
     end
