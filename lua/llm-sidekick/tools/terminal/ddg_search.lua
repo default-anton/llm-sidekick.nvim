@@ -3,8 +3,7 @@ local Job = require('plenary.job')
 
 local spec = {
   name = "ddg_search",
-  description = [[
-Search the web using DuckDuckGo and get the top results. You can read articles by running `curl -s --no-buffer -L https://r.jina.ai/<https://url/to/article>`]],
+  description = "Search the web using DuckDuckGo and get the top results.",
   input_schema = {
     type = "object",
     properties = {
@@ -17,9 +16,9 @@ Search the web using DuckDuckGo and get the top results. You can read articles b
   }
 }
 
-local json_props = [[{
-  "query": { "type": "string" }
-}]]
+local json_props = string.format([[{
+  "query": %s
+}]], vim.json.encode(spec.input_schema.properties.query))
 
 return {
   spec = spec,
@@ -54,13 +53,12 @@ return {
       return "Error: Empty search query"
     end
 
+    tool_call.state.result = { success = false, result = nil }
+
     local command = string.format(
       'ddgr --num 5 --noprompt --noua --nocolor --expand --unsafe --json "%s"',
       vim.json.encode(query)
     )
-
-    -- Store initial state
-    tool_call.state.result = { success = false, result = nil }
 
     local job = Job:new({
       cwd = cwd,
@@ -103,13 +101,13 @@ return {
 
         -- Update the search text to show it's completed
         vim.schedule(function()
-          local final_lines = { string.format("✓ DuckDuckGo search: `%s`", query) }
+          local status = tool_call.state.result.success and "✓" or "✗"
+          local final_lines = { string.format("%s DuckDuckGo search: `%s`", status, query) }
           vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
         end)
       end,
     })
 
-    -- Return the job object for async execution
     return job
   end
 }

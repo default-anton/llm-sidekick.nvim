@@ -19,10 +19,10 @@ local spec = {
   }
 }
 
-local json_props = [[{
-  "command": { "type": "string" },
-  "explanation": { "type": "string" }
-}]]
+local json_props = string.format([[{
+  "command": %s,
+  "explanation": %s
+}]], vim.json.encode(spec.input_schema.properties.command), vim.json.encode(spec.input_schema.properties.explanation))
 
 return {
   spec = spec,

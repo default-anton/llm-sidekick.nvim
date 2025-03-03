@@ -16,22 +16,22 @@ CRITICAL REQUIREMENTS:
   input_schema = {
     type = "object",
     properties = {
-      message = {
-        type = "string",
-      },
       message_type = {
         type = "string",
         enum = { "question", "chat", "alert", "progress", "suggestion" },
+      },
+      message = {
+        type = "string",
       },
     },
     required = { "message", "message_type" },
   },
 }
 
-local json_props = [[{
-  "message": { "type": "string" },
-  "message_type": { "type": "string", "enum": [ "question", "chat", "alert", "progress", "suggestion" ] }
-}]]
+local json_props = string.format([[{
+  "message_type": %s,
+  "message": %s
+}]], vim.json.encode(spec.input_schema.properties.message_type), vim.json.encode(spec.input_schema.properties.message))
 
 return {
   spec = spec,
