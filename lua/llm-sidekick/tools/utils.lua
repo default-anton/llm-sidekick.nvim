@@ -197,6 +197,11 @@ end
 -- This function will run tools until it finds one that's not auto-acceptable
 -- and then execute the callback when all queued tools have completed
 M.run_auto_acceptable_tools_with_callback = function(tool_calls, opts, callback)
+  if #tool_calls == 0 then
+    callback()
+    return
+  end
+
   local first_non_auto = nil
 
   -- Find the first non-auto-acceptable tool
@@ -333,6 +338,7 @@ M._run_tool_call_internal = function(tool_call, opts)
 
   -- Mark tool as running
   tool_call.state.is_running = true
+  M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
 
   -- Execute the tool
   local ok, result_or_job = pcall(tool_call.tool.run, tool_call, { buffer = buffer })
@@ -340,74 +346,46 @@ M._run_tool_call_internal = function(tool_call, opts)
   -- Handle async tool execution (when a Job is returned)
   if ok and type(result_or_job) == "table" and result_or_job.start and type(result_or_job.start) == "function" then
     -- It's a Job object, set up completion callback
-    result_or_job:after_success(function(_)
-      vim.schedule(function()
-        -- Update tool call with results
-        tool_call.result = { success = true, result = tool_call.state.output or "Success" }
-        tool_call.state.is_running = false
+    result_or_job:after(vim.schedule_wrap(function(_)
+      -- Update tool call with results
+      tool_call.result = tool_call.state.result
+      tool_call.state.result = nil
+      tool_call.state.is_running = false
 
-        -- Update line counts and extmark
-        local line_count_after = vim.api.nvim_buf_line_count(buffer)
-        if line_count_before ~= line_count_after then
-          tool_call.state.end_lnum = math.max(
-            tool_call.state.lnum + (line_count_after - line_count_before),
-            tool_call.state.lnum
-          )
-        end
-
-        vim.api.nvim_buf_set_extmark(
-          buffer,
-          vim.g.llm_sidekick_ns,
-          tool_call.state.lnum - 1,
-          0,
-          { id = tool_call.state.extmark_id, invalidate = true }
+      -- Update line counts and extmark
+      local line_count_after = vim.api.nvim_buf_line_count(buffer)
+      if line_count_before ~= line_count_after then
+        tool_call.state.end_lnum = math.max(
+          tool_call.state.lnum + (line_count_after - line_count_before),
+          tool_call.state.lnum
         )
+      end
 
-        M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
-        update_diagnostic(tool_call, { buffer = buffer })
+      vim.api.nvim_buf_set_extmark(
+        buffer,
+        vim.g.llm_sidekick_ns,
+        tool_call.state.lnum - 1,
+        0,
+        { id = tool_call.state.extmark_id, invalidate = true }
+      )
 
-        -- Process next tool in queue
-        local queue = initialize_tool_queue(buffer)
-        if queue then
-          queue.running = false
-          vim.b[buffer].llm_sidekick_tool_queue = queue
-          M.process_next_in_queue(buffer)
-        end
-      end)
-    end)
+      M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
+      update_diagnostic(tool_call, { buffer = buffer })
 
-    result_or_job:after_failure(function(_, code, _)
-      vim.schedule(function()
-        tool_call.result = {
-          success = false,
-          result = tool_call.state.output or
-              string.format("Failed with code: %d", code)
-        }
-        tool_call.state.is_running = false
-
-        M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
-        update_diagnostic(tool_call, { buffer = buffer })
-
-        -- Process next tool in queue
-        local queue = initialize_tool_queue(buffer)
-        if queue then
-          queue.running = false
-          vim.b[buffer].llm_sidekick_tool_queue = queue
-          M.process_next_in_queue(buffer)
-        end
-      end)
-    end)
+      -- Process next tool in queue
+      local queue = initialize_tool_queue(buffer)
+      if queue then
+        queue.running = false
+        vim.b[buffer].llm_sidekick_tool_queue = queue
+        M.process_next_in_queue(buffer)
+      end
+    end))
 
     -- Start the job
     result_or_job:start()
 
     -- Set temporary diagnostic to show it's running
-    diagnostic.add_tool_call(
-      tool_call,
-      buffer,
-      vim.diagnostic.severity.HINT,
-      string.format("⟳ %s (running...)", tool_call.name)
-    )
+    update_diagnostic(tool_call, { buffer = buffer })
 
     return
   end
@@ -476,17 +454,22 @@ M.run_tool_call_at_cursor = function(opts)
 end
 
 M.run_tool_calls_in_last_assistant_message = function(opts)
-  local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = opts.buffer })
+  local buffer = opts.buffer
+
+  local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = buffer })
+  tool_calls = vim.tbl_filter(function(tc) return tc.result == nil end, tool_calls)
   if #tool_calls == 0 then
-    vim.notify("No tools found in last assistant message", vim.log.levels.WARN)
+    opts.callback()
     return
   end
 
+  M.add_completion_callback(buffer, opts.callback)
+
   for _, tool_call in ipairs(tool_calls) do
-    M.queue_tool_call(tool_call, { buffer = opts.buffer })
+    M.queue_tool_call(tool_call, { buffer = buffer })
   end
 
-  M.process_next_in_queue(opts.buffer)
+  M.process_next_in_queue(buffer)
 end
 
 return M

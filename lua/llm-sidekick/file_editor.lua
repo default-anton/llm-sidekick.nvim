@@ -529,7 +529,7 @@ local function create_apply_modifications_command(buffer)
   local run_tool_call_at_cursor = function()
     tool_utils.run_tool_call_at_cursor({
       buffer = buffer,
-      callback = function()
+      callback = vim.schedule_wrap(function()
         local tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({ buffer = buffer })
         local requires_user_input = vim.tbl_contains(
           tool_calls,
@@ -542,17 +542,17 @@ local function create_apply_modifications_command(buffer)
           remove_trailing_user_prompt(buffer)
           require("llm-sidekick").ask(buffer)
         end
-      end
+      end)
     })
   end
 
   local run_tool_calls_in_last_assistant_message = function()
     tool_utils.run_tool_calls_in_last_assistant_message({
       buffer = buffer,
-      callback = function()
+      callback = vim.schedule_wrap(function()
         remove_trailing_user_prompt(buffer)
         require("llm-sidekick").ask(buffer)
-      end
+      end)
     })
   end
 

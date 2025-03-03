@@ -111,7 +111,7 @@ return {
     local command = vim.trim(tool_call.parameters.command or "")
 
     -- Store initial state
-    tool_call.state.output = ""
+    tool_call.state.result = { success = false, result = nil }
 
     local job = Job:new({
       cwd = cwd,
@@ -133,7 +133,8 @@ return {
         end
 
         -- Store the output in tool_call state for access in the after_success callback
-        tool_call.state.output = string.format("Exit code: %d\n%s", exit_code, output)
+        tool_call.state.result.success = exit_code == 0
+        tool_call.state.result.result = string.format("Exit code: %d\n%s", exit_code, output)
 
         -- Update the command text from "Execute" to "Executed"
         vim.schedule(function()

@@ -60,7 +60,7 @@ return {
     )
 
     -- Store initial state
-    tool_call.state.output = ""
+    tool_call.state.result = { success = false, result = nil }
 
     local job = Job:new({
       cwd = cwd,
@@ -97,12 +97,9 @@ return {
           output = output .. "\n\nErrors:\n```" .. table.concat(stderr, "\n") .. "```"
         end
 
-        -- Format the final output with exit code if there was an error
-        if exit_code ~= 0 then
-          tool_call.state.output = string.format("Search failed (exit code: %d)\n%s", exit_code, output)
-        else
-          tool_call.state.output = output
-        end
+        -- Store the output in tool_call state for access in the after_success callback
+        tool_call.state.result.success = exit_code == 0
+        tool_call.state.result.result = string.format("Exit code: %d\n%s", exit_code, output)
 
         -- Update the search text to show it's completed
         vim.schedule(function()
