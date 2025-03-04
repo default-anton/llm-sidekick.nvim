@@ -128,6 +128,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ## Supported Models
 
 ### Anthropic Claude Models
+- `claude-3-7-sonnet-latest`
 - `claude-3-5-sonnet-latest`
 - `claude-3-5-haiku-latest`
 
