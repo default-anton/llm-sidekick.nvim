@@ -40,7 +40,9 @@ return {
       -- Git read operations
       "git status", "git log", "git diff", "git show", "git branch",
       -- System info
-      "pwd", "whoami", "uname", "which", "type", "echo"
+      "pwd", "whoami", "uname", "which", "type", "echo",
+      -- Networking
+      "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat"
     }
 
     local command = vim.trim(tool_call.parameters.command or "")
