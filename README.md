@@ -135,10 +135,17 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ### Google Gemini Models
 - Gemini 2.0 Pro `gemini-2.0-pro`
 - Gemini 2.0 Flash `gemini-2.0-flash`
+- Gemini 2.0 Flash Thinking `gemini-2.0-flash-thinking-chat`
+- Gemini 2.0 Lite `gemini-2.0-flash-lite`
+- Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
 
 ### OpenAI Models
-- `o3-mini`: 3 variants (high, medium, low)
-- `o1`
+- `o3-mini-low`
+- `o3-mini-medium`
+- `o3-mini-high`
+- `o1-low`
+- `o1-medium`
+- `o1-high`
 - `o1-preview`
 - `gpt-4o`
 - `gpt-4o-2024-11-20`

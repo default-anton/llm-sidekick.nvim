@@ -181,6 +181,18 @@ return {
     reasoning = true,
     just_chatting = true
   },
+  ["gemini-2.0-flash-exp"] = {
+    name = "gemini-2.0-flash-exp",
+    max_tokens = 8192,
+    top_k = 40,
+    temperature = 0.6,
+  },
+  ["gemini-2.0-flash-lite"] = {
+    name = "gemini-2.0-flash-lite",
+    max_tokens = 8192,
+    top_k = 40,
+    temperature = 0.6,
+  },
   ["deepseek-r1-distill-llama-70b"] = {
     name = "groq/deepseek-r1-distill-llama-70b",
     max_tokens = 32768,
