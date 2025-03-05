@@ -10,15 +10,20 @@ local spec = {
       url = {
         type = "string",
         description = "The URL of the web page to fetch content from"
+      },
+      max_chars = {
+        type = "integer",
+        description = "Optional. Maximum number of characters to return. Default is 1000",
       }
     },
-    required = { "url" }
+    required = { "url" },
   }
 }
 
 local json_props = string.format([[{
-  "url": %s
-}]], vim.json.encode(spec.input_schema.properties.url))
+  "url": %s,
+  "max_chars": %s
+}]], vim.json.encode(spec.input_schema.properties.url), vim.json.encode(spec.input_schema.properties.max_chars))
 
 -- Utility function to check if URL is a GitHub URL
 local function is_github_url(url)
@@ -55,6 +60,7 @@ return {
   end,
   -- Execute the fetch asynchronously
   run = function(tool_call, opts)
+    local max_chars = tool_call.parameters.max_chars or 1000
     local url = vim.trim(tool_call.parameters.url or "")
     if url == "" then
       error("Empty URL provided")
@@ -85,7 +91,8 @@ return {
 
         if return_val == 0 and #output > 0 then
           tool_call.state.result.success = true
-          tool_call.state.result.result = table.concat(output, "\n")
+          local full_content = table.concat(output, "\n")
+          tool_call.state.result.result = full_content:sub(1, max_chars)
         else
           tool_call.state.result.success = false
           tool_call.state.result.result = string.format("Exit code: %d\n%s", return_val, table.concat(output, "\n"))
