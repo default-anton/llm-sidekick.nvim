@@ -13,7 +13,7 @@ local spec = {
       },
       max_chars = {
         type = "integer",
-        description = "Optional. Maximum number of characters to return. Default is 2500",
+        description = "Optional. Maximum number of characters to return. Default is 2500"
       }
     },
     required = { "url" },
