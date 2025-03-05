@@ -13,7 +13,7 @@ local spec = {
       },
       max_chars = {
         type = "integer",
-        description = "Maximum number of characters to return. Default is 2500",
+        description = "Maximum number of characters to return. Default is 10000",
       }
     },
     required = { "url", "max_chars" },
@@ -60,7 +60,7 @@ return {
   end,
   -- Execute the fetch asynchronously
   run = function(tool_call, opts)
-    local max_chars = tool_call.parameters.max_chars or 2500
+    local max_chars = tool_call.parameters.max_chars or 10000
     local url = vim.trim(tool_call.parameters.url or "")
     if url == "" then
       error("Empty URL provided")
