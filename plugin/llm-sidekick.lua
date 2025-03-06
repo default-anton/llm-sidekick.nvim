@@ -93,6 +93,16 @@ vim.api.nvim_create_autocmd({ "BufEnter", "FocusGained" }, {
   desc = "Set last ask buffer when focused (only for Ask buffers)",
 })
 
+vim.api.nvim_create_augroup("LLMSidekickCleanup", { clear = true })
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = "LLMSidekickCleanup",
+  callback = function()
+    local spinner = require("llm-sidekick.spinner")
+    spinner.stop_all()
+  end,
+  desc = "Clean up all spinners when Neovim is closed",
+})
+
 local function open_buffer_in_mode(buf, mode)
   if mode == "current" then
     vim.api.nvim_set_current_buf(buf)

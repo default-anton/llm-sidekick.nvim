@@ -6,6 +6,7 @@ local diagnostic             = require("llm-sidekick.diagnostic")
 local tool_utils             = require("llm-sidekick.tools.utils")
 local utils                  = require("llm-sidekick.utils")
 local markdown               = require("llm-sidekick.markdown")
+local spinner                = require("llm-sidekick.spinner")
 
 MAX_TURNS_WITHOUT_USER_INPUT = 25
 
@@ -331,6 +332,9 @@ function M.ask(prompt_buffer)
 
   local tool_calls = {}
 
+  -- Start the spinner to indicate we're waiting for the first token
+  spinner.start(prompt_buffer)
+
   local job = client:chat(prompt, function(state, chars)
     if not vim.api.nvim_buf_is_loaded(prompt_buffer) then
       utils.stop(prompt_buffer)
@@ -338,6 +342,9 @@ function M.ask(prompt_buffer)
     end
 
     local success, err = xpcall(function()
+      -- Stop the spinner when we receive any content
+      spinner.stop(prompt_buffer)
+
       if state == message_types.ERROR then
         error(string.format("Error: %s", vim.inspect(chars)))
       end

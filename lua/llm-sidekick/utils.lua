@@ -120,6 +120,9 @@ end
 
 function M.stop(buffer)
   pcall(vim.loop.kill, vim.b[buffer].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
+
+  local spinner = require("llm-sidekick.spinner")
+  pcall(spinner.stop, buffer)
 end
 
 return M
