@@ -80,9 +80,19 @@ local function generate_config()
   if has_env_var("AWS_ACCESS_KEY_ID") and has_env_var("AWS_SECRET_ACCESS_KEY") or
       (has_env_var("AWS_ROLE_NAME") and has_env_var("AWS_SESSION_NAME")) then
     table.insert(config.model_list, {
+      model_name = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+      litellm_params = add_aws_auth_params({
+        model = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        anthropic_beta = {
+          "token-efficient-tools-2025-02-19",
+        },
+      })
+    })
+
+    table.insert(config.model_list, {
       model_name = "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
       litellm_params = add_aws_auth_params({
-        model = "bedrock/converse/anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model = "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
         aws_region_name = "us-west-2",
       })
     })
@@ -90,7 +100,7 @@ local function generate_config()
     table.insert(config.model_list, {
       model_name = "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
       litellm_params = add_aws_auth_params({
-        model = "bedrock/converse/anthropic.claude-3-5-haiku-20241022-v1:0",
+        model = "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
         aws_region_name = "us-west-2",
       })
     })
@@ -98,7 +108,7 @@ local function generate_config()
     table.insert(config.model_list, {
       model_name = "bedrock/*",
       litellm_params = add_aws_auth_params({
-        model = "bedrock/converse/*",
+        model = "bedrock/*",
       })
     })
   end
@@ -159,14 +169,14 @@ local function generate_config()
     yaml = yaml .. "  - model_name: \"" .. model.model_name .. "\"\n"
     yaml = yaml .. "    litellm_params:\n"
     for k, v in pairs(model.litellm_params) do
-      yaml = yaml .. "      " .. k .. ": " .. tostring(v) .. "\n"
+      yaml = yaml .. "      " .. k .. ": " .. vim.json.encode(v) .. "\n"
     end
     yaml = yaml .. "\n"
   end
 
   yaml = yaml .. "litellm_settings:\n"
   for k, v in pairs(config.litellm_settings) do
-    yaml = yaml .. "  " .. k .. ": " .. tostring(v) .. "\n"
+    yaml = yaml .. "  " .. k .. ": " .. vim.json.encode(v) .. "\n"
   end
 
   return yaml
