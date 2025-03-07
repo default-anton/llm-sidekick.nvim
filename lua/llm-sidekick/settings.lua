@@ -13,6 +13,7 @@ local settings = {
     terminal_commands = false, -- Automatically accept terminal commands
   },
   guidelines = "",             -- Global guidelines
+  safe_terminal_commands = {},
 }
 
 function M.get_models()
@@ -43,11 +44,13 @@ function M.setup(opts)
       models = { opts.models, "table", true },
       yolo_mode = { opts.yolo_mode, "table", true },
       guidelines = { opts.guidelines, "string", true },
+      safe_terminal_commands = { opts.safe_terminal_commands, "table", true },
     })
 
     opts.models = vim.tbl_deep_extend("force", settings.models, opts.models or {})
     opts.yolo_mode = vim.tbl_deep_extend("force", settings.yolo_mode, opts.yolo_mode or {})
     opts.guidelines = opts.guidelines or settings.guidelines
+    opts.safe_terminal_commands = opts.safe_terminal_commands or settings.safe_terminal_commands
 
     settings = opts
   end
@@ -99,6 +102,10 @@ end
 
 function M.auto_accept_terminal_commands()
   return settings.yolo_mode.terminal_commands
+end
+
+function M.safe_terminal_commands()
+  return settings.safe_terminal_commands
 end
 
 function M.get_global_guidelines()

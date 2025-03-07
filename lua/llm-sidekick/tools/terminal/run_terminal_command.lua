@@ -45,6 +45,8 @@ return {
       "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat"
     }
 
+    vim.list_extend(safe_commands, require("llm-sidekick.settings").safe_terminal_commands())
+
     local command = vim.trim(tool_call.parameters.command or "")
 
     -- Basic safety checks

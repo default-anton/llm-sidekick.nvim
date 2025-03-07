@@ -119,6 +119,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         file_operations = false, -- Automatically accept file operations
         terminal_commands = false, -- Automatically accept terminal commands
       },
+      safe_terminal_commands = {} -- List of terminal commands to automatically accept
+      guidelines = "", -- Global guidelines that will be added to every chat
       default = "sonnet",
     })
   end,
