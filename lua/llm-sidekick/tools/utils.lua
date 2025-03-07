@@ -361,13 +361,18 @@ M._run_tool_call_internal = function(tool_call, opts)
         )
       end
 
-      vim.api.nvim_buf_set_extmark(
-        buffer,
-        vim.g.llm_sidekick_ns,
-        tool_call.state.lnum - 1,
-        0,
-        { id = tool_call.state.extmark_id, invalidate = true }
-      )
+      -- Ensure line number is valid before setting extmark
+      local line_num = tool_call.state.lnum - 1
+      local max_lines = vim.api.nvim_buf_line_count(buffer)
+      if line_num >= 0 and line_num < max_lines then
+        vim.api.nvim_buf_set_extmark(
+          buffer,
+          vim.g.llm_sidekick_ns,
+          line_num,
+          0,
+          { id = tool_call.state.extmark_id, invalidate = true }
+        )
+      end
 
       M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
       update_diagnostic(tool_call, { buffer = buffer })
@@ -402,13 +407,18 @@ M._run_tool_call_internal = function(tool_call, opts)
     )
   end
 
-  vim.api.nvim_buf_set_extmark(
-    buffer,
-    vim.g.llm_sidekick_ns,
-    tool_call.state.lnum - 1,
-    0,
-    { id = tool_call.state.extmark_id, invalidate = true }
-  )
+  -- Ensure line number is valid before setting extmark
+  local line_num = tool_call.state.lnum - 1
+  local max_lines = vim.api.nvim_buf_line_count(buffer)
+  if line_num >= 0 and line_num < max_lines then
+    vim.api.nvim_buf_set_extmark(
+      buffer,
+      vim.g.llm_sidekick_ns,
+      line_num,
+      0,
+      { id = tool_call.state.extmark_id, invalidate = true }
+    )
+  end
 
   M.update_tool_call_in_buffer({ buffer = buffer, tool_call = tool_call })
   update_diagnostic(tool_call, { buffer = buffer })
