@@ -58,6 +58,11 @@ local json_props = [[{
 
 local function find_min_indentation(lines)
   local min_indent = math.huge
+  -- If lines is empty, return 0 instead of math.huge
+  if #lines == 0 then
+    return 0
+  end
+
   for _, line in ipairs(lines) do
     -- Skip empty lines when calculating min indent
     if line:match("^%s*$") then
@@ -67,6 +72,12 @@ local function find_min_indentation(lines)
     min_indent = math.min(min_indent, indent)
     ::continue::
   end
+
+  -- If all lines were empty or there were no lines with content, return 0
+  if min_indent == math.huge then
+    return 0
+  end
+
   return min_indent
 end
 
@@ -367,16 +378,21 @@ return {
       error(string.format("Could not find the exact match in file: %s", path))
     end
 
-    -- Calculate the indentation to apply to the replacement text
-    local matched_search_min_indent = find_min_indentation(matched_search_lines)
-    local replace_min_indent = find_min_indentation(replace_lines)
+    -- Handle empty replacement case specially (line removal)
+    local adjusted_replace_lines = {}
+    local is_empty_replacement = #replace_lines == 1 and replace_lines[1] == ""
+    if #replace_lines > 0 and not is_empty_replacement then
+      -- Calculate the indentation to apply to the replacement text
+      local matched_search_min_indent = find_min_indentation(matched_search_lines)
+      local replace_min_indent = find_min_indentation(replace_lines)
 
-    -- Adjust the indentation of the replacement text to match the search text
-    local adjusted_replace_lines = adjust_replace_indentation(
-      replace_lines,
-      replace_min_indent,
-      matched_search_min_indent
-    )
+      -- Adjust the indentation of the replacement text to match the search text
+      adjusted_replace_lines = adjust_replace_indentation(
+        replace_lines,
+        replace_min_indent,
+        matched_search_min_indent
+      )
+    end
 
     -- Create the modified content by replacing the matched lines
     local modified_lines = {}
@@ -386,11 +402,13 @@ return {
       table.insert(modified_lines, content_lines[i])
     end
 
-    -- Insert the replacement lines
-    for _, line in ipairs(adjusted_replace_lines) do
-      table.insert(modified_lines, line)
+    -- Insert the replacement lines (if any)
+    if #adjusted_replace_lines > 0 then
+      for _, line in ipairs(adjusted_replace_lines) do
+        table.insert(modified_lines, line)
+      end
     end
-
+    
     -- Copy lines after the match
     for i = end_line + 1, #content_lines do
       table.insert(modified_lines, content_lines[i])

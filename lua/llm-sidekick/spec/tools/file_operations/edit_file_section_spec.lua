@@ -263,5 +263,45 @@ describe("edit_file_section", function()
       -- Check that the error message contains the expected text
       assert.is_not_nil(err:match("Failed to read file"))
     end)
+
+    it("should handle empty replacement to remove a line", function()
+      local file_path = test_dir:joinpath('remove_line.txt'):absolute()
+      local original_content = "Line 1\nLine to remove\nLine 3"
+      local search_text = "Line to remove"
+      local replace_text = ""
+
+      Path:new(file_path):write(original_content, 'w')
+      assert.is_true(Path:new(file_path):exists())
+
+      -- Create a mock tool_call object
+      local tool_call = {
+        parameters = {
+          path = file_path,
+          search = search_text,
+          replace = replace_text
+        },
+        state = {
+          lnum = 1,
+          end_lnum = 5
+        }
+      }
+
+      -- Create a mock chat buffer
+      local chat_bufnr = vim.api.nvim_create_buf(true, true)
+
+      -- Run the function
+      local success, err = pcall(edit_file_section.run, tool_call, { buffer = chat_bufnr })
+      if not success then
+        error(err)
+      end
+
+      -- Assert that the function ran successfully
+      assert.is_true(success)
+
+      -- Verify the file was modified correctly with the line removed
+      local expected_content = "Line 1\nLine 3"
+      local content = Path:new(file_path):read()
+      assert.equals(expected_content .. "\n", content)
+    end)
   end)
 end)
