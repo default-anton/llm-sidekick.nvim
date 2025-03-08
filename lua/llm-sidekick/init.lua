@@ -337,9 +337,6 @@ function M.ask(prompt_buffer)
     end
 
     local success, err = xpcall(function()
-      -- Stop the spinner when we receive any content
-      spinner.stop(prompt_buffer)
-
       if state == message_types.ERROR then
         error(string.format("Error: %s", vim.inspect(chars)))
       end
@@ -435,12 +432,20 @@ function M.ask(prompt_buffer)
       return
     end
 
-    if message_types.DONE == state and vim.api.nvim_buf_is_loaded(prompt_buffer) then
+    if message_types.DONE == state then
+      if vim.api.nvim_buf_is_loaded(prompt_buffer) then
+        spinner.stop(prompt_buffer)
+      else
+        utils.stop(prompt_buffer)
+        return
+      end
+
       -- Run auto-acceptable tools until we find one that's not auto-acceptable
       -- and execute the callback when all tools have completed
       tool_utils.run_auto_acceptable_tools_with_callback(tool_calls, { buffer = prompt_buffer },
         function()
           if not vim.api.nvim_buf_is_loaded(prompt_buffer) then
+            utils.stop(prompt_buffer)
             return
           end
 
