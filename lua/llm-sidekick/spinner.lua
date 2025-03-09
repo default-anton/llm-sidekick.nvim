@@ -36,7 +36,8 @@ function M.start(bufnr, style, position)
 
     -- Update the spinner text in the buffer
     vim.schedule(function()
-      if not vim.api.nvim_buf_is_loaded(bufnr) then
+      -- Check if buffer is still loaded and spinner is still active
+      if not vim.api.nvim_buf_is_loaded(bufnr) or not active_spinners[bufnr] then
         M.stop(bufnr)
         return
       end

@@ -119,10 +119,9 @@ function M.log(msg, level)
 end
 
 function M.stop(buffer)
-  pcall(vim.loop.kill, vim.b[buffer].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
-
   local spinner = require("llm-sidekick.spinner")
   pcall(spinner.stop, buffer)
+  pcall(vim.loop.kill, vim.b[buffer].llm_sidekick_job_pid, vim.loop.constants.SIGINT)
 end
 
 return M
