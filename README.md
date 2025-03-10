@@ -183,7 +183,7 @@ Adds content to the last chat with llm-sidekick. Can add content from:
 - Directory path (recursively includes all files)
 - URL to documentation or other web content (converted to markdown via jina.ai Reader API - only use with public URLs)
 
-Must be used after an `:Ask`, `:Code`, or `:Chat` command.
+Must be used after the `:Chat` command.
 
 #### `:Accept`
 Applies a single change from the LLM response at the current cursor position. Use for selective, careful modifications.
