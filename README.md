@@ -17,6 +17,7 @@ AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
   - [OpenAI Models](#openai-models)
   - [DeepSeek AI Models](#deepseek-ai-models)
 - [Usage](#usage)
+  - [Plan Mode](#plan-mode)
   - [Commands](#commands)
     - [Core Commands](#core-commands)
   - [Keybindings](#keybindings)
@@ -182,7 +183,32 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ## Usage
 
-## Commands
+### Plan Mode
+
+llm-sidekick.nvim includes a powerful Plan Mode feature for managing complex, multi-step tasks:
+
+- **Purpose**: Creates and maintains a `plan.md` file that serves as a shared project roadmap between you and the AI
+- **When to use it**: Ideal for complex refactoring, feature implementation, debugging sessions, or any multi-step development task
+- **How it works**:
+  - You explicitly request a plan for complex tasks
+  - The plan is stored in `plan.md` in your working directory
+  - Tasks are tracked using markdown checklists (`- [ ]` for pending, `- [x]` for completed items)
+  - The plan is structured hierarchically with clear sections and sub-tasks
+  - Both you and the AI can update the plan as tasks progress
+  - The plan is automatically included in your conversations while active
+  - Once all tasks are completed, the plan can be removed
+
+**Example usage**:
+```
+:Chat "Create a plan for refactoring this authentication system to use JWT tokens"
+```
+
+Or during an ongoing conversation:
+```
+:Chat "Let's create a plan for implementing server-side form validation"
+```
+
+### Commands
 
 ### Core Commands
 
