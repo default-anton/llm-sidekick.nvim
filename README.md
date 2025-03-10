@@ -200,12 +200,11 @@ llm-sidekick.nvim includes a powerful Plan Mode feature for managing complex, mu
 
 **Example usage**:
 ```
-:Chat "Create a plan for refactoring this authentication system to use JWT tokens"
+Create a plan for refactoring this authentication system to use JWT tokens
 ```
 
-Or during an ongoing conversation:
 ```
-:Chat "Let's create a plan for implementing server-side form validation"
+I need to implement server-side form validation. Let's create a plan
 ```
 
 ### Commands
