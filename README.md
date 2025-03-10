@@ -2,6 +2,28 @@
 
 AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
 
+## Table of Contents
+
+- [Features](#features)
+- [Built-in Keybindings](#built-in-keybindings)
+- [Requirements](#requirements)
+  - [Core Requirements](#core-requirements)
+  - [API Requirements](#api-requirements)
+  - [Speech-to-Text Requirements (Optional)](#speech-to-text-requirements-optional)
+- [Installation](#installation)
+- [Supported Models](#supported-models)
+  - [Anthropic Claude Models](#anthropic-claude-models)
+  - [Google Gemini Models](#google-gemini-models)
+  - [OpenAI Models](#openai-models)
+  - [DeepSeek AI Models](#deepseek-ai-models)
+- [Usage](#usage)
+  - [Commands](#commands)
+    - [Core Commands](#core-commands)
+  - [Keybindings](#keybindings)
+- [Telescope Integration](#telescope-integration)
+- [Project Configuration](#project-configuration)
+- [License](#license)
+
 ## Features
 
 llm-sidekick.nvim turns your editor into a powerful code companion:
