@@ -1,8 +1,6 @@
 local Job = require("plenary.job")
 local M = {}
 
-local LITELLM_VERSION = "1.63.8"
-
 local function get_log_dir()
   local state_home = vim.env.XDG_STATE_HOME
   if not state_home or state_home == "" then
@@ -226,8 +224,13 @@ function M.start_web_server(port)
     detached = true,
     env = env,
     args = {
-      'run', '--python', '3.12', '--with', string.format('litellm[proxy]==%s', LITELLM_VERSION), '--with', 'boto3',
-      'litellm', '--port', tostring(port), '--config', config_path,
+      'run',
+      '--python', '3.12',
+      '--with', 'litellm[proxy]@git+https://github.com/default-anton/litellm.git',
+      '--with', 'boto3',
+      'litellm',
+      '--port', tostring(port),
+      '--config', config_path,
     },
     on_error = function(_, error)
       vim.schedule(function()
