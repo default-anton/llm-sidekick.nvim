@@ -1,7 +1,7 @@
 local Job = require("plenary.job")
 local M = {}
 
-local LITELLM_VERSION = "1.63.0"
+local LITELLM_VERSION = "1.63.8"
 
 local function get_log_dir()
   local state_home = vim.env.XDG_STATE_HOME
