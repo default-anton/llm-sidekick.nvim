@@ -195,7 +195,14 @@ function M.parse_prompt(prompt, buffer)
         local content = fs.read_file(path)
         if content and content ~= "" then
           local lang = markdown.filename_to_language(path, "")
-          editor_context[path] = string.format("File: %s\n````%s\n%s\n````", path, lang, content)
+          local line_count = select(2, content:gsub("\n", "")) + 1
+          editor_context[path] = string.format(
+            "File: %s (all %d lines)\n````%s\n%s\n````",
+            path,
+            line_count,
+            lang,
+            content
+          )
         end
       end
 
