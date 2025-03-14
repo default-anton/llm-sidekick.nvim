@@ -291,6 +291,26 @@ return {
         end_line = view_range[2]
       end
 
+      if vim.fn.isdirectory(path) == 1 then
+        local ok, entries = pcall(vim.fn.readdir, path)
+        if not ok then
+          error(string.format("Error: Failed to list directory %s (%s)", path, vim.inspect(entries)))
+        end
+
+        -- Replace the tool call content with success message
+        local success_message = string.format("✓ Viewed directory `%s` (%d files)", path, #entries)
+        vim.api.nvim_buf_set_lines(
+          opts.buffer,
+          tool_call.state.lnum - 1,
+          tool_call.state.end_lnum,
+          false,
+          { success_message }
+        )
+
+        return table.concat(entries, "\n")
+      end
+
+      -- Handle file viewing
       local content_lines = {}
       local buf = vim.fn.bufnr(path)
       local is_buffer_loaded = vim.api.nvim_buf_is_loaded(buf)
