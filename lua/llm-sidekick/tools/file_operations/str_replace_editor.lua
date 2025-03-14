@@ -189,9 +189,7 @@ end
 
 return {
   spec = spec,
-  is_show_diagnostics = function(tool_call)
-    return tool_call.parameters.command ~= "view"
-  end,
+  is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(tool_call)
     if tool_call.parameters.command == "view" then
       return true
@@ -224,9 +222,6 @@ return {
       chat.paste_at_end(tool_call.parameters.old_str, opts.buffer)
       local old_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      local sign_group = string.format("%s-str_replace_editor-old_str", tool_call.id)
-      signs.place(opts.buffer, sign_group, old_str_lnum, old_str_end_lnum, "llm_sidekick_red")
-
       chat.paste_at_end("\n\n", opts.buffer)
       local new_str_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
@@ -234,6 +229,9 @@ return {
       local new_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       chat.paste_at_end("\n```", opts.buffer)
+
+      local sign_group = string.format("%s-str_replace_editor-old_str", tool_call.id)
+      signs.place(opts.buffer, sign_group, old_str_lnum, old_str_end_lnum, "llm_sidekick_red")
 
       sign_group = string.format("%s-str_replace_editor-new_str", tool_call.id)
       signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_green")
