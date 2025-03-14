@@ -245,10 +245,10 @@ return {
       chat.paste_at_end(tool_call.parameters.file_text, opts.buffer)
       local file_text_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      local sign_group = string.format("%s-str_replace_editor-file_text", tool_call.id)
-      signs.place(opts.buffer, sign_group, file_text_lnum, file_text_end_lnum, "llm_sidekick_red")
-
       chat.paste_at_end("\n```", opts.buffer)
+
+      local sign_group = string.format("%s-str_replace_editor-file_text", tool_call.id)
+      signs.place(opts.buffer, sign_group, file_text_lnum, file_text_end_lnum, "llm_sidekick_green")
     elseif tool_call.parameters.command == "insert" then
       chat.paste_at_end(
         string.format(
