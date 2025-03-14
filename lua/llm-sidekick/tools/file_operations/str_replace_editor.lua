@@ -271,7 +271,13 @@ return {
       local sign_group = string.format("%s-str_replace_editor-new_str", tool_call.id)
       signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_green")
     elseif tool_call.parameters.command == "undo_edit" then
-      chat.paste_at_end(string.format("**Undo:** `%s`", tool_call.parameters.path), opts.buffer)
+      chat.paste_at_end(
+        string.format(
+          "**Undo:** `%s` 😭 Sorry, undo functionality is not implemented yet! 🙈 Time travel remains a mystery to us all...",
+          tool_call.parameters.path
+        ),
+        opts.buffer
+      )
     end
   end,
   run = function(tool_call, opts)
