@@ -269,7 +269,7 @@ return {
       local new_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       local sign_group = string.format("%s-str_replace_editor-new_str", tool_call.id)
-      signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_red")
+      signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_green")
 
       chat.paste_at_end("\n```", opts.buffer)
     elseif tool_call.parameters.command == "undo_edit" then
@@ -450,7 +450,7 @@ return {
 
       -- Replace the tool call content with success message
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-        { string.format("✓ Created file: `%s`", path) })
+        { string.format("✓ Inserted text into `%s` at line %d", path, insert_line) })
 
       return true
     elseif tool_call.parameters.command == "insert" then
