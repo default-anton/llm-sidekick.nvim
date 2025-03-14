@@ -259,7 +259,8 @@ local ask_command = function()
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
-        just_chatting = model_settings.just_chatting
+        just_chatting = model_settings.just_chatting,
+        model = model_settings.name,
       })
 
       if vim.fn.filereadable("plan.md") == 1 then
