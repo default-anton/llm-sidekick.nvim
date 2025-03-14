@@ -266,10 +266,10 @@ return {
       chat.paste_at_end(tool_call.parameters.new_str, opts.buffer)
       local new_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
+      chat.paste_at_end("\n```", opts.buffer)
+
       local sign_group = string.format("%s-str_replace_editor-new_str", tool_call.id)
       signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_green")
-
-      chat.paste_at_end("\n```", opts.buffer)
     elseif tool_call.parameters.command == "undo_edit" then
       chat.paste_at_end(string.format("**Undo:** `%s`", tool_call.parameters.path), opts.buffer)
     end
@@ -422,6 +422,7 @@ return {
     elseif tool_call.parameters.command == "create" then
       local path = vim.trim(tool_call.parameters.path or "")
       local content = tool_call.parameters.file_text
+      local insert_line = tool_call.parameters.insert_line
 
       local dir = vim.fn.fnamemodify(path, ":h")
       if vim.fn.isdirectory(dir) == 0 then
@@ -448,7 +449,7 @@ return {
 
       -- Replace the tool call content with success message
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-        { string.format("✓ Inserted text into `%s` at line %d", path, insert_line) })
+        { string.format("✓ Created file `%s`", path) })
 
       return true
     elseif tool_call.parameters.command == "insert" then
@@ -477,7 +478,7 @@ return {
 
       -- Replace the tool call content with success message
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-        { string.format("✓ Created file: `%s`", path) })
+        { string.format("✓ Inserted text into `%s` at line %d", path, insert_line) })
 
       return true
     elseif tool_call.parameters.command == "undo_edit" then
