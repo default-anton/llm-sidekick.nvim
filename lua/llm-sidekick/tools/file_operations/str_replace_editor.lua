@@ -327,6 +327,22 @@ return {
         return string.format("%d: %s", i, line)
       end, content_lines)
 
+      -- Replace the tool call content with success message
+      local line_count = #content_lines
+      local success_message
+      if view_range and type(view_range) == "table" then
+        success_message = string.format("✓ Viewed `%s:%d-%d` (%d lines)", path, view_range[1], view_range[2], line_count)
+      else
+        success_message = string.format("✓ Viewed `%s` (%d lines)", path, line_count)
+      end
+      vim.api.nvim_buf_set_lines(
+        opts.buffer,
+        tool_call.state.lnum - 1,
+        tool_call.state.end_lnum,
+        false,
+        { success_message }
+      )
+
       return table.concat(content_lines, "\n")
     elseif tool_call.parameters.command == "str_replace" then
       local path = vim.trim(tool_call.parameters.path or "")
