@@ -264,7 +264,11 @@ local ask_command = function()
       })
 
       if vim.fn.filereadable("plan.md") == 1 then
-        system_prompt = system_prompt .. "\n\n<llm_sidekick_file>plan.md</llm_sidekick_file>"
+        local content = table.concat(vim.fn.readfile("plan.md"), "\n")
+        if content and content ~= "" then
+          system_prompt = system_prompt .. string.format("\n---\n\nPlan:\n````plan.md\n%s\n````", content)
+        end
+
         system_prompt = system_prompt .. [[
 ]]
       end
@@ -381,44 +385,9 @@ local function get_content(opts, callback)
 
   if opts.args and opts.args ~= "" then
     local file_path = vim.fn.expand(vim.trim(opts.args))
-    -- Convert GitHub blob URLs to raw URLs
-    file_path = file_path:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
-      "https://raw.githubusercontent.com/%1/%2/%3/%4")
 
     if file_path:match("^https?://") then
-      local filename = utils.url_to_filename(file_path)
-      local content_path = vim.g.llm_sidekick_tmp_dir .. "/" .. filename
-
-      -- Handle GitHub URLs
-      if file_path:match("^https://raw.githubusercontent.com") then
-        local content = require('llm-sidekick.http').get(file_path)
-        local ok, err = pcall(vim.fn.writefile, vim.split(content, "\n"), content_path)
-        if not ok then
-          vim.notify(string.format("Failed to fetch content from '%s': %s", file_path, vim.inspect(err)),
-            vim.log.levels.ERROR)
-          return
-        end
-
-        callback({ type = "url", path = file_path }, file_path)
-        return
-      end
-
-      -- Use get_markdown for non-GitHub URLs
-      require('llm-sidekick.markdown').get_markdown(file_path, function(content)
-        if not content then
-          vim.notify(string.format("Failed to fetch content from '%s'", file_path), vim.log.levels.ERROR)
-          return
-        end
-
-        local ok, err = pcall(vim.fn.writefile, vim.split(content, "\n"), content_path)
-        if not ok then
-          vim.notify(string.format("Failed to fetch content from '%s': %s", file_path, vim.inspect(err)),
-            vim.log.levels.ERROR)
-          return
-        end
-
-        callback({ type = "url", path = file_path })
-      end)
+      callback({ type = "url", path = file_path })
       return
     end
 
@@ -609,9 +578,9 @@ vim.api.nvim_create_user_command("Add", function(opts)
     if content_data.type == "image" then
       snippet = string.format("<llm_sidekick_image>%s</llm_sidekick_image>", content_data.path)
     elseif content_data.type == "url" then
-      snippet = string.format("<llm_sidekick_url>%s</llm_sidekick_url>", content_data.path)
+      snippet = string.format("URL: %s", content_data.path)
     elseif content_data.type == "file" then
-      snippet = string.format("<llm_sidekick_file>%s</llm_sidekick_file>", content_data.path)
+      snippet = string.format("File: %s", content_data.path)
     elseif content_data.type == "snippet" then
       snippet = string.format("````%s\n%s\n````", content_data.path, content_data.content)
     end

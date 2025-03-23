@@ -5,7 +5,6 @@ local settings               = require "llm-sidekick.settings"
 local diagnostic             = require("llm-sidekick.diagnostic")
 local tool_utils             = require("llm-sidekick.tools.utils")
 local utils                  = require("llm-sidekick.utils")
-local markdown               = require("llm-sidekick.markdown")
 local spinner                = require("llm-sidekick.spinner")
 
 MAX_TURNS_WITHOUT_USER_INPUT = 25
@@ -173,45 +172,8 @@ function M.parse_prompt(prompt, buffer)
         last_user_message_index = i
       end
 
-      for url in message.content:gmatch("<llm_sidekick_url>(.-)</llm_sidekick_url>") do
-        if editor_context[url] then
-          goto continue
-        end
-
-        local filename = utils.url_to_filename(url)
-        local content_path = vim.g.llm_sidekick_tmp_dir .. "/" .. filename
-        local content = fs.read_file(content_path)
-
-        if content and content ~= "" then
-          editor_context[url] = string.format("URL: %s\n````\n%s\n````", url, content)
-        end
-      end
-
-      for path in message.content:gmatch("<llm_sidekick_file>(.-)</llm_sidekick_file>") do
-        if editor_context[path] then
-          goto continue
-        end
-
-        local content = fs.read_file(path)
-        if content and content ~= "" then
-          local lang = markdown.filename_to_language(path, "")
-          local line_count = select(2, content:gsub("\n", "")) + 1
-          editor_context[path] = string.format(
-            "File: %s (all %d lines)\n````%s\n%s\n````",
-            path,
-            line_count,
-            lang,
-            content
-          )
-        end
-      end
-
-      message.content = message.content:gsub("<llm_sidekick_url>.-</llm_sidekick_url>", "")
-      message.content = message.content:gsub("<llm_sidekick_file>.-</llm_sidekick_file>", "")
       message.content = vim.trim(message.content)
     end
-
-    ::continue::
   end
 
   if last_user_message_index then
