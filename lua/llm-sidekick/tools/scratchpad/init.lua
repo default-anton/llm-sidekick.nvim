@@ -44,7 +44,7 @@ return {
     -- Store the starting line number for later updates
     tool_call.state.title_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("**\n```markdown\n", opts.buffer)
+    chat.paste_at_end("**\n````markdown\n", opts.buffer)
     tool_call.state.content_start_line = vim.api.nvim_buf_line_count(opts.buffer)
   end,
   -- Handle incremental updates for streaming title and content
@@ -68,9 +68,9 @@ return {
   -- Finish the scratchpad display
   stop = function(tool_call, opts)
     if #tool_call.parameters.content > 0 then
-      chat.paste_at_end("\n```", opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer)
     else
-      chat.paste_at_end("```", opts.buffer)
+      chat.paste_at_end("````", opts.buffer)
     end
   end,
   run = function()

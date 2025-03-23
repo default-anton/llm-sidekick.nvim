@@ -248,13 +248,13 @@ return {
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```txt\n", opts.buffer)
+    chat.paste_at_end("\n````txt\n", opts.buffer)
     tool_call.state.search_start_line = vim.api.nvim_buf_line_count(opts.buffer)
 
     chat.paste_at_end("\n\n", opts.buffer)
     tool_call.state.replace_start_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```", opts.buffer)
+    chat.paste_at_end("\n````", opts.buffer)
   end,
   delta = function(tool_call, opts)
     tool_call.parameters.path = vim.trim(tool_call.parameters.path or "")
@@ -273,7 +273,7 @@ return {
       local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.search_start_line - 2,
         tool_call.state.search_start_line - 1,
-        false, { "```" .. language })
+        false, { "````" .. language })
     end
 
     if tool_call.parameters.search and tool_call.state.search_written < #tool_call.parameters.search then

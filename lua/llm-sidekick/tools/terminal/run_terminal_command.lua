@@ -128,12 +128,12 @@ return {
 
         local stdout = j:result()
         if stdout and not vim.tbl_isempty(stdout) then
-          output = "Stdout:\n```" .. table.concat(stdout, "\n") .. "```"
+          output = "Stdout:\n````" .. table.concat(stdout, "\n") .. "````"
         end
 
         local stderr = j:stderr_result()
         if stderr and not vim.tbl_isempty(stderr) then
-          output = output .. "\n\nStderr:\n```" .. table.concat(stderr, "\n") .. "```"
+          output = output .. "\n\nStderr:\n````" .. table.concat(stderr, "\n") .. "````"
         end
 
         -- Store the output in tool_call state for access in the after_success callback

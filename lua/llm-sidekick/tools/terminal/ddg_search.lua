@@ -86,13 +86,13 @@ return {
             end
           else
             -- Fallback to raw output if JSON parsing fails
-            output = "Results:\n```" .. json_output .. "```"
+            output = "Results:\n````" .. json_output .. "````"
           end
         end
 
         local stderr = j:stderr_result()
         if stderr and not vim.tbl_isempty(stderr) then
-          output = output .. "\n\nErrors:\n```" .. table.concat(stderr, "\n") .. "```"
+          output = output .. "\n\nErrors:\n````" .. table.concat(stderr, "\n") .. "````"
         end
 
         -- Store the output in tool_call state for access in the after_success callback

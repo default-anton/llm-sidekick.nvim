@@ -47,7 +47,7 @@ return {
     -- Store the starting line number for later updates
     tool_call.state.path_line = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n```txt\n", opts.buffer)
+    chat.paste_at_end("\n````txt\n", opts.buffer)
     tool_call.state.content_start_line = vim.api.nvim_buf_line_count(opts.buffer)
   end,
   -- Handle incremental updates for streaming file path and content
@@ -66,7 +66,7 @@ return {
       local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.content_start_line - 2,
         tool_call.state.content_start_line - 1, false,
-        { "```" .. language })
+        { "````" .. language })
     end
 
     if tool_call.parameters.content and content_written < #tool_call.parameters.content then
@@ -81,14 +81,14 @@ return {
   end,
   stop = function(tool_call, opts)
     if #tool_call.parameters.content > 0 then
-      chat.paste_at_end("\n```", opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer)
 
       local content_end_line = tool_call.state.content_start_line +
           select(2, tool_call.parameters.content:gsub("\n", ""))
       local sign_group = string.format("%s-create_or_replace_file-content", tool_call.id)
       signs.place(opts.buffer, sign_group, tool_call.state.content_start_line, content_end_line, "llm_sidekick_green")
     else
-      chat.paste_at_end("```", opts.buffer)
+      chat.paste_at_end("````", opts.buffer)
     end
   end,
   -- Execute the actual file creation

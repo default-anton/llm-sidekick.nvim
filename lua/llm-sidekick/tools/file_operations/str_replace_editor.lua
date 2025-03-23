@@ -216,7 +216,7 @@ return {
       chat.paste_at_end(string.format("**Replace:** `%s`", tool_call.parameters.path), opts.buffer)
 
       local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
-      chat.paste_at_end(string.format("\n```%s\n", language), opts.buffer)
+      chat.paste_at_end(string.format("\n````%s\n", language), opts.buffer)
       local old_str_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       chat.paste_at_end(tool_call.parameters.old_str, opts.buffer)
@@ -228,7 +228,7 @@ return {
       chat.paste_at_end(tool_call.parameters.new_str, opts.buffer)
       local new_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      chat.paste_at_end("\n```", opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer)
 
       local sign_group = string.format("%s-str_replace_editor-old_str", tool_call.id)
       signs.place(opts.buffer, sign_group, old_str_lnum, old_str_end_lnum, "llm_sidekick_red")
@@ -239,13 +239,13 @@ return {
       chat.paste_at_end(string.format("**Create:** `%s`", tool_call.parameters.path), opts.buffer)
 
       local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
-      chat.paste_at_end(string.format("\n```%s\n", language), opts.buffer)
+      chat.paste_at_end(string.format("\n````%s\n", language), opts.buffer)
       local file_text_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       chat.paste_at_end(tool_call.parameters.file_text, opts.buffer)
       local file_text_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      chat.paste_at_end("\n```", opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer)
 
       local sign_group = string.format("%s-str_replace_editor-file_text", tool_call.id)
       signs.place(opts.buffer, sign_group, file_text_lnum, file_text_end_lnum, "llm_sidekick_green")
@@ -260,13 +260,13 @@ return {
       )
 
       local language = markdown.filename_to_language(tool_call.parameters.path, "txt")
-      chat.paste_at_end(string.format("\n```%s\n", language), opts.buffer)
+      chat.paste_at_end(string.format("\n````%s\n", language), opts.buffer)
       local new_str_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       chat.paste_at_end(tool_call.parameters.new_str, opts.buffer)
       local new_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      chat.paste_at_end("\n```", opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer)
 
       local sign_group = string.format("%s-str_replace_editor-new_str", tool_call.id)
       signs.place(opts.buffer, sign_group, new_str_lnum, new_str_end_lnum, "llm_sidekick_green")
