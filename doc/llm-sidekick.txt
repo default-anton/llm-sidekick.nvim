@@ -113,7 +113,7 @@ Configure the plugin by calling the setup function:
     require('llm-sidekick').setup({
       -- Model aliases configuration
       aliases = {
-        pro = "gemini-2.0-pro",
+        pro = "gemini-2.5-pro",
         flash = "gemini-2.0-flash",
         sonnet = "claude-3-5-sonnet-latest",
         bedrock_sonnet = "anthropic.claude-3-5-sonnet-20241022-v2:0",

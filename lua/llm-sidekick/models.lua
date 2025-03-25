@@ -161,6 +161,12 @@ return {
     max_tokens = 16384,
     temperature = 0.3,
   },
+  ["gemini-2.5-pro"] = {
+    name = "gemini/gemini-2.5-pro-exp-03-25",
+    max_tokens = 65536,
+    top_k = 64,
+    temperature = 0.6,
+  },
   ["gemini-2.0-pro"] = {
     name = "gemini/gemini-2.0-pro-exp-02-05",
     max_tokens = 8192,
