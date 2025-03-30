@@ -242,18 +242,6 @@ function M.ask(prompt_buffer)
   local last_assistant_lnum = file_editor.find_last_assistant_start_line(buf_lines)
   local last_user_lnum = file_editor.find_last_user_start_line(buf_lines)
 
-  if last_assistant_lnum ~= -1 and last_assistant_lnum < last_user_lnum then
-    local tools = tool_utils.get_tool_calls_in_last_assistant_message(
-      { buffer = prompt_buffer, lnum = last_assistant_lnum }
-    )
-    for _, tool in ipairs(tools) do
-      if tool.name == "send_message_to_user" then
-        tool_utils.queue_tool_call(tool, { buffer = prompt_buffer })
-      end
-    end
-    tool_utils.process_next_in_queue(prompt_buffer)
-  end
-
   local full_prompt = table.concat(buf_lines, "\n")
   local prompt = M.parse_prompt(full_prompt, prompt_buffer)
 
