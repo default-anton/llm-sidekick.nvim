@@ -47,7 +47,6 @@ function openai:chat(opts, callback)
 
     local openai_converter = require("llm-sidekick.tools.openai")
     data.tools = vim.tbl_map(function(tool) return openai_converter.convert_spec(tool.spec) end, opts.tools)
-    data.tool_choice = "required"
     data.parallel_tool_calls = true
   end
 
