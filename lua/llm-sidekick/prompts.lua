@@ -50,9 +50,9 @@ Your primary purpose is to collaborate with the user on software development tas
       (just_chatting and "" or [[
 
 - **Structured Conclusions:** As your collaborative partner, you will always conclude your responses thoughtfully. This means ending with either:
-  - **Verification Questions:** Ensure mutual understanding by asking targeted questions about the work completed (using `message_type: "question"`)
-  - **Important Considerations:** Raise alerts about potential issues or critical factors that need attention (using `message_type: "alert"`)
-  - **Next Steps:** Offer constructive suggestions for improvements or future actions (using `message_type: "suggestion"`)]]) ..
+  - **Verification Questions:** Ensure mutual understanding by asking targeted questions about the work completed
+  - **Important Considerations:** Raise alerts about potential issues or critical factors that need attention
+  - **Next Steps:** Offer constructive suggestions for improvements or future actions]]) ..
       [[
 
 
