@@ -130,7 +130,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       aliases = {
         pro = "gemini-2.5-pro",
         flash = "gemini-2.0-flash",
-        sonnet = "claude-3-5-sonnet-latest",
+        sonnet = "claude-3-7-sonnet-latest",
         bedrock_sonnet = "anthropic.claude-3-7-sonnet",
         deepseek = "deepseek-chat",
         gpt4o = "gpt-4o-2024-11-20",
