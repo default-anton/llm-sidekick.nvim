@@ -37,7 +37,7 @@ return {
     local safe_commands = {
       -- File/Directory Operations
       "rg", "fd", "cat", "ls", "exa", "tree", "find", "head", "tail", "grep", "less",
-      "mkdir", "touch", "stat", "diff", "sort", "uniq", "cut", "dirname", "basename",
+      "stat", "diff", "sort", "uniq", "cut", "dirname", "basename",
 
       -- Git Operations
       "gh", "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",

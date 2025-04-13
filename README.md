@@ -141,8 +141,10 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       yolo_mode = {
         file_operations = false, -- Automatically accept file operations
         terminal_commands = false, -- Automatically accept terminal commands
+        auto_commit_changes = true,  -- Enable auto-commit
       },
-      safe_terminal_commands = {} -- List of terminal commands to automatically accept
+      auto_commit_model = "gemini-2.0-flash",  -- Use a specific model for commit messages
+      safe_terminal_commands = {"mkdir", "touch", "git commit"} -- List of terminal commands to automatically accept
       guidelines = "", -- Global guidelines that will be added to every chat
       default = "sonnet",
     })
