@@ -35,14 +35,11 @@ return {
 
     -- List of commands that are safe to auto-accept
     local safe_commands = {
-      -- File viewing/searching
       "rg", "fd", "cat", "ls", "exa", "tree", "find", "head", "tail", "grep", "less",
-      -- Git read operations
-      "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",
-      -- System info
+      "gh", "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",
       "pwd", "whoami", "uname", "which", "type", "echo",
-      -- Networking
-      "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat"
+      "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat",
+      "jq", "wc",
     }
 
     vim.list_extend(safe_commands, require("llm-sidekick.settings").safe_terminal_commands())
