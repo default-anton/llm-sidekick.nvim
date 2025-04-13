@@ -38,28 +38,47 @@ return {
       -- File/Directory Operations
       "rg", "fd", "cat", "ls", "exa", "tree", "find", "head", "tail", "grep", "less",
       "mkdir", "touch", "stat", "diff", "sort", "uniq", "cut", "dirname", "basename",
-      
+
       -- Git Operations
       "gh", "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",
       "git remote", "git tag", "git rev-parse", "git ls-files", "git blame",
-      
+
       -- System Information
       "pwd", "whoami", "uname", "which", "type", "echo", "ps", "df", "du", "uptime", "date", "cal",
-      
+
       -- Network Tools
       "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat",
-      
+
       -- Data Processing
       "jq", "wc", "tr", "column",
-      
+
       -- Package Managers
       "npm list", "yarn list", "pip list", "brew list", "cargo list",
-      
+
       -- Development Tools
       "docker ps", "docker images",
-      
+
       -- Testing and Linting
+      -- General
       "make test", "make lint", "luacheck",
+
+      -- Ruby/Rails
+      "rspec", "minitest", "cucumber", "rubocop", "standardrb", "bundle exec rspec", "bundle exec rubocop",
+      "bin/rspec", "bin/rubocop", "bin/rails test", "bin/rake test", "bin/cucumber", "bin/minitest",
+      "rails test", "rake test",
+
+      -- JavaScript/TypeScript
+      "jest", "mocha", "jasmine", "vitest", "cypress", "eslint", "prettier", "tslint", "npm test", "npm run test",
+      "yarn test", "yarn lint", "npx eslint", "npx prettier", "npx jest",
+
+      -- Python
+      "pytest", "unittest", "nose", "behave", "flake8", "pylint", "black", "mypy", "isort",
+
+      -- Go
+      "go test", "golint", "golangci-lint", "staticcheck", "go vet",
+
+      -- PHP
+      "phpunit", "pest", "codeception", "php-cs-fixer", "phpcs", "phpstan", "psalm", "composer test", "composer lint",
     }
 
     vim.list_extend(safe_commands, require("llm-sidekick.settings").safe_terminal_commands())
