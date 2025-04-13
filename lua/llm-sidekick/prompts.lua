@@ -17,7 +17,7 @@ local function system_prompt(opts)
   local model_specific_additions = ""
   if model and model:find("anthropic.claude-3-7-sonnet", 1, true) then
     model_specific_additions =
-    " When using the `str_replace_editor` tool, prefer relative paths when working with files in the current working directory."
+    " When using the `str_replace_editor` tool, prefer relative paths when working with files in the current working directory and ensure each `old_str` is unique enough to match only the intended section."
   end
 
   local prompt = [[
