@@ -226,4 +226,91 @@ function openai:chat(opts, callback)
   return job
 end
 
+-- Generates a single, non-streaming completion.
+-- @param opts table: Contains messages and settings (model, temperature, etc.).
+-- @param callback function: Called with (err, content). err is nil on success.
+function openai:generate_completion(opts, callback)
+  local messages = opts.messages
+  local settings = opts.settings
+  callback = vim.schedule_wrap(callback)
+
+  local data = {
+    model = settings.model,
+    stream = false, -- Ensure stream is false for single completion
+    messages = messages,
+    max_tokens = settings.max_tokens,
+    max_completion_tokens = settings.max_completion_tokens,
+    temperature = settings.temperature,
+    -- No tools for simple completion
+  }
+
+  if settings.response_format then
+    data.response_format = settings.response_format
+  end
+
+  local body = vim.json.encode(data)
+  local curl = require("llm-sidekick.executables").get_curl_executable()
+  local args = {
+    '-s',
+    '-H', 'Content-Type: application/json',
+    '-d', body,
+  }
+
+  if self.api_key then
+    table.insert(args, '-H')
+    table.insert(args, 'Authorization: Bearer ' .. self.api_key)
+  end
+  table.insert(args, self.url)
+
+  if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+    utils.log("Completion Request: " .. vim.inspect(data), vim.log.levels.DEBUG)
+  end
+
+  require('plenary.job'):new({
+    command = curl,
+    args = args,
+    on_exit = function(j, return_val)
+      if return_val ~= 0 then
+        local stderr = table.concat(j:stderr_result() or {}, "\n")
+        local stdout = table.concat(j:result() or {}, "\n")
+        local err_msg = string.format("Completion API error (exit %d): %s %s", return_val, stderr, stdout)
+        utils.log(err_msg, vim.log.levels.ERROR)
+        callback(err_msg, nil)
+        return
+      end
+
+      local result = table.concat(j:result(), "\n")
+      local ok, decoded = pcall(vim.json.decode, result, { luanil = { object = true, array = true } })
+
+      if not ok or not decoded then
+        local err_msg = string.format("Failed to decode completion API response: %s", result)
+        utils.log(err_msg, vim.log.levels.ERROR)
+        callback(err_msg, nil)
+        return
+      end
+
+      if decoded.error then
+        local err_msg = string.format("Completion API returned error: %s",
+          decoded.error.message or vim.inspect(decoded.error))
+        utils.log(err_msg, vim.log.levels.ERROR)
+        callback(err_msg, nil)
+        return
+      end
+
+      if not decoded.choices or not decoded.choices[1] or not decoded.choices[1].message or not decoded.choices[1].message.content then
+        local err_msg = string.format("Unexpected completion API response structure: %s", result)
+        utils.log(err_msg, vim.log.levels.ERROR)
+        callback(err_msg, nil)
+        return
+      end
+
+      if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
+        utils.log("Completion Response: " .. vim.inspect(decoded), vim.log.levels.DEBUG)
+      end
+
+      callback(nil, decoded.choices[1].message.content)
+    end,
+  }):start()
+end
+
 return openai

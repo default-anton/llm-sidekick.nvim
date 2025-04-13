@@ -38,7 +38,7 @@ return {
       -- File viewing/searching
       "rg", "fd", "cat", "ls", "exa", "tree", "find", "head", "tail", "grep", "less",
       -- Git read operations
-      "git status", "git log", "git diff", "git show", "git branch", "git commit", "git fetch", "git pull",
+      "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",
       -- System info
       "pwd", "whoami", "uname", "which", "type", "echo",
       -- Networking

@@ -9,10 +9,12 @@ local settings = {
   default = "sonnet",
   models = vim.deepcopy(MODELS),
   yolo_mode = {
-    file_operations = false,   -- Automatically accept file operations
-    terminal_commands = false, -- Automatically accept terminal commands
+    file_operations = false,     -- Automatically accept file operations
+    terminal_commands = false,   -- Automatically accept terminal commands
+    auto_commit_changes = false, -- Automatically commit changes made by file operation tools
   },
-  guidelines = "",             -- Global guidelines
+  auto_commit_model = nil,       -- Model to use for auto-commit messages (nil = use default model)
+  guidelines = "",               -- Global guidelines
   safe_terminal_commands = {},
 }
 
@@ -43,6 +45,7 @@ function M.setup(opts)
       default = { opts.default, "string" },
       models = { opts.models, "table", true },
       yolo_mode = { opts.yolo_mode, "table", true },
+      auto_commit_model = { opts.auto_commit_model, "string", true },
       guidelines = { opts.guidelines, "string", true },
       safe_terminal_commands = { opts.safe_terminal_commands, "table", true },
     })
@@ -51,6 +54,7 @@ function M.setup(opts)
     opts.yolo_mode = vim.tbl_deep_extend("force", settings.yolo_mode, opts.yolo_mode or {})
     opts.guidelines = opts.guidelines or settings.guidelines
     opts.safe_terminal_commands = opts.safe_terminal_commands or settings.safe_terminal_commands
+    opts.auto_commit_model = opts.auto_commit_model or settings.auto_commit_model
 
     settings = opts
   end
@@ -104,8 +108,16 @@ function M.auto_accept_terminal_commands()
   return settings.yolo_mode.terminal_commands
 end
 
+function M.auto_commit_changes()
+  return settings.yolo_mode.auto_commit_changes
+end
+
 function M.safe_terminal_commands()
   return settings.safe_terminal_commands
+end
+
+function M.get_auto_commit_model()
+  return settings.auto_commit_model or settings.default
 end
 
 function M.get_global_guidelines()

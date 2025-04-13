@@ -432,6 +432,39 @@ function M.ask(prompt_buffer)
             else
               chat.paste_at_end("\n\nUSER: ", prompt_buffer)
             end
+
+            -- NOTE: The commit happens asynchronously
+            if settings.auto_commit_changes() then
+              local file_tool_names = {
+                "create_or_replace_file",
+                "edit_file_section",
+                "str_replace_editor",
+              }
+              local str_replace_editor_commands = { "create", "insert", "str_replace" }
+              local modified_files = {}
+
+              for _, tool_call in ipairs(tool_utils.find_tool_calls({ buffer = prompt_buffer })) do
+                if vim.tbl_contains(file_tool_names, tool_call.name) and tool_call.result and tool_call.result.success then
+                  if tool_call.name ~= "str_replace_editor" or vim.tbl_contains(str_replace_editor_commands, tool_call.parameters.command) then
+                    local path = tool_call.parameters.path
+                    if path then
+                      modified_files[path] = true
+                    end
+                  end
+                end
+              end
+
+              local files_to_commit = vim.tbl_keys(modified_files)
+              if #files_to_commit > 0 then
+                local git = require("llm-sidekick.git")
+
+                git.stage_files(files_to_commit, function()
+                  git.generate_commit_message(files_to_commit, function(commit_message)
+                    git.commit_staged_files(files_to_commit, commit_message)
+                  end)
+                end)
+              end
+            end
           else
             vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
             M.ask(prompt_buffer)
