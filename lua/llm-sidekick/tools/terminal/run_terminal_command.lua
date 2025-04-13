@@ -35,11 +35,31 @@ return {
 
     -- List of commands that are safe to auto-accept
     local safe_commands = {
+      -- File/Directory Operations
       "rg", "fd", "cat", "ls", "exa", "tree", "find", "head", "tail", "grep", "less",
+      "mkdir", "touch", "stat", "diff", "sort", "uniq", "cut", "dirname", "basename",
+      
+      -- Git Operations
       "gh", "git status", "git log", "git diff", "git show", "git branch", "git fetch", "git pull",
-      "pwd", "whoami", "uname", "which", "type", "echo",
+      "git remote", "git tag", "git rev-parse", "git ls-files", "git blame",
+      
+      -- System Information
+      "pwd", "whoami", "uname", "which", "type", "echo", "ps", "df", "du", "uptime", "date", "cal",
+      
+      -- Network Tools
       "curl", "ping", "traceroute", "nslookup", "dig", "host", "netstat",
-      "jq", "wc",
+      
+      -- Data Processing
+      "jq", "wc", "tr", "column",
+      
+      -- Package Managers
+      "npm list", "yarn list", "pip list", "brew list", "cargo list",
+      
+      -- Development Tools
+      "docker ps", "docker images",
+      
+      -- Testing and Linting
+      "make test", "make lint", "luacheck",
     }
 
     vim.list_extend(safe_commands, require("llm-sidekick.settings").safe_terminal_commands())
