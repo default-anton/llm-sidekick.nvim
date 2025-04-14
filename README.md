@@ -133,17 +133,17 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         sonnet = "claude-3-7-sonnet-latest",
         bedrock_sonnet = "anthropic.claude-3-7-sonnet",
         deepseek = "deepseek-chat",
-        gpt4o = "gpt-4o-2024-11-20",
+        chatgpt = "gpt-4.1",
+        mini = "gpt-4.1-mini",
         high_o3_mini = "o3-mini-high",
         low_o3_mini = "o3-mini-low",
-        medium_o3_mini = "o3-mini-medium",
       },
       yolo_mode = {
         file_operations = false, -- Automatically accept file operations
         terminal_commands = false, -- Automatically accept terminal commands
         auto_commit_changes = true,  -- Enable auto-commit
       },
-      auto_commit_model = "gemini-2.0-flash",  -- Use a specific model for commit messages
+      auto_commit_model = "gpt-4.1-mini",  -- Use a specific model for commit messages
       safe_terminal_commands = {"mkdir", "touch", "git commit"} -- List of terminal commands to automatically accept
       guidelines = "", -- Global guidelines that will be added to every chat
       default = "sonnet",
@@ -175,6 +175,9 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `o1-medium`
 - `o1-high`
 - `o1-preview`
+- `gpt-4.1`
+- `gpt-4.1-mini`
+- `gpt-4.1-nano`
 - `gpt-4o`
 - `gpt-4o-2024-11-20`
 - `gpt-4o-2024-08-06`

@@ -21,7 +21,7 @@ By default, the auto-commit feature uses your default LLM model to generate comm
 
 ```lua
 require('llm-sidekick').setup({
-  auto_commit_model = "gpt-4o-mini",  -- Use a specific model for commit messages
+  auto_commit_model = "gpt-4.1-mini",  -- Use a specific model for commit messages
 })
 ```
 

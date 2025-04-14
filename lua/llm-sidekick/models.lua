@@ -136,6 +136,21 @@ return {
     no_system_prompt = true,
     just_chatting = true
   },
+  ["gpt-4.1"] = {
+    name = "openai/gpt-4.1",
+    max_tokens = 16384,
+    temperature = 0.6,
+  },
+  ["gpt-4.1-mini"] = {
+    name = "openai/gpt-4.1-mini",
+    max_tokens = 16384,
+    temperature = 0.6,
+  },
+  ["gpt-4.1-nano"] = {
+    name = "openai/gpt-4.1-nano",
+    max_tokens = 16384,
+    temperature = 0.6,
+  },
   ["gpt-4o"] = {
     name = "openai/gpt-4o",
     max_tokens = 16384,
