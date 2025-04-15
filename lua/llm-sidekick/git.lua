@@ -34,7 +34,10 @@ function M.commit_staged_files(files, commit_message, callback)
 
     utils.log(string.format("Successfully committed files: %s with message: '%s'", table.concat(files, ", "),
       commit_message), vim.log.levels.INFO)
-    if callback then callback() end
+
+    if callback then
+      callback(commit_message)
+    end
   end)
 end
 
@@ -188,6 +191,32 @@ Reply only with the one-line commit message, without any additional text, explan
       callback(commit_message)
     end)
   end)
+end
+
+-- Gets the list of staged files (files added to the index but not yet committed).
+-- @param callback function Callback function with the list of staged file paths (table)
+function M.get_staged_files(callback)
+  require('plenary.job'):new({
+    command = 'git',
+    args = { 'diff', '--cached', '--name-only' },
+    on_exit = function(j, return_val)
+      if return_val > 1 then
+        local stderr = table.concat(j:stderr_result() or {}, "\n")
+        require('llm-sidekick.utils').log(
+          string.format("Failed to get staged files: %s", stderr), vim.log.levels.ERROR)
+        callback({})
+        return
+      end
+      local result = j:result() or {}
+      local files = {}
+      for _, file in ipairs(result) do
+        if file ~= "" then
+          table.insert(files, file)
+        end
+      end
+      callback(files)
+    end,
+  }):start()
 end
 
 return M

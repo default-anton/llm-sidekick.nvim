@@ -656,6 +656,27 @@ end, {
   complete = "file"
 })
 
+-- Command to commit staged changes using LLM for commit messages
+vim.api.nvim_create_user_command("Commit", function()
+  local git = require("llm-sidekick.git")
+  git.get_staged_files(function(staged_files)
+    if #staged_files == 0 then
+      vim.notify("No staged files to commit", vim.log.levels.WARN)
+      return
+    end
+
+    git.generate_commit_message(staged_files, function(generated_message)
+      git.commit_staged_files(staged_files, generated_message, function(commit_message)
+        vim.schedule(function()
+          vim.notify(commit_message, vim.log.levels.INFO)
+        end)
+      end)
+    end)
+  end)
+end, {
+  desc = "Commit staged changes using LLM for commit messages"
+})
+
 -- LLM Sidekick server management commands
 vim.api.nvim_create_user_command("LlmSidekick", function(opts)
   local action = opts.args
