@@ -138,17 +138,17 @@ return {
   },
   ["gpt-4.1"] = {
     name = "openai/gpt-4.1",
-    max_tokens = 16384,
+    max_tokens = 32000,
     temperature = 0.6,
   },
   ["gpt-4.1-mini"] = {
     name = "openai/gpt-4.1-mini",
-    max_tokens = 16384,
+    max_tokens = 32000,
     temperature = 0.6,
   },
   ["gpt-4.1-nano"] = {
     name = "openai/gpt-4.1-nano",
-    max_tokens = 16384,
+    max_tokens = 32000,
     temperature = 0.6,
   },
   ["gpt-4o"] = {
