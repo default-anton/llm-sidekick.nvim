@@ -133,7 +133,8 @@ end
 -- Generates a commit message using the LLM.
 -- @param files table List of file paths that were modified.
 -- @param callback function Callback function with the generated message (string) or nil on error.
-function M.generate_commit_message(files, callback)
+-- @param context string|nil Optional additional context or instructions for the commit message
+function M.generate_commit_message(files, callback, context)
   utils.log("Generating commit message for files: " .. vim.inspect(files), vim.log.levels.DEBUG)
 
   local model_alias = settings.get_auto_commit_model()
@@ -153,6 +154,10 @@ Ensure the commit message:
 - Does not exceed 72 characters.
 
 Reply only with the one-line commit message, without any additional text, explanations, or line breaks.]]
+
+    if context and vim.trim(context) ~= "" then
+      system_prompt = system_prompt .. "\n\nAdditional context for this commit (provided by the user):\n" .. context
+    end
 
     local user_prompt = "`git diff --cached` output:\n" .. diffs
 
