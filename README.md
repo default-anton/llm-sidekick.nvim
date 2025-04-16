@@ -168,6 +168,15 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
 
 ### OpenAI Models
+- `o3-low`
+- `o3-medium`
+- `o3-high`
+- `o4-mini-low`
+- `o4-mini-medium`
+- `o4-mini-high`
+- `gpt-4.1`
+- `gpt-4.1-mini`
+- `gpt-4.1-nano`
 - `o3-mini-low`
 - `o3-mini-medium`
 - `o3-mini-high`
@@ -175,9 +184,6 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `o1-medium`
 - `o1-high`
 - `o1-preview`
-- `gpt-4.1`
-- `gpt-4.1-mini`
-- `gpt-4.1-nano`
 - `gpt-4o`
 - `gpt-4o-2024-11-20`
 - `gpt-4o-2024-08-06`

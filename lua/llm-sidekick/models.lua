@@ -84,8 +84,38 @@ return {
     reasoning = true,
     just_chatting = true,
   },
-  ["o3-mini-low"] = {
+  ["o3-low"] = {
     name = "openai/o3-mini",
+    reasoning_effort = "low", -- can be "low", "medium", "high"
+    temperature = nil,        -- temperature is not supported
+    reasoning = true,
+  },
+  ["o3-medium"] = {
+    name = "openai/o3-mini",
+    reasoning_effort = "medium", -- can be "low", "medium", "high"
+    temperature = nil,           -- temperature is not supported
+    reasoning = true,
+  },
+  ["o3-low"] = {
+    name = "openai/o3-mini",
+    reasoning_effort = "low", -- can be "low", "medium", "high"
+    temperature = nil,        -- temperature is not supported
+    reasoning = true,
+  },
+  ["o4-mini-low"] = {
+    name = "openai/o4-mini",
+    reasoning_effort = "low", -- can be "low", "medium", "high"
+    temperature = nil,        -- temperature is not supported
+    reasoning = true,
+  },
+  ["o4-mini-medium"] = {
+    name = "openai/o4-mini",
+    reasoning_effort = "medium", -- can be "low", "medium", "high"
+    temperature = nil,           -- temperature is not supported
+    reasoning = true,
+  },
+  ["o4-mini-low"] = {
+    name = "openai/o4-mini",
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
