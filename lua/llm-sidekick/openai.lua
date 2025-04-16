@@ -47,11 +47,10 @@ function openai:chat(opts, callback)
 
     local openai_converter = require("llm-sidekick.tools.openai")
     data.tools = vim.tbl_map(function(tool) return openai_converter.convert_spec(tool.spec) end, opts.tools)
-    data.parallel_tool_calls = true
-  end
 
-  if settings.model:find("o3") then
-    data.parallel_tool_calls = nil
+    if settings.parallel_tool_calls then
+      data.parallel_tool_calls = true
+    end
   end
 
   if settings.response_format then

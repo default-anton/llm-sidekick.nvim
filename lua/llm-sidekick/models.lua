@@ -84,9 +84,9 @@ return {
     reasoning = true,
     just_chatting = true,
   },
-  ["o3-low"] = {
+  ["o3-high"] = {
     name = "openai/o3-mini",
-    reasoning_effort = "low", -- can be "low", "medium", "high"
+    reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
   },
@@ -102,35 +102,40 @@ return {
     temperature = nil,        -- temperature is not supported
     reasoning = true,
   },
-  ["o4-mini-low"] = {
+  ["o4-mini-high"] = {
     name = "openai/o4-mini",
-    reasoning_effort = "low", -- can be "low", "medium", "high"
+    reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
+    disable_parallel_tool_calls = true,
   },
   ["o4-mini-medium"] = {
     name = "openai/o4-mini",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
+    disable_parallel_tool_calls = true,
   },
   ["o4-mini-low"] = {
     name = "openai/o4-mini",
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
+    disable_parallel_tool_calls = true,
   },
   ["o3-mini-medium"] = {
     name = "openai/o3-mini",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
+    disable_parallel_tool_calls = true,
   },
   ["o3-mini-high"] = {
     name = "openai/o3-mini",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,         -- temperature is not supported
     reasoning = true,
+    disable_parallel_tool_calls = true,
   },
   ["o3-mini-low-chat"] = {
     name = "openai/o3-mini",
@@ -138,6 +143,7 @@ return {
     temperature = nil,        -- temperature is not supported
     reasoning = true,
     just_chatting = true,
+    disable_parallel_tool_calls = true,
   },
   ["o3-mini-medium-chat"] = {
     name = "openai/o3-mini",
