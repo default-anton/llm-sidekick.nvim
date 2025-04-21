@@ -224,6 +224,11 @@ return {
     top_k = 64,
     temperature = 0.6,
   },
+  ["gemini-2.5-flash"] = {
+    name = "gemini/gemini-2.5-flash-preview-04-17",
+    max_tokens = 65536,
+    temperature = 0.6,
+  },
   ["gemini-2.0-flash"] = {
     name = "gemini/gemini-2.0-flash",
     max_tokens = 8192,
