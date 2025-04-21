@@ -28,7 +28,7 @@ Notes for using the `str_replace_editor` tool:
    * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
 
 2. Command usage patterns:
-   * To view a file: Use `command: "view"` with `path` to the file
+   * To view a file: Use `command: "view"` with `path` to the file (note that output lines are prefixed with line numbers followed by a single space, e.g., "1 import os" where "1 " is the prefix)
    * To view specific lines: Add `view_range: [start_line, end_line]`
    * To create a file: Use `command: "create"` with `path` and `file_text`
    * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`
