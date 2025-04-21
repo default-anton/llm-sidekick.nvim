@@ -77,7 +77,7 @@ function M.get_file_diffs(files, callback)
     return
   end
 
-  local cmd = { "diff", "--cached", "--name-only" }
+  local cmd = { "diff", "--cached", "--name-only", "--" }
   for _, file in ipairs(files) do
     table.insert(cmd, file)
   end
@@ -106,7 +106,7 @@ function M.get_file_diffs(files, callback)
       end
 
       -- Now get the actual diff content for all files at once
-      local diff_cmd = { "diff", "--cached" }
+      local diff_cmd = { "diff", "--cached", "--" }
       for _, file in ipairs(files) do
         table.insert(diff_cmd, file)
       end
