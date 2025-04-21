@@ -438,8 +438,6 @@ function M.ask(prompt_buffer)
             -- NOTE: The commit happens asynchronously
             if settings.auto_commit_changes() then
               local file_tool_names = {
-                "create_or_replace_file",
-                "edit_file_section",
                 "str_replace_editor",
               }
               local str_replace_editor_commands = { "create", "insert", "str_replace" }

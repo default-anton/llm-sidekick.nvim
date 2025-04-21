@@ -27,7 +27,7 @@ require('llm-sidekick').setup({
 
 ## How It Works
 
-1. When the assistant makes changes to files using tools like `str_replace_editor`, `create_or_replace_file`, or `edit_file_section`, these files are tracked.
+1. When the assistant makes changes to files using the `str_replace_editor` tool, these files are tracked.
 2. After all tools have completed execution, if auto-commit is enabled:
    - The changes are staged using `git add`
    - The assistant generates a commit message based on the diffs of the changed files

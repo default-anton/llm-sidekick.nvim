@@ -27,13 +27,8 @@ function openai:chat(opts, callback)
   }
 
   if opts.tools then
-    opts.tools = vim.tbl_filter(function(tool) return tool.spec.name ~= "str_replace_editor" end, opts.tools)
-
     if settings.model:find("anthropic.claude-3-7-sonnet", 1, true) then
-      opts.tools = vim.tbl_filter(
-        function(tool) return tool.spec.name ~= "create_or_replace_file" and tool.spec.name ~= "edit_file_section" end,
-        opts.tools
-      )
+      opts.tools = vim.tbl_filter(function(tool) return tool.spec.name ~= "str_replace_editor" end, opts.tools)
 
       data.additionalModelRequestFields = {
         tools = {

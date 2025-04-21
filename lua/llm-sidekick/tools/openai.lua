@@ -4,8 +4,7 @@ local function convert_spec(spec)
     ["function"] = {
       name = spec.name,
       description = spec.description,
-      strict = true,
-      parameters = vim.tbl_extend("force", spec.input_schema, { additionalProperties = false }),
+      parameters = spec.input_schema,
     }
   }
 end

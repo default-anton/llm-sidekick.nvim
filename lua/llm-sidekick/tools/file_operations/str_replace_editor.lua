@@ -4,8 +4,70 @@ local signs = require("llm-sidekick.signs")
 
 local spec = {
   name = "str_replace_editor",
-  type = "text_editor_20250124"
+  type = "text_editor_20250124",
+  description =
+  "Custom editing tool for viewing, creating and editing files. State is persistent across command calls and discussions with the user. If `path` is a file, `view` displays the result of applying `cat -n`. If `path` is a directory, `view` lists non-hidden files and directories up to 2 levels deep. The `create` command cannot be used if the specified `path` already exists as a file. If a `command` generates a long output, it will be truncated and marked with `<response clipped>`. The `undo_edit` command will revert the last edit made to the file at `path`.",
+  input_schema = {
+    type = "object",
+    properties = {
+      command = {
+        type = "string",
+        enum = { "view", "create", "str_replace", "insert", "undo_edit" },
+        description = "The commands to run. Allowed options are: `view`, `create`, `str_replace`, `insert`, `undo_edit`."
+      },
+      path = {
+        type = "string",
+        description =
+        "Path to file or directory, can be absolute or relative to current working directory. Prefer relative paths when working with files in the current directory, e.g. `file.py` or `src/utils.js`."
+      },
+      old_str = {
+        type = "string",
+        description = "Required parameter of `str_replace` command containing the string in `path` to replace."
+      },
+      new_str = {
+        type = "string",
+        description =
+        "Optional parameter of `str_replace` command containing the new string (if not given, no string will be added). Required parameter of `insert` command containing the string to insert."
+      },
+      file_text = {
+        type = "string",
+        description = "Required parameter of `create` command, with the content of the file to be created."
+      },
+      insert_line = {
+        type = "integer",
+        description =
+        "Required parameter of `insert` command. The `new_str` will be inserted AFTER the line `insert_line` of `path`."
+      },
+      view_range = {
+        type = "array",
+        items = {
+          type = "integer"
+        },
+        description =
+        "Optional parameter of `view` command when `path` points to a file. If none is given, the full file is shown. If provided, the file will be shown in the indicated line number range, e.g. {11, 12} will show lines 11 and 12. Indexing at 1 to start. Setting `{start_line, -1}` shows all lines from `start_line` to the end of the file."
+      }
+    },
+    required = { "command", "path" }
+  }
 }
+
+local json_props = string.format([[{
+  "command": %s,
+  "path": %s,
+  "old_str": %s,
+  "new_str": %s,
+  "file_text": %s,
+  "insert_line": %s,
+  "view_range": %s
+}]],
+  vim.json.encode(spec.input_schema.properties.command),
+  vim.json.encode(spec.input_schema.properties.path),
+  vim.json.encode(spec.input_schema.properties.old_str),
+  vim.json.encode(spec.input_schema.properties.new_str),
+  vim.json.encode(spec.input_schema.properties.file_text),
+  vim.json.encode(spec.input_schema.properties.insert_line),
+  vim.json.encode(spec.input_schema.properties.view_range)
+)
 
 local function find_min_indentation(lines)
   local min_indent = math.huge
@@ -189,6 +251,7 @@ end
 
 return {
   spec = spec,
+  json_props = json_props,
   is_show_diagnostics = function(_) return true end,
   is_auto_acceptable = function(tool_call)
     if tool_call.parameters.command == "view" then
@@ -344,7 +407,7 @@ return {
       local i = 0
       content_lines = vim.tbl_map(function(line)
         i = i + 1
-        return string.format("%d: %s", i, line)
+        return string.format("%d  %s", i, line)
       end, content_lines)
 
       -- Replace the tool call content with success message
