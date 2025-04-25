@@ -32,8 +32,17 @@ end
 
 -- Utility function to convert GitHub blob URLs to raw URLs
 local function convert_github_url(url)
-  return url:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
-    "https://raw.githubusercontent.com/%1/%2/%3/%4")
+  -- Handle root repository URL
+  local converted_url = url:gsub("https://github%.com/([^/]+)/([^/]+)$",
+    "https://raw.githubusercontent.com/%1/%2/HEAD/README.md")
+
+  -- If not a root URL, try handling blob URLs
+  if converted_url == url then
+    converted_url = url:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
+      "https://raw.githubusercontent.com/%1/%2/%3/%4")
+  end
+
+  return converted_url
 end
 
 return {
