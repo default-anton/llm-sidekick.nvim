@@ -85,19 +85,19 @@ return {
     just_chatting = true,
   },
   ["o3-high"] = {
-    name = "openai/o3-mini",
+    name = "openai/o3",
     reasoning_effort = "high", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
   },
   ["o3-medium"] = {
-    name = "openai/o3-mini",
+    name = "openai/o3",
     reasoning_effort = "medium", -- can be "low", "medium", "high"
     temperature = nil,           -- temperature is not supported
     reasoning = true,
   },
   ["o3-low"] = {
-    name = "openai/o3-mini",
+    name = "openai/o3",
     reasoning_effort = "low", -- can be "low", "medium", "high"
     temperature = nil,        -- temperature is not supported
     reasoning = true,
