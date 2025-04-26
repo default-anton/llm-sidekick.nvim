@@ -18,8 +18,8 @@ local function system_prompt(opts)
   if model and model:find("anthropic.claude-3-7-sonnet", 1, true) then
     model_specific_additions = "\n" .. [[
 - Notes for using the `str_replace_editor` tool:
-* Prefer relative paths when working with files in the current working directory and ensure each `old_str` is unique enough to match only the intended section.
-* IMPORTANT: output lines from the `command: "view"` command are prefixed with line numbers %d|%s, e.g., "1|import os" where "1" is the line number and "import os" is the line content). DO NOT USE the line numbers in your `old_str` or `new_str` parameters when editing files.]]
+* Prefer relative paths when working with files in the current working directory
+* Ensure each `old_str` is unique enough to match only the intended section.]]
   else
     model_specific_additions = "\n" .. [[
 - Notes for using the `str_replace_editor` tool:
@@ -28,7 +28,7 @@ local function system_prompt(opts)
    * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique.
    * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
 2. Command usage patterns:
-   * To view a file: Use `command: "view"` with `path` to the file. IMPORTANT: output lines from the "view" command are prefixed with line numbers %d|%s, e.g., "1|import os" where "1" is the line number and "import os" is the line content). DO NOT USE the line numbers in your `old_str` or `new_str` parameters when editing files.
+   * To view a file: Use `command: "view"` with `path` to the file.
    * To view specific lines: Add `view_range: [start_line, end_line]`
    * To create a file: Use `command: "create"` with `path` and `file_text`
    * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`

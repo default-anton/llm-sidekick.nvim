@@ -403,13 +403,6 @@ return {
         end
       end
 
-      -- Add line numbers to the content
-      local i = 0
-      content_lines = vim.tbl_map(function(line)
-        i = i + 1
-        return string.format("%d|%s", i, line)
-      end, content_lines)
-
       -- Replace the tool call content with success message
       local line_count = #content_lines
       local success_message
