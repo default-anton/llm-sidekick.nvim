@@ -407,7 +407,7 @@ return {
       local i = 0
       content_lines = vim.tbl_map(function(line)
         i = i + 1
-        return string.format("%d %s", i, line)
+        return string.format("%d|%s", i, line)
       end, content_lines)
 
       -- Replace the tool call content with success message
