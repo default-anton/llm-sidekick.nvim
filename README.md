@@ -256,15 +256,22 @@ Both commands handle file operations (create/modify/delete) and are available in
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
 
-#### `:Commit`
+#### `:Commit [context]`
 Commits staged changes using an LLM-generated commit message.
 - If you have staged files, this command will use the LLM to generate a descriptive commit message and commit the changes.
 - If there are no staged files, you'll receive a warning notification.
-- No arguments.
+- Optional `[context]`: You can provide additional context (e.g., a ticket number or a brief explanation) that will be passed to the LLM to help generate a more relevant commit message.
 
-**Example:**
+**Examples:**
+
+Commit staged changes automatically:
 ```
 :Commit
+```
+
+Commit staged changes with additional context:
+```
+:Commit Refactor user authentication flow (TICKET-123)
 ```
 
 ## Keybindings
