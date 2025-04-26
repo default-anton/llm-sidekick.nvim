@@ -16,25 +16,24 @@ local function system_prompt(opts)
   -- Model-specific prompt additions
   local model_specific_additions = ""
   if model and model:find("anthropic.claude-3-7-sonnet", 1, true) then
-    model_specific_additions =
-    " When using the `str_replace_editor` tool, prefer relative paths when working with files in the current working directory and ensure each `old_str` is unique enough to match only the intended section."
+    model_specific_additions = "\n" .. [[
+- Notes for using the `str_replace_editor` tool:
+* Prefer relative paths when working with files in the current working directory and ensure each `old_str` is unique enough to match only the intended section.
+* IMPORTANT: output lines from the `command: "view"` command are prefixed with line numbers %d|%s, e.g., "1|import os" where "1" is the line number and "import os" is the line content). DO NOT USE the line numbers in your `old_str` or `new_str` parameters when editing files.]]
   else
-    model_specific_additions = "\n\n" .. [[
-Notes for using the `str_replace_editor` tool:
-
+    model_specific_additions = "\n" .. [[
+- Notes for using the `str_replace_editor` tool:
 1. When using the `str_replace` command:
    * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
    * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique.
    * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
-
 2. Command usage patterns:
-   * To view a file: Use `command: "view"` with `path` to the file (note that output lines are prefixed with line numbers followed by a single space, e.g., "1 import os" where "1 " is the prefix)
+   * To view a file: Use `command: "view"` with `path` to the file. IMPORTANT: output lines from the "view" command are prefixed with line numbers %d|%s, e.g., "1|import os" where "1" is the line number and "import os" is the line content). DO NOT USE the line numbers in your `old_str` or `new_str` parameters when editing files.
    * To view specific lines: Add `view_range: [start_line, end_line]`
    * To create a file: Use `command: "create"` with `path` and `file_text`
    * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`
    * To insert text: Use `command: "insert"` with `path`, `insert_line`, and `new_str`
    * To undo the last edit: Use `command: "undo_edit"` with `path`
-
 3. Best practices:
    * Always view a file before attempting to modify it
    * When replacing text, include enough context in `old_str` to ensure uniqueness
