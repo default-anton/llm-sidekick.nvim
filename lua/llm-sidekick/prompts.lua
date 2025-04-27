@@ -29,16 +29,37 @@ local function system_prompt(opts)
    * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
 2. Command usage patterns:
    * To view a file: Use `command: "view"` with `path` to the file.
-   * To view specific lines: Add `view_range: [start_line, end_line]`
    * To create a file: Use `command: "create"` with `path` and `file_text`
    * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`
-   * To insert text: Use `command: "insert"` with `path`, `insert_line`, and `new_str`
-   * To undo the last edit: Use `command: "undo_edit"` with `path`
 3. Best practices:
    * Always view a file before attempting to modify it
    * When replacing text, include enough context in `old_str` to ensure uniqueness
    * Prefer relative paths when working with files in the current working directory
    * Use the `view` command with directories to explore the file structure]]
+  end
+
+  if model and model:find("gemini", 1, true) then
+    model_specific_additions = model_specific_additions .. [[
+
+Here's an example of the `str_replace_editor` tool usage in JSON format:
+
+```json
+{
+  "tool_name": "str_replace_editor",
+  "parameters": {
+    "command": "create",
+    "path": "hello_world.py",
+    "file_text": "def hello_world():\n    print(\"Hello, World!\")"
+  }
+}
+```
+
+This JSON represents a tool call that would create a new file named `hello_world.py` containing the following content:
+
+```python
+def hello_world():
+    print("Hello, World!")
+```]]
   end
 
   local prompt = [[
