@@ -11,39 +11,55 @@ local spec = {
         type = "string",
         description = "The URL of the web page to fetch content from"
       },
-      max_chars = {
+      max_words = {
         type = "integer",
-        description = "Maximum number of characters to return. Default is 25000",
+        description = "Maximum number of words to return. Default is 32000",
       }
     },
-    required = { "url", "max_chars" },
+    required = { "url", "max_words" },
   }
 }
 
 local json_props = string.format([[{
   "url": %s,
-  "max_chars": %s
-}]], vim.json.encode(spec.input_schema.properties.url), vim.json.encode(spec.input_schema.properties.max_chars))
+  "max_words": %s
+}]], vim.json.encode(spec.input_schema.properties.url), vim.json.encode(spec.input_schema.properties.max_words))
 
--- Utility function to check if URL is a GitHub URL
 local function is_github_url(url)
-  return url:match("^https?://github%.com") or url:match("^https?://raw%.githubusercontent%.com")
+  return url:match("^https?://github%.com")
 end
 
--- Utility function to convert GitHub blob URLs to raw URLs
-local function convert_github_url(url)
-  -- Handle root repository URL
-  local converted_url = url:gsub("https://github%.com/([^/]+)/([^/]+)$",
-    "https://raw.githubusercontent.com/%1/%2/HEAD/README.md")
-
-  -- If not a root URL, try handling blob URLs
-  if converted_url == url then
-    converted_url = url:gsub("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)",
-      "https://raw.githubusercontent.com/%1/%2/%3/%4")
+local function is_plain_url(url)
+  if url:match("^https?://raw%.githubusercontent%.com") then
+    return true
   end
 
-  return converted_url
+  -- Check if the URL ends with common plain text file extensions
+  local plain_text_extensions = {
+    "%.txt", "%.json",
+  }
+
+  for _, ext in ipairs(plain_text_extensions) do
+    if url:match(ext .. "$") then
+      return true
+    end
+  end
+
+  return false
 end
+
+-- Utility function to convert GitHub URLs to uithub.com URLs
+local function convert_github_url(url, max_words)
+  local converted_url = url:gsub("https://github%.com", "https://uithub.com")
+
+  if converted_url:match("?.*$") then
+    return converted_url .. string.format("&accept=text/markdown&maxTokens=%d", max_words)
+  else
+    return converted_url .. string.format("?accept=text/markdown&maxTokens=%d", max_words)
+  end
+end
+
+local AVG_CHARS_PER_WORD = 6
 
 return {
   spec = spec,
@@ -69,7 +85,7 @@ return {
   end,
   -- Execute the fetch asynchronously
   run = function(tool_call, opts)
-    local max_chars = tool_call.parameters.max_chars or 25000
+    local max_words = tool_call.parameters.max_words or 32000
     local url = vim.trim(tool_call.parameters.url or "")
     if url == "" then
       error("Empty URL provided")
@@ -79,7 +95,9 @@ return {
 
     local fetch_url = url
     if is_github_url(url) then
-      fetch_url = convert_github_url(url)
+      fetch_url = convert_github_url(url, max_words)
+    elseif is_plain_url(url) then
+      fetch_url = url
     else
       fetch_url = 'https://r.jina.ai/' .. url
     end
@@ -101,6 +119,7 @@ return {
         if return_val == 0 and #output > 0 then
           tool_call.state.result.success = true
           local full_content = table.concat(output, "\n")
+          local max_chars = max_words * AVG_CHARS_PER_WORD
           tool_call.state.result.result = full_content:sub(1, max_chars)
         else
           tool_call.state.result.success = false
