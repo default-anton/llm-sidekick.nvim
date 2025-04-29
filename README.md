@@ -33,6 +33,7 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 - `:Accept` - Accept tool under the cursor
 - `:AcceptAll` - Accept all tools in the last assistant message
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
+- `:Commit` - Generate commit messages for staged changes
 - `:Stt` - Use speech-to-text input instead of typing
 
 ## Built-in Keybindings
