@@ -637,7 +637,23 @@ vim.api.nvim_create_user_command("Add", function(opts)
     end
   end
 
-  if not opts.fargs or vim.tbl_isempty(opts.fargs) then
+  -- If the command is executed from the quickfix window, add all files from the list
+  local wininfo = vim.fn.getwininfo(vim.api.nvim_get_current_win())[1]
+  if wininfo and wininfo.quickfix == 1 then
+    local qflist = vim.fn.getqflist()
+    local processed = {}
+    for _, item in ipairs(qflist) do
+      local file_path = item.filename
+      if (not file_path or file_path == "") and item.bufnr and item.bufnr > 0 then
+        file_path = vim.fn.bufname(item.bufnr)
+      end
+      if file_path and file_path ~= "" and not processed[file_path] then
+        processed[file_path] = true
+        local qf_opts = { args = file_path, fargs = {}, range = 0, line1 = 0, line2 = 0 }
+        get_content(qf_opts, insert_content)
+      end
+    end
+  elseif not opts.fargs or vim.tbl_isempty(opts.fargs) then
     get_content(opts, insert_content)
   else
     for _, arg in ipairs(opts.fargs) do
