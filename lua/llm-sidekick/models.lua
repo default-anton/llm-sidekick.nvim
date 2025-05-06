@@ -213,15 +213,8 @@ return {
     temperature = 0.3,
   },
   ["gemini-2.5-pro"] = {
-    name = "gemini/gemini-2.5-pro-preview-03-25",
+    name = "gemini/gemini-2.5-pro-preview-05-06",
     max_tokens = 65536,
-    top_k = 64,
-    temperature = 0.6,
-  },
-  ["gemini-2.5-pro-exp"] = {
-    name = "gemini/gemini-2.5-pro-exp-03-25",
-    max_tokens = 65536,
-    top_k = 64,
     temperature = 0.6,
   },
   ["gemini-2.5-flash"] = {
@@ -232,13 +225,11 @@ return {
   ["gemini-2.0-flash"] = {
     name = "gemini/gemini-2.0-flash",
     max_tokens = 8192,
-    top_k = 40,
     temperature = 0.6,
   },
   ["gemini-2.0-flash-thinking-chat"] = {
     name = "gemini/gemini-2.0-flash-thinking-exp-01-21",
     max_tokens = 65536,
-    top_k = 64,
     temperature = 0.7,
     reasoning = true,
     just_chatting = true
@@ -246,13 +237,11 @@ return {
   ["gemini-2.0-flash-exp"] = {
     name = "gemini/gemini-2.0-flash-exp",
     max_tokens = 8192,
-    top_k = 40,
     temperature = 0.6,
   },
   ["gemini-2.0-flash-lite"] = {
     name = "gemini/gemini-2.0-flash-lite",
     max_tokens = 8192,
-    top_k = 40,
     temperature = 0.6,
   },
   ["deepseek-r1-distill-llama-70b"] = {

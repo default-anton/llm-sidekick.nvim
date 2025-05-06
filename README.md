@@ -162,7 +162,6 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ### Google Gemini Models
 - Gemini 2.5 Pro `gemini-2.5-pro`
-- Gemini 2.5 Pro Experimental `gemini-2.5-pro-exp`
 - Gemini 2.5 Flash `gemini-2.5-flash`
 - Gemini 2.0 Flash `gemini-2.0-flash`
 - Gemini 2.0 Flash Thinking `gemini-2.0-flash-thinking-chat`

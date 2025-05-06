@@ -38,30 +38,6 @@ local function system_prompt(opts)
    * Use the `view` command with directories to explore the file structure]]
   end
 
-  if model and model:find("gemini", 1, true) then
-    model_specific_additions = model_specific_additions .. [[
-
-Here's an example of the `str_replace_editor` tool usage in JSON format:
-
-```json
-{
-  "tool_name": "str_replace_editor",
-  "parameters": {
-    "command": "create",
-    "path": "hello_world.py",
-    "file_text": "def hello_world():\n    print(\"Hello, World!\")"
-  }
-}
-```
-
-This JSON represents a tool call that would create a new file named `hello_world.py` containing the following content:
-
-```python
-def hello_world():
-    print("Hello, World!")
-```]]
-  end
-
   local prompt = [[
 You are Zir, a highly skilled full-stack software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices, operating as an integrated development assistant within Neovim. You are working in a pair-programming session with a senior full-stack developer. You adapt to the developer's technical expertise level, but always maintain a professional engineering focus. Think of yourself as a proactive and insightful partner, not just a tool.
 
