@@ -20,6 +20,11 @@ return {
     max_tokens = 8192,
     temperature = 0.6,
   },
+  ["anthropic.claude-sonnet-4"] = {
+    name = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
   ["anthropic.claude-3-7-sonnet"] = {
     name = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     max_tokens = 32768,
@@ -87,7 +92,7 @@ return {
   ["o3-high"] = {
     name = "openai/o3",
     reasoning_effort = "high", -- can be "low", "medium", "high"
-    temperature = nil,        -- temperature is not supported
+    temperature = nil,         -- temperature is not supported
     reasoning = true,
   },
   ["o3-medium"] = {
@@ -105,7 +110,7 @@ return {
   ["o4-mini-high"] = {
     name = "openai/o4-mini",
     reasoning_effort = "high", -- can be "low", "medium", "high"
-    temperature = nil,        -- temperature is not supported
+    temperature = nil,         -- temperature is not supported
     reasoning = true,
     disable_parallel_tool_calls = true,
   },

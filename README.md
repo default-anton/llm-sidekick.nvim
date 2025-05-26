@@ -159,6 +159,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `claude-3-7-sonnet-latest`
 - `claude-3-5-sonnet-latest`
 - `claude-3-5-haiku-latest`
+- `anthropic.claude-sonnet-4`
 
 ### Google Gemini Models
 - Gemini 2.5 Pro `gemini-2.5-pro`
