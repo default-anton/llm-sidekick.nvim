@@ -13,6 +13,7 @@ AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
 - [Installation](#installation)
 - [Supported Models](#supported-models)
   - [Anthropic Claude Models](#anthropic-claude-models)
+  - [Amazon Bedrock Models](#amazon-bedrock-models)
   - [Google Gemini Models](#google-gemini-models)
   - [OpenAI Models](#openai-models)
   - [DeepSeek AI Models](#deepseek-ai-models)
@@ -159,7 +160,15 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `claude-3-7-sonnet-latest`
 - `claude-3-5-sonnet-latest`
 - `claude-3-5-haiku-latest`
+
+### Amazon Bedrock Models
 - `anthropic.claude-sonnet-4`
+- `anthropic.claude-opus-4`
+- `anthropic.claude-3-7-sonnet`
+- `anthropic.claude-3-5-sonnet-20241022-v2:0`
+- `anthropic.claude-3-5-sonnet-20240620-v1:0`
+- `anthropic.claude-3-5-haiku-20241022-v1:0`
+- `anthropic.claude-3-haiku-20240307-v1:0`
 
 ### Google Gemini Models
 - Gemini 2.5 Pro `gemini-2.5-pro`

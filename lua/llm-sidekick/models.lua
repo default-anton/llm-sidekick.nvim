@@ -45,6 +45,11 @@ return {
     max_tokens = 8192,
     temperature = 0.6,
   },
+  ["anthropic.claude-opus-4"] = {
+    name = "bedrock/us.anthropic.claude-opus-4-20250514-v1:0",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
   ["anthropic.claude-3-haiku-20240307-v1:0"] = {
     name = "bedrock/anthropic.claude-3-haiku-20240307-v1:0",
     max_tokens = 4096,
