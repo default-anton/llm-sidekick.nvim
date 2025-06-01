@@ -132,7 +132,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       aliases = {
         pro = "gemini-2.5-pro",
         flash = "gemini-2.0-flash",
-    sonnet = "anthropic.claude-sonnet-4-20250514",
+    sonnet = "claude-sonnet-4-20250514",
         bedrock_sonnet = "anthropic.claude-3-7-sonnet",
         deepseek = "deepseek-chat",
         chatgpt = "gpt-4.1",
@@ -157,15 +157,15 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ## Supported Models
 
 ### Anthropic Claude Models
+- `claude-opus-4-20250514`
+- `claude-sonnet-4-20250514`
 - `claude-3-7-sonnet-latest`
 - `claude-3-5-sonnet-latest`
 - `claude-3-5-haiku-latest`
 
 ### Amazon Bedrock Models
 - `anthropic.claude-sonnet-4`
-- `anthropic.claude-sonnet-4-20250514`
 - `anthropic.claude-opus-4`
-- `anthropic.claude-opus-4-20250514`
 - `anthropic.claude-3-7-sonnet`
 - `anthropic.claude-3-5-sonnet-20241022-v2:0`
 - `anthropic.claude-3-5-sonnet-20240620-v1:0`
