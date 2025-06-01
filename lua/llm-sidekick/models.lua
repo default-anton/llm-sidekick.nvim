@@ -25,6 +25,11 @@ return {
     max_tokens = 32768,
     temperature = 0.6,
   },
+  ["anthropic.claude-sonnet-4-20250514"] = {
+    name = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
   ["anthropic.claude-3-7-sonnet"] = {
     name = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     max_tokens = 32768,
@@ -46,6 +51,11 @@ return {
     temperature = 0.6,
   },
   ["anthropic.claude-opus-4"] = {
+    name = "bedrock/us.anthropic.claude-opus-4-20250514-v1:0",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
+  ["anthropic.claude-opus-4-20250514"] = {
     name = "bedrock/us.anthropic.claude-opus-4-20250514-v1:0",
     max_tokens = 32768,
     temperature = 0.6,
