@@ -5,6 +5,16 @@ return {
     -- https://api-docs.deepseek.com/quick_start/parameter_settings
     temperature = 0.0,
   },
+  ["claude-opus-4-20250514"] = {
+    name = "anthropic/claude-opus-4-20250514",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
+  ["claude-sonnet-4-20250514"] = {
+    name = "anthropic/claude-sonnet-4-20250514",
+    max_tokens = 32768,
+    temperature = 0.6,
+  },
   ["claude-3-7-sonnet-latest"] = {
     name = "anthropic/claude-3-7-sonnet-latest",
     max_tokens = 32768,
