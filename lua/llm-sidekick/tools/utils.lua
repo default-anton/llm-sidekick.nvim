@@ -484,7 +484,6 @@ M.run_tool_calls_in_last_assistant_message = function(opts)
   local tool_calls = M.get_tool_calls_in_last_assistant_message({ buffer = buffer })
   tool_calls = vim.tbl_filter(function(tc) return tc.result == nil end, tool_calls)
   if #tool_calls == 0 then
-    opts.callback()
     return
   end
 
