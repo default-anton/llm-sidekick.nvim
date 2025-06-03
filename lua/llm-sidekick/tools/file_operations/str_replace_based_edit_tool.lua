@@ -236,13 +236,14 @@ end
 return {
   spec = spec,
   json_props = json_props,
-  is_show_diagnostics = function(_) return true end,
-  is_auto_acceptable = function(tool_call)
+  is_show_diagnostics = function() return true end,
+  is_auto_acceptable = function(tool_call, buffer)
     if tool_call.parameters.command == "view" then
       return true
     end
 
-    return require("llm-sidekick.settings").auto_accept_file_operations()
+    return require("llm-sidekick.tools.utils").is_auto_accept_edits(buffer) or
+        require("llm-sidekick.settings").auto_accept_file_operations()
   end,
   stop = function(tool_call, opts)
     if tool_call.parameters.command == "view" then

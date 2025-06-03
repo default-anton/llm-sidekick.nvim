@@ -4,11 +4,19 @@ local file_editor = require("llm-sidekick.file_editor")
 
 local M = {}
 
-M.is_auto_acceptable = function(tool_call)
+M.is_auto_acceptable = function(tool_call, buffer)
   if not tool_call.tool or not tool_call.tool.is_auto_acceptable then
     return false
   end
-  return tool_call.tool.is_auto_acceptable(tool_call)
+  return tool_call.tool.is_auto_acceptable(tool_call, buffer)
+end
+
+M.toggle_auto_accept_edits = function(buffer)
+  vim.b[buffer].llm_sidekick_auto_accept_edits = not vim.b[buffer].llm_sidekick_auto_accept_edits
+end
+
+M.is_auto_accept_edits = function(buffer)
+  return not not vim.b[buffer].llm_sidekick_auto_accept_edits
 end
 
 -- Queue management functions
@@ -169,7 +177,7 @@ local function maybe_queue_next_auto_acceptable_tools(completed_tool, buffer)
     if completed_tool.id == tool_call.id then
       found_completed_tool = true
     elseif found_completed_tool then
-      if M.is_auto_acceptable(tool_call) then
+      if M.is_auto_acceptable(tool_call, buffer) then
         M.queue_tool_call(tool_call, { buffer = buffer })
       else
         break
@@ -213,7 +221,7 @@ M.run_auto_acceptable_tools_with_callback = function(tool_calls, opts, callback)
 
   -- Find the first non-auto-acceptable tool
   for i, tool_call in ipairs(tool_calls) do
-    if not tool_call.result and not M.is_auto_acceptable(tool_call) then
+    if not tool_call.result and not M.is_auto_acceptable(tool_call, opts.buffer) then
       first_non_auto = i
       break
     end
@@ -222,13 +230,13 @@ M.run_auto_acceptable_tools_with_callback = function(tool_calls, opts, callback)
   -- Create a filter function that only accepts tools before the first non-auto-acceptable one
   local filter_fn = function(tool_call)
     if not first_non_auto then
-      return M.is_auto_acceptable(tool_call)
+      return M.is_auto_acceptable(tool_call, opts.buffer)
     end
 
     -- Find the index of this tool_call
     for i, tc in ipairs(tool_calls) do
       if tc.id == tool_call.id then
-        return i < first_non_auto and M.is_auto_acceptable(tool_call)
+        return i < first_non_auto and M.is_auto_acceptable(tool_call, opts.buffer)
       end
     end
 

@@ -534,7 +534,7 @@ local function create_apply_modifications_command(buffer)
         local requires_user_input = vim.tbl_contains(
           tool_calls,
           function(tc)
-            return tc.result == nil and not tool_utils.is_auto_acceptable(tc)
+            return tc.result == nil and not tool_utils.is_auto_acceptable(tc, buffer)
           end,
           { predicate = true }
         )
@@ -570,6 +570,17 @@ local function create_apply_modifications_command(buffer)
     { desc = "Accept all tools in the last assistant message" }
   )
 
+  vim.api.nvim_buf_create_user_command(
+    buffer,
+    "ToggleAcceptEdits",
+    function()
+      local tool_utils = require 'llm-sidekick.tools.utils'
+      tool_utils.toggle_auto_accept_edits(buffer)
+      run_tool_calls_in_last_assistant_message()
+    end,
+    { desc = "Toggle auto-accept edits in the current buffer" }
+  )
+
   vim.keymap.set(
     'n',
     '<leader>aa',
@@ -581,6 +592,16 @@ local function create_apply_modifications_command(buffer)
     '<leader>A',
     run_tool_calls_in_last_assistant_message,
     { buffer = buffer, desc = "Accept all tools in the last assistant message" }
+  )
+  vim.keymap.set(
+    'n',
+    '<leader>at',
+    function()
+      local tool_utils = require 'llm-sidekick.tools.utils'
+      tool_utils.toggle_auto_accept_edits(buffer)
+      run_tool_calls_in_last_assistant_message()
+    end,
+    { buffer = buffer, desc = "Toggle auto-accept edits in the current buffer" }
   )
 end
 
