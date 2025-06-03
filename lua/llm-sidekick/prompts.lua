@@ -1,5 +1,8 @@
+local fs = require("llm-sidekick.fs")
+
 --- Generates the system prompt for the LLM assistant
 --- @param opts table Configuration options for the system prompt
+--- @field buf number The buffer number where the prompt will be used
 --- @field os_name string? The operating system name (defaults to "macOS")
 --- @field shell string? The shell being used (defaults to "bash")
 --- @field cwd string The current working directory
@@ -13,29 +16,59 @@ local function system_prompt(opts)
   local just_chatting = opts.just_chatting
   local model = opts.model
 
+  local project_instructions = {}
+
+  if not just_chatting then -- Only load CLAUDE.md files if not in "just_chatting" mode
+    local claude_files = fs.find_claude_md_files({ buf = opts.buf, start_dir = cwd })
+
+    for _, filepath in ipairs(claude_files) do
+      local content = fs.read_file(filepath)
+      if content and content ~= "" then
+        table.insert(project_instructions, "````" .. filepath .. "\n" .. content .. "\n````")
+      end
+    end
+  end
+
+  if #project_instructions > 0 then
+    -- insert at the beginning of the file content
+    table.insert(project_instructions, 1,
+      "# Project-Specific Instructions\nFollow them to the best of your ability:")
+  end
+
+  local project_instructions_str = table.concat(project_instructions, "\n\n")
+
+  local str_replace_editor_tool_name = "str_replace_editor"
+  if model:find("claude-opus-4", 1, true) or model:find("claude-sonnet-4", 1, true) then
+    str_replace_editor_tool_name = "str_replace_based_edit_tool"
+  end
+
   -- Model-specific prompt additions
   local model_specific_additions = ""
-  if model and model:find("anthropic.claude-3-7-sonnet", 1, true) then
+  local tool_behavior_note = "\n" .. [[
+- Note on file operations: When using `]] .. str_replace_editor_tool_name .. [[` to view or edit files, any relevant project instructions will be automatically loaded. Their content will be provided to you separately from the actual file content to give you project-specific guidelines or context. Follow these instructions carefully to align with the project's requirements and conventions.]]
+
+  if model and model:find("claude-3-7-sonnet", 1, true) or model:find("claude-opus-4", 1, true) or
+      model:find("claude-sonnet-4", 1, true) then
     model_specific_additions = "\n" .. [[
-- Notes for using the `str_replace_editor` tool:
-* Prefer relative paths when working with files in the current working directory
-* Ensure each `old_str` is unique enough to match only the intended section.]]
+- Notes for using the `]] .. str_replace_editor_tool_name .. [[` tool:
+  * Prefer relative paths when working with files in the current working directory.
+  * Ensure each `old_str` is unique enough to match only the intended section.]] .. tool_behavior_note
   else
     model_specific_additions = "\n" .. [[
-- Notes for using the `str_replace_editor` tool:
-1. When using the `str_replace` command:
-   * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
-   * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique.
-   * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
-2. Command usage patterns:
-   * To view a file: Use `command: "view"` with `path` to the file.
-   * To create a file: Use `command: "create"` with `path` and `file_text`
-   * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`
-3. Best practices:
-   * Always view a file before attempting to modify it
-   * When replacing text, include enough context in `old_str` to ensure uniqueness
-   * Prefer relative paths when working with files in the current working directory
-   * Use the `view` command with directories to explore the file structure]]
+- Notes for using the `]] .. str_replace_editor_tool_name .. [[` tool:
+  1. When using the `str_replace` command:
+     * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
+     * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique.
+     * The `new_str` parameter should contain the edited lines that should replace the `old_str`.
+  2. Command usage patterns:
+     * To view a file: Use `command: "view"` with `path` to the file.
+     * To create a file: Use `command: "create"` with `path` and `file_text`
+     * To replace text: Use `command: "str_replace"` with `path`, `old_str`, and `new_str`
+  3. Best practices:
+     * Always view a file before attempting to modify it
+     * When replacing text, include enough context in `old_str` to ensure uniqueness
+     * Prefer relative paths when working with files in the current working directory
+     * Use the `view` command with directories to explore the file structure]] .. tool_behavior_note
   end
 
   local prompt = [[
@@ -72,18 +105,21 @@ Your primary purpose is to collaborate with the user on software development tas
       (just_chatting and "" or [[
 
 - Structured Conclusions: As your collaborative partner, you will always conclude your responses thoughtfully. This means ending with either:
-  - Verification Questions: Ensure mutual understanding by asking targeted questions about the work completed
   - Important Considerations: Raise alerts about potential issues or critical factors that need attention
   - Next Steps: Offer constructive suggestions for improvements or future actions]]) ..
       [[
 
-# System Information
 
+# System Information
 Operating System: ]] .. os_name .. [[
 
 Default Shell: ]] .. shell .. [[
 
 Current Working Directory: ]] .. cwd .. "\n"
+
+  if project_instructions_str and project_instructions_str ~= "" then
+    prompt = prompt .. "\n" .. project_instructions_str .. "\n"
+  end
 
   return prompt
 end

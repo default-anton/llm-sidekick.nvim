@@ -1,6 +1,7 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
 local signs = require("llm-sidekick.signs")
+local fs = require("llm-sidekick.fs")
 
 local spec = {
   name = "str_replace_based_edit_tool",
@@ -345,7 +346,33 @@ return {
           { success_message }
         )
 
-        return table.concat(entries, "\n")
+        local project_instructions = {}
+        local file_dir = vim.fn.fnamemodify(path, ":p:h")
+
+        local claude_files = fs.find_claude_md_files({
+          buf = opts.buffer,
+          start_dir = file_dir,
+          stop_at_dir = vim.fn.getcwd(),
+        })
+
+        for _, claude_path in ipairs(claude_files) do
+          local content = fs.read_file(claude_path)
+          if content and content ~= "" then
+            table.insert(project_instructions, "````" .. claude_path .. "\n" .. content .. "\n````")
+          end
+        end
+
+        if #project_instructions > 0 then
+          table.insert(project_instructions, 1,
+            "If the following project instructions are relevant, follow them to the best of your ability.")
+
+          return {
+            project_instructions = table.concat(project_instructions, "\n\n"),
+            directories = table.concat(entries, "\n")
+          }
+        else
+          return table.concat(entries, "\n")
+        end
       end
 
       -- Handle file viewing
@@ -394,7 +421,33 @@ return {
         { success_message }
       )
 
-      return table.concat(content_lines, "\n")
+      local project_instructions = {}
+      local file_dir = vim.fn.fnamemodify(path, ":p:h")
+
+      local claude_files = fs.find_claude_md_files({
+        buf = opts.buffer,
+        start_dir = file_dir,
+        stop_at_dir = vim.fn.getcwd(),
+      })
+
+      for _, claude_path in ipairs(claude_files) do
+        local content = fs.read_file(claude_path)
+        if content and content ~= "" then
+          table.insert(project_instructions, "````" .. claude_path .. "\n" .. content .. "\n````")
+        end
+      end
+
+      if #project_instructions > 0 then
+        table.insert(project_instructions, 1,
+          "If the following project instructions are relevant, follow them to the best of your ability.")
+
+        return {
+          project_instructions = table.concat(project_instructions, "\n\n"),
+          file_content = table.concat(content_lines, "\n")
+        }
+      else
+        return table.concat(content_lines, "\n")
+      end
     elseif tool_call.parameters.command == "str_replace" then
       local path = vim.trim(tool_call.parameters.path or "")
       local search = tool_call.parameters.old_str

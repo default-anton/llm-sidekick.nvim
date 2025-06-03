@@ -247,6 +247,12 @@ local ask_command = function()
       prompt_settings.temperature = model_settings.temperature
     end
 
+    local buf = vim.api.nvim_create_buf(true, true)
+    vim.bo[buf].buftype = "nofile"
+    vim.b[buf].is_llm_sidekick_chat = true
+    vim.g.llm_sidekick_last_chat_buffer = buf
+    vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
+
     local prompt = ""
     if is_llm_sidekick_chat_file(0) and not vim.b.is_llm_sidekick_chat then
       prompt = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
@@ -256,6 +262,7 @@ local ask_command = function()
       end
 
       local system_prompt = prompts.system_prompt({
+        buf = buf,
         os_name = utils.get_os_name(),
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
@@ -302,12 +309,6 @@ The following additional instructions are provided by the user, and should be fo
       prompt = prompt .. "SYSTEM: " .. system_prompt
       prompt = prompt .. "\nUSER: "
     end
-
-    local buf = vim.api.nvim_create_buf(true, true)
-    vim.bo[buf].buftype = "nofile"
-    vim.b[buf].is_llm_sidekick_chat = true
-    vim.g.llm_sidekick_last_chat_buffer = buf
-    vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
 
     local lines = vim.split(prompt, "[\r]?\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
