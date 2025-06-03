@@ -41,6 +41,7 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 
 - `<C-c>` (Ctrl-C) - Cancel/stop the current model generation. This is a built-in keybinding that cannot be overridden.
 - `<leader>aa` - Accept the suggestion under the cursor. This is a built-in keybinding that provides quick access to the `:Accept` command.
+- `<leader>at` - Toggle auto-accept edits in the current buffer. Quickly enables or disables auto-accept mode for suggested edits.
 - `<leader>A` - Accept all suggestions in the last assistant message. This is a built-in keybinding that provides quick access to the `:AcceptAll` command.
 
 The plugin is designed to be fast, stay out of your way, and integrate naturally with your Neovim workflow. It supports multiple AI models and lets you choose between quick responses or deep reasoning based on your needs.
@@ -267,6 +268,12 @@ Applies a single change from the LLM response at the current cursor position. Us
 Applies all changes from the LLM response at once. Use for bulk, consistent modifications.
 
 Both commands handle file operations (create/modify/delete) and are available in `:Chat` buffers.
+
+#### `:ToggleAcceptEdits`
+Toggles the auto-accept edits mode for the current buffer. When enabled, edits suggested by the assistant will be automatically accepted without prompting for manual approval. Useful for faster workflows when you trust the assistant or are rapidly iterating on changes.
+
+- Can be toggled on/off at any time in buffers managed by llm-sidekick.nvim.
+- Use the corresponding keybinding `<leader>at` for quick access.
 
 #### `:Stt`
 Starts speech-to-text recording at the current cursor position. Shows a floating window with recording status. Press Enter to stop recording and insert the transcribed text, or press q to cancel. Works in both normal and insert modes.
