@@ -331,7 +331,6 @@ The following additional instructions are provided by the user, and should be fo
       "<CR>",
       function()
         vim.cmd('stopinsert!')
-        vim.b[buf].llm_sidekick_max_turns_without_user_input = nil
         llm_sidekick.ask(buf)
       end,
       { buffer = buf, nowait = true, noremap = true, silent = true }

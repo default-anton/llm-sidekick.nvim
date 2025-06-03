@@ -1,15 +1,13 @@
-local chat                   = require "llm-sidekick.chat"
-local message_types          = require "llm-sidekick.message_types"
-local fs                     = require "llm-sidekick.fs"
-local settings               = require "llm-sidekick.settings"
-local diagnostic             = require("llm-sidekick.diagnostic")
-local tool_utils             = require("llm-sidekick.tools.utils")
-local utils                  = require("llm-sidekick.utils")
-local spinner                = require("llm-sidekick.spinner")
+local chat          = require "llm-sidekick.chat"
+local message_types = require "llm-sidekick.message_types"
+local fs            = require "llm-sidekick.fs"
+local settings      = require "llm-sidekick.settings"
+local diagnostic    = require("llm-sidekick.diagnostic")
+local tool_utils    = require("llm-sidekick.tools.utils")
+local utils         = require("llm-sidekick.utils")
+local spinner       = require("llm-sidekick.spinner")
 
-MAX_TURNS_WITHOUT_USER_INPUT = 25
-
-local M                      = {}
+local M             = {}
 
 function M.setup(opts)
   settings.setup(opts or {})
@@ -232,10 +230,6 @@ function M.parse_prompt(prompt, buffer)
 end
 
 function M.ask(prompt_buffer)
-  local max_turns_without_user_input = vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input or
-      MAX_TURNS_WITHOUT_USER_INPUT
-  vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input
-
   local buf_lines = vim.api.nvim_buf_get_lines(prompt_buffer, 0, -1, false)
 
   local file_editor = require("llm-sidekick.file_editor")
@@ -467,9 +461,7 @@ function M.ask(prompt_buffer)
           )
           local no_tool_calls = vim.tbl_isempty(last_assistant_tool_calls)
 
-          max_turns_without_user_input = vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input
-
-          if no_tool_calls or has_pending_tools or max_turns_without_user_input <= 0 or model_settings.just_chatting then
+          if no_tool_calls or has_pending_tools or model_settings.just_chatting then
             local last_two_lines = vim.api.nvim_buf_get_lines(prompt_buffer, -3, -1, false)
             if last_two_lines[#last_two_lines] == "" then
               if last_two_lines[1] == "" then
@@ -512,7 +504,6 @@ function M.ask(prompt_buffer)
               end
             end
           else
-            vim.b[prompt_buffer].llm_sidekick_max_turns_without_user_input = max_turns_without_user_input - 1
             M.ask(prompt_buffer)
           end
         end)
