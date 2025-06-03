@@ -116,11 +116,8 @@ return {
   end,
   -- Initialize the command execution display
   start = function(tool_call, opts)
-    chat.paste_at_end("**Execute:** ``", opts.buffer)
-    tool_call.state.command_line = vim.api.nvim_buf_line_count(opts.buffer)
-
-    chat.paste_at_end("\n> ", opts.buffer)
-    tool_call.state.explanation_line = vim.api.nvim_buf_line_count(opts.buffer)
+    chat.paste_at_end(string.format("**%s**\n", vim.fn.fnamemodify(vim.o.shell or "bash", ":t")), opts.buffer)
+    tool_call.state.command_closed = false
   end,
   -- Handle incremental updates for streaming command and output
   delta = function(tool_call, opts)
@@ -129,19 +126,35 @@ return {
     local explanation = vim.trim(tool_call.parameters.explanation or "")
     local explanation_written = tool_call.state.explanation_written or 0
 
-    -- Update command display
     if command and command_written < #command then
-      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.command_line - 1, tool_call.state.command_line, false,
-        { string.format("**Execute:** `%s`", command) })
+      if command_written == 0 and explanation_written > 0 then
+        chat.paste_at_end("\n", opts.buffer)
+      end
+      if command_written == 0 then
+        chat.paste_at_end("````sh\n", opts.buffer)
+      end
+      chat.paste_at_end(command:sub(command_written + 1), opts.buffer)
       tool_call.state.command_written = #command
     end
 
-    -- Update explanation if provided and not yet written
     if explanation and explanation_written < #explanation then
-      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.explanation_line - 1, tool_call.state.explanation_line,
-        false,
-        { string.format("> %s", explanation:gsub("\n", " ")) })
+      if command_written > 0 and explanation_written == 0 then
+        chat.paste_at_end("\n````\n", opts.buffer)
+        tool_call.state.command_closed = true
+      end
+
+      if explanation_written == 0 then
+        chat.paste_at_end("> ", opts.buffer)
+      end
+
+      chat.paste_at_end(explanation:sub(explanation_written + 1), opts.buffer)
       tool_call.state.explanation_written = #explanation
+    end
+  end,
+  stop = function(tool_call, opts)
+    if not tool_call.state.command_closed then
+      chat.paste_at_end("\n````", opts.buffer)
+      tool_call.state.command_closed = true
     end
   end,
   -- Execute the command asynchronously
@@ -178,7 +191,13 @@ return {
 
         -- Update the command text from "Execute" to "Executed"
         vim.schedule(function()
-          local final_lines = { string.format("✓ Executed: `%s`", command) }
+          -- Handle multi-line commands by showing only the first line with "..." if needed
+          local display_command = command
+          if command:find("\n") then
+            display_command = command:match("^([^\n]+)") .. "..."
+          end
+
+          local final_lines = { string.format("✓ Executed: `%s`", display_command) }
 
           -- Include explanation in final display if provided
           if tool_call.parameters.explanation then
