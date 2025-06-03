@@ -534,7 +534,7 @@ local function create_apply_modifications_command(buffer)
         local requires_user_input = vim.tbl_contains(
           tool_calls,
           function(tc)
-            return tc.result == nil and not tc.tool.is_auto_acceptable(tc)
+            return tc.result == nil and not tool_utils.is_auto_acceptable(tc)
           end,
           { predicate = true }
         )
