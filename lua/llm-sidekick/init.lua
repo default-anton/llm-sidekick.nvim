@@ -259,13 +259,15 @@ function M.ask(prompt_buffer)
     -- Check for Claude 4 versions (including provider prefixes)
     -- Examples: anthropic/claude-opus-4-20250514, bedrock/us.anthropic.claude-opus-4-20250514-v1:0
     local is_claude_4 = model_name_str:match("claude%-opus%-4") or
-                        model_name_str:match("claude%-sonnet%-4") or
-                        model_name_str:match("claude%-4") -- General catch-all for claude-4
+        model_name_str:match("claude%-sonnet%-4") or
+        model_name_str:match("claude%-4") -- General catch-all for claude-4
 
     -- Check for Claude 3.7 and 3.5 versions
     -- Examples: anthropic/claude-3-7-sonnet-latest, anthropic/claude-3.5-sonnet-latest
-    local is_claude_3_7 = model_name_str:match("claude%-3%-7") or model_name_str:match("claude%-3%.7") -- Adjusted for potential dot notation
-    local is_claude_3_5 = model_name_str:match("claude%-3%-5") or model_name_str:match("claude%-3%.5") -- Adjusted for potential dot notation
+    local is_claude_3_7 = model_name_str:match("claude%-3%-7") or
+        model_name_str:match("claude%-3%.7") -- Adjusted for potential dot notation
+    local is_claude_3_5 = model_name_str:match("claude%-3%-5") or
+        model_name_str:match("claude%-3%.5") -- Adjusted for potential dot notation
 
 
     for _, tool in ipairs(all_tools) do
@@ -285,7 +287,7 @@ function M.ask(prompt_buffer)
           -- exclude the new str_replace_based_edit_tool.
           -- This ensures other models retain their existing behavior with str_replace_editor (if they had it).
           if tool.spec.name == str_replace_based_edit_tool_name then
-             goto continue_tool_loop
+            goto continue_tool_loop
           end
         end
       end
