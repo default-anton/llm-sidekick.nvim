@@ -10,19 +10,19 @@ local spec = {
       command = {
         type = "string"
       },
-      explanation = {
+      purpose = {
         type = "string",
         description = "One sentence explanation of why this command needs to be run and how it contributes to the goal"
       }
     },
-    required = { "command", "explanation" }
+    required = { "command", "purpose" }
   }
 }
 
 local json_props = string.format([[{
   "command": %s,
-  "explanation": %s
-}]], vim.json.encode(spec.input_schema.properties.command), vim.json.encode(spec.input_schema.properties.explanation))
+  "purpose": %s
+}]], vim.json.encode(spec.input_schema.properties.command), vim.json.encode(spec.input_schema.properties.purpose))
 
 return {
   spec = spec,
@@ -123,11 +123,11 @@ return {
   delta = function(tool_call, opts)
     local command = vim.trim(tool_call.parameters.command or "")
     local command_written = tool_call.state.command_written or 0
-    local explanation = vim.trim(tool_call.parameters.explanation or "")
-    local explanation_written = tool_call.state.explanation_written or 0
+    local purpose = vim.trim(tool_call.parameters.purpose or "")
+    local purpose_written = tool_call.state.purpose_written or 0
 
     if command and command_written < #command then
-      if command_written == 0 and explanation_written > 0 then
+      if command_written == 0 and purpose_written > 0 then
         chat.paste_at_end("\n", opts.buffer)
       end
       if command_written == 0 then
@@ -137,18 +137,18 @@ return {
       tool_call.state.command_written = #command
     end
 
-    if explanation and explanation_written < #explanation then
-      if command_written > 0 and explanation_written == 0 then
+    if purpose and purpose_written < #purpose then
+      if command_written > 0 and purpose_written == 0 then
         chat.paste_at_end("\n````\n", opts.buffer)
         tool_call.state.command_closed = true
       end
 
-      if explanation_written == 0 then
+      if purpose_written == 0 then
         chat.paste_at_end("> ", opts.buffer)
       end
 
-      chat.paste_at_end(explanation:sub(explanation_written + 1), opts.buffer)
-      tool_call.state.explanation_written = #explanation
+      chat.paste_at_end(purpose:sub(purpose_written + 1), opts.buffer)
+      tool_call.state.purpose_written = #purpose
     end
   end,
   stop = function(tool_call, opts)
@@ -199,9 +199,9 @@ return {
 
           local final_lines = { string.format("✓ Executed: `%s`", display_command) }
 
-          -- Include explanation in final display if provided
-          if tool_call.parameters.explanation then
-            table.insert(final_lines, string.format("> %s", tool_call.parameters.explanation))
+          -- Include purpose in final display if provided
+          if tool_call.parameters.purpose then
+            table.insert(final_lines, string.format("> %s", tool_call.parameters.purpose))
           end
 
           vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
