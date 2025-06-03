@@ -32,6 +32,7 @@ llm-sidekick.nvim turns your editor into a powerful code companion:
 
 - `:Chat` - Write, refactor, modify multiple files, have technical discussions about code, debugging, and architecture, and have open-ended discussions for brainstorming and creative tasks
 - `:Accept` - Accept tool under the cursor
+- `:ToggleAcceptEdits` - Toggle auto-accept edits in the current buffer
 - `:AcceptAll` - Accept all tools in the last assistant message
 - `:Add` - Add files, code, or URLs (any web content) to your conversation
 - `:Commit` - Generate commit messages for staged changes
