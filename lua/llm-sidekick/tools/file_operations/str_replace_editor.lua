@@ -1,6 +1,7 @@
 local markdown = require("llm-sidekick.markdown")
 local chat = require("llm-sidekick.chat")
 local signs = require("llm-sidekick.signs")
+local fs = require("llm-sidekick.fs")
 
 local spec = {
   name = "str_replace_editor",
@@ -402,7 +403,42 @@ return {
         { success_message }
       )
 
-      return table.concat(content_lines, "\n")
+      -- Fetch and prepend CLAUDE.md content if any
+      local claude_md_contents = {}
+      local abs_path = vim.fn.fnamemodify(path, ":p")
+      local file_dir = vim.fn.fnamemodify(abs_path, ":h")
+      -- Use vim.fn.getcwd() as project_root as per plan
+      local project_root = vim.fn.getcwd()
+
+      local claude_files = fs.find_claude_md_files({
+        search_strategy = "tool_operation",
+        start_dir = file_dir,
+        stop_at_dir = project_root,
+      })
+
+      local processed_claude_paths = {} -- Ensure uniqueness if fs layer didn't
+      for _, claude_path in ipairs(claude_files) do
+        if not processed_claude_paths[claude_path] then
+          local content = fs.read_file(claude_path)
+          if content and content ~= "" then
+            table.insert(claude_md_contents, "-- CLAUDE.md content from " .. claude_path .. " --\n" .. content)
+            processed_claude_paths[claude_path] = true
+          end
+        end
+      end
+
+      local final_content_parts = {}
+      if #claude_md_contents > 0 then
+        table.insert(final_content_parts, "[START CLAUDE.MD CONTENT]")
+        table.insert(final_content_parts, table.concat(claude_md_contents, "\n\n---\n")) -- Separator for multiple CLAUDE files
+        table.insert(final_content_parts, "[END CLAUDE.MD CONTENT]\n")
+      end
+
+      table.insert(final_content_parts, "[START FILE CONTENT: " .. path .. "]")
+      table.insert(final_content_parts, table.concat(content_lines, "\n"))
+      table.insert(final_content_parts, "[END FILE CONTENT: " .. path .. "]")
+
+      return table.concat(final_content_parts, "\n")
     elseif tool_call.parameters.command == "str_replace" then
       local path = vim.trim(tool_call.parameters.path or "")
       local search = tool_call.parameters.old_str

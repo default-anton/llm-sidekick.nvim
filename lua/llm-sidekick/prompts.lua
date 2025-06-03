@@ -6,6 +6,8 @@
 --- @field just_chatting boolean? Whether the assistant is in "just chatting" mode
 --- @field model string The model being used
 --- @return string The formatted system prompt
+local fs = require("llm-sidekick.fs")
+
 local function system_prompt(opts)
   local os_name = opts.os_name or "macOS"
   local shell = opts.shell or "bash"
@@ -13,13 +15,42 @@ local function system_prompt(opts)
   local just_chatting = opts.just_chatting
   local model = opts.model
 
+  -- Fetch and process CLAUDE.md files
+  local claude_content_parts = {}
+  local processed_claude_paths = {} -- To ensure content from a path is added only once
+  local home_dir = vim.fn.expand('~')
+  local claude_home_file_path = home_dir .. "/.claude/CLAUDE.md"
+
+  if not just_chatting then -- Only load CLAUDE.md files if not in "just_chatting" mode
+    local claude_files = fs.find_claude_md_files({
+      search_strategy = "system_prompt",
+      cwd = cwd,
+      stop_at_dir = home_dir,
+      home_claude_file = claude_home_file_path
+    })
+
+    for _, filepath in ipairs(claude_files) do
+      if not processed_claude_paths[filepath] then
+        local content = fs.read_file(filepath)
+        if content and content ~= "" then
+          table.insert(claude_content_parts, "--- CLAUDE.md content from " .. filepath .. " ---\n" .. content)
+          processed_claude_paths[filepath] = true
+        end
+      end
+    end
+  end
+  local claude_content_str = table.concat(claude_content_parts, "\n\n")
+
   -- Model-specific prompt additions
   local model_specific_additions = ""
+  local tool_behavior_note = "\n" .. [[
+- Note on file operations: When using `str_replace_editor` or `str_replace_based_edit_tool` to view or edit files, any relevant `CLAUDE.md` files (from the file's directory or parent directories up to the project root, plus your global `~/.claude/CLAUDE.md`) will be automatically loaded. Their content will be provided to you separately from the actual file content to give you project-specific guidelines or context. This `CLAUDE.md` content is also part of this system prompt.]]
+
   if model and model:find("anthropic.claude-3-7-sonnet", 1, true) then
     model_specific_additions = "\n" .. [[
 - Notes for using the `str_replace_editor` tool:
 * Prefer relative paths when working with files in the current working directory
-* Ensure each `old_str` is unique enough to match only the intended section.]]
+* Ensure each `old_str` is unique enough to match only the intended section.]] .. tool_behavior_note
   else
     model_specific_additions = "\n" .. [[
 - Notes for using the `str_replace_editor` tool:
@@ -35,10 +66,15 @@ local function system_prompt(opts)
    * Always view a file before attempting to modify it
    * When replacing text, include enough context in `old_str` to ensure uniqueness
    * Prefer relative paths when working with files in the current working directory
-   * Use the `view` command with directories to explore the file structure]]
+   * Use the `view` command with directories to explore the file structure]] .. tool_behavior_note
   end
 
-  local prompt = [[
+  local prompt = ""
+  if claude_content_str and claude_content_str ~= "" then
+    prompt = claude_content_str .. "\n\n"
+  end
+
+  prompt = prompt .. [[
 You are Zir, a highly skilled full-stack software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices, operating as an integrated development assistant within Neovim. You are working in a pair-programming session with a senior full-stack developer. You adapt to the developer's technical expertise level, but always maintain a professional engineering focus. Think of yourself as a proactive and insightful partner, not just a tool.
 
 Your primary purpose is to collaborate with the user on software development tasks. This means:
