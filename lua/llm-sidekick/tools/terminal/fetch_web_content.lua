@@ -64,8 +64,8 @@ local AVG_CHARS_PER_WORD = 6
 return {
   spec = spec,
   json_props = json_props,
-  is_show_diagnostics = function(_) return true end,
-  is_auto_acceptable = function(_) return true end,
+  is_show_diagnostics = function() return true end,
+  is_auto_acceptable = function() return true end,
   -- Initialize the fetch display
   start = function(tool_call, opts)
     chat.paste_at_end("**Fetching web content:** ``", opts.buffer)

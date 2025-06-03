@@ -23,8 +23,8 @@ local json_props = string.format([[{
 return {
   spec = spec,
   json_props = json_props,
-  is_show_diagnostics = function(_) return true end,
-  is_auto_acceptable = function(_)
+  is_show_diagnostics = function() return true end,
+  is_auto_acceptable = function()
     return true
   end,
   -- Initialize the search display
