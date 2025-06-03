@@ -20,7 +20,7 @@ end
 
 local function normalize_path(path)
   if path == nil or path == "" then return nil end
-  return vim.fn.fnamemodify(expand_home(path), ":p")
+  return expand_home(path)
 end
 
 local function is_dir(path)
@@ -38,15 +38,21 @@ end
 
 ---Find CLAUDE.md files based on different strategies.
 ---@param opts table Options table:
----  - search_strategy (string): "system_prompt" or "tool_operation"
----  - cwd (string): Current working directory (for "system_prompt")
----  - home_claude_file (string): Path to user's global Claude file (for "system_prompt")
+---  - buf (number): Buffer number
 ---  - start_dir (string): Directory to start search from (for "tool_operation")
 ---  - stop_at_dir (string): Directory path to stop ascending
 ---@return table A list of unique absolute paths to found CLAUDE.md files.
 function M.find_claude_md_files(opts)
   local found_files = {}
   local found_files_set = {}
+  for _, file in ipairs(vim.b[opts.buf].claude_md_files or {}) do
+    found_files_set[file] = true
+  end
+
+  if not opts.start_dir then
+    vim.notify("find_claude_md_files: 'start_dir' is required", vim.log.levels.ERROR)
+    return {}
+  end
 
   local function add_file(path)
     local abs_path = normalize_path(path)
@@ -61,7 +67,7 @@ function M.find_claude_md_files(opts)
     -- Default stop_at to user's home directory if not provided or invalid
     stop_at = normalize_path("~")
     if not stop_at then -- Fallback if home expansion somehow fails
-      return {} -- Cannot proceed without a valid stop_at
+      return {}         -- Cannot proceed without a valid stop_at
     end
   end
 
@@ -77,18 +83,10 @@ function M.find_claude_md_files(opts)
 
       local claude_file_path = current_dir .. "/CLAUDE.md"
       -- Check if the file exists and is a file (not a directory)
-      if vim.fn.filereadable(claude_file_path) == 1 and vim.fn.isdirectory(claude_file_path) == 0 then
-        -- add_file handles normalization and uniqueness via found_files_set
-        -- We store it in search_results to maintain the specific order for this search pass
-        local abs_path = normalize_path(claude_file_path)
-        if abs_path and not found_files_set[abs_path] then
-            table.insert(search_results, abs_path)
-            -- Mark as globally found to respect uniqueness across different search passes
-            found_files_set[abs_path] = true
-        end
+      if vim.fn.filereadable(claude_file_path) == 1 and not is_dir(claude_file_path) then
+        add_file(claude_file_path)
       end
 
-      -- Stop if current_dir is the stop_search_dir
       if current_dir == stop_search_dir then
         break
       end
@@ -104,38 +102,14 @@ function M.find_claude_md_files(opts)
     return search_results
   end
 
-  if opts.search_strategy == "system_prompt" then
-    if not opts.cwd or not opts.home_claude_file then
-      vim.notify("find_claude_md_files: 'cwd' and 'home_claude_file' are required for 'system_prompt' strategy", vim.log.levels.ERROR)
-      return {}
-    end
+  search_upwards(opts.start_dir, stop_at)
 
-    local upward_files = search_upwards(opts.cwd, stop_at)
-    -- Add files from deepest to shallowest
-    for i = 1, #upward_files do
-      table.insert(found_files, upward_files[i])
-    end
-
-    -- Add home_claude_file last, if it exists and is not already added
-    local home_claude_path = normalize_path(opts.home_claude_file)
-    if home_claude_path and vim.fn.filereadable(home_claude_path) == 1 and not found_files_set[home_claude_path] then
-      add_file(home_claude_path) -- add_file itself adds to found_files
-    end
-
-  elseif opts.search_strategy == "tool_operation" then
-    if not opts.start_dir then
-      vim.notify("find_claude_md_files: 'start_dir' is required for 'tool_operation' strategy", vim.log.levels.ERROR)
-      return {}
-    end
-    local upward_files = search_upwards(opts.start_dir, stop_at)
-    -- Add files from deepest to shallowest
-    for i = 1, #upward_files do
-      table.insert(found_files, upward_files[i])
-    end
-  else
-    vim.notify("find_claude_md_files: Invalid search_strategy: " .. tostring(opts.search_strategy), vim.log.levels.ERROR)
-    return {}
+  local home_claude_path = normalize_path('~/.claude/CLAUDE.md')
+  if home_claude_path and vim.fn.filereadable(home_claude_path) == 1 and not is_dir(home_claude_path) then
+    add_file(home_claude_path)
   end
+
+  vim.b[opts.buf].claude_md_files = vim.list_extend(vim.b[opts.buf].claude_md_files or {}, found_files)
 
   return found_files
 end

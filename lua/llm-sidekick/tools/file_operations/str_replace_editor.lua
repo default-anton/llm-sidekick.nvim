@@ -403,42 +403,32 @@ return {
         { success_message }
       )
 
-      -- Fetch and prepend CLAUDE.md content if any
-      local claude_md_contents = {}
-      local abs_path = vim.fn.fnamemodify(path, ":p")
-      local file_dir = vim.fn.fnamemodify(abs_path, ":h")
-      -- Use vim.fn.getcwd() as project_root as per plan
-      local project_root = vim.fn.getcwd()
+      local project_instructions = {}
+      local file_dir = vim.fn.fnamemodify(path, ":p:h")
 
       local claude_files = fs.find_claude_md_files({
-        search_strategy = "tool_operation",
+        buf = opts.buffer,
         start_dir = file_dir,
-        stop_at_dir = project_root,
+        stop_at_dir = vim.fn.getcwd(),
       })
 
-      local processed_claude_paths = {} -- Ensure uniqueness if fs layer didn't
       for _, claude_path in ipairs(claude_files) do
-        if not processed_claude_paths[claude_path] then
-          local content = fs.read_file(claude_path)
-          if content and content ~= "" then
-            table.insert(claude_md_contents, "-- CLAUDE.md content from " .. claude_path .. " --\n" .. content)
-            processed_claude_paths[claude_path] = true
-          end
+        local content = fs.read_file(claude_path)
+        if content and content ~= "" then
+          table.insert(project_instructions, "````" .. claude_path .. "\n" .. content .. "\n````")
         end
       end
 
-      local final_content_parts = {}
-      if #claude_md_contents > 0 then
-        table.insert(final_content_parts, "[START CLAUDE.MD CONTENT]")
-        table.insert(final_content_parts, table.concat(claude_md_contents, "\n\n---\n")) -- Separator for multiple CLAUDE files
-        table.insert(final_content_parts, "[END CLAUDE.MD CONTENT]\n")
+      if #project_instructions > 0 then
+        -- insert at the beginning of the file content
+        table.insert(project_instructions, 1,
+          "If the following project instructions are relevant, follow them to the best of your ability.")
       end
 
-      table.insert(final_content_parts, "[START FILE CONTENT: " .. path .. "]")
-      table.insert(final_content_parts, table.concat(content_lines, "\n"))
-      table.insert(final_content_parts, "[END FILE CONTENT: " .. path .. "]")
-
-      return table.concat(final_content_parts, "\n")
+      return {
+        project_instructions = table.concat(project_instructions, "\n\n"),
+        file_content = table.concat(content_lines, "\n")
+      }
     elseif tool_call.parameters.command == "str_replace" then
       local path = vim.trim(tool_call.parameters.path or "")
       local search = tool_call.parameters.old_str
