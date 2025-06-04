@@ -267,7 +267,9 @@ return {
       chat.paste_at_end(string.format("\n````%s\n", language), opts.buffer)
       local old_str_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      chat.paste_at_end(tool_call.parameters.old_str, opts.buffer)
+      if tool_call.parameters.old_str then
+        chat.paste_at_end(tool_call.parameters.old_str, opts.buffer)
+      end
       local old_str_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       chat.paste_at_end("\n\n", opts.buffer)
