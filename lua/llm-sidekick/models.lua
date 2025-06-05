@@ -232,18 +232,28 @@ return {
     max_tokens = 16384,
     temperature = 0.3,
   },
-  ["gemini-2.5-flash-preview-05-20"] = {
-    name = "gemini/gemini-2.5-flash-preview-05-20",
+  ["vertex_ai/gemini-2.5-pro"] = {
+    name = "vertex_ai/gemini-2.5-pro-preview-06-05",
     max_tokens = 65536,
+    temperature = 0.6,
+  },
+  ["vertex_ai/gemini-2.5-flash"] = {
+    name = "vertex_ai/gemini-2.5-flash-preview-05-20",
+    max_tokens = 65536,
+    temperature = 0.6,
+  },
+  ["vertex_ai/gemini-2.0-flash"] = {
+    name = "vertex_ai/gemini-2.0-flash",
+    max_tokens = 8192,
+    temperature = 0.6,
+  },
+  ["vertex_ai/gemini-2.0-flash-lite"] = {
+    name = "vertex_ai/gemini-2.0-flash-lite",
+    max_tokens = 8192,
     temperature = 0.6,
   },
   ["gemini-2.5-pro"] = {
     name = "gemini/gemini-2.5-pro-preview-06-05",
-    max_tokens = 65536,
-    temperature = 0.6,
-  },
-  ["gemini-2.5-pro-preview-05-06"] = {
-    name = "gemini/gemini-2.5-pro-preview-05-06",
     max_tokens = 65536,
     temperature = 0.6,
   },
@@ -254,18 +264,6 @@ return {
   },
   ["gemini-2.0-flash"] = {
     name = "gemini/gemini-2.0-flash",
-    max_tokens = 8192,
-    temperature = 0.6,
-  },
-  ["gemini-2.0-flash-thinking-chat"] = {
-    name = "gemini/gemini-2.0-flash-thinking-exp-01-21",
-    max_tokens = 65536,
-    temperature = 0.7,
-    reasoning = true,
-    just_chatting = true
-  },
-  ["gemini-2.0-flash-exp"] = {
-    name = "gemini/gemini-2.0-flash-exp",
     max_tokens = 8192,
     temperature = 0.6,
   },

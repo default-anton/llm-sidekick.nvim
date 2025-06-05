@@ -47,6 +47,8 @@ local ENV_VARS = {
   OPENAI_API_KEY = "OPENAI_API_KEY",
   DEEPSEEK_API_KEY = "DEEPSEEK_API_KEY",
   GEMINI_API_KEY = "GEMINI_API_KEY",
+  VERTEXAI_LOCATION = "VERTEXAI_LOCATION",
+  VERTEXAI_PROJECT = "VERTEXAI_PROJECT",
 }
 
 local function has_env_var(name)
@@ -161,6 +163,17 @@ local function generate_config()
     })
   end
 
+  if has_env_var("VERTEXAI_PROJECT") and has_env_var("VERTEXAI_LOCATION") then
+    table.insert(config.model_list, {
+      model_name = "vertex_ai/*",
+      litellm_params = {
+        model = "vertex_ai/*",
+        vertex_project = "os.environ/VERTEXAI_PROJECT",
+        vertex_location = "os.environ/VERTEXAI_LOCATION"
+      }
+    })
+  end
+
   -- Convert to YAML
   local yaml = "model_list:\n"
   for _, model in ipairs(config.model_list) do
@@ -228,6 +241,8 @@ function M.start_web_server(port)
       '--python', '3.12',
       '--with', 'litellm[proxy]@git+https://github.com/default-anton/litellm.git',
       '--with', 'boto3',
+      '--with', 'google-generativeai',
+      '--with', 'google-cloud-aiplatform',
       'litellm',
       '--port', tostring(port),
       '--config', config_path,

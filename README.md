@@ -30,6 +30,7 @@ AI-powered companion for Neovim. Fast, hackable, and stays out of your way.
 
 llm-sidekick.nvim turns your editor into a powerful code companion:
 
+- Supports multiple AI providers, including Google Vertex AI (Gemini family), Google Gemini API, OpenAI, Anthropic Claude, Amazon Bedrock, and DeepSeek
 - `:Chat` - Write, refactor, modify multiple files, have technical discussions about code, debugging, and architecture, and have open-ended discussions for brainstorming and creative tasks
 - `:Accept` - Accept tool under the cursor
 - `:ToggleAcceptEdits` - Toggle auto-accept edits in the current buffer
@@ -107,6 +108,13 @@ Set one of these environment variables:
 - `LLM_SIDEKICK_GEMINI_API_KEY`
 - `GEMINI_API_KEY`
 
+#### Google Vertex AI Models
+Set both of these environment variables:
+- `LLM_SIDEKICK_VERTEXAI_PROJECT` or `VERTEXAI_PROJECT`
+  - Your Google Cloud project ID for Vertex AI
+- `LLM_SIDEKICK_VERTEXAI_LOCATION` or `VERTEXAI_LOCATION`
+  - Your Vertex AI region (e.g. "us-central1")
+
 ### Speech-to-Text Requirements (Optional)
 Required only if you plan to use the `:Stt` command:
 - sox (command-line audio recording tool)
@@ -177,14 +185,16 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `anthropic.claude-3-haiku-20240307-v1:0`
 
 ### Google Gemini Models
-- Gemini 2.5 Pro `gemini-2.5-pro` (`gemini-2.5-pro-preview-06-05`)
-- Gemini 2.5 Pro Preview 05-06 `gemini-2.5-pro-preview-05-06`
-- Gemini 2.5 Flash Preview 05-20 `gemini-2.5-flash-preview-05-20`
-- Gemini 2.5 Flash `gemini-2.5-flash`
-- Gemini 2.0 Flash `gemini-2.0-flash`
-- Gemini 2.0 Flash Thinking `gemini-2.0-flash-thinking-chat`
-- Gemini 2.0 Lite `gemini-2.0-flash-lite`
-- Gemini 2.0 Flash Experimental `gemini-2.0-flash-exp`
+- `gemini-2.5-pro`
+- `gemini-2.5-flash`
+- `gemini-2.0-flash`
+- `gemini-2.0-flash-lite`
+
+### Google Vertex AI Models
+- `vertex_ai/gemini-2.5-pro`
+- `vertex_ai/gemini-2.5-flash`
+- `vertex_ai/gemini-2.0-flash`
+- `vertex_ai/gemini-2.0-flash-lite`
 
 ### OpenAI Models
 - `o3-low`
