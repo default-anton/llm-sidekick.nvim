@@ -177,7 +177,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `anthropic.claude-3-haiku-20240307-v1:0`
 
 ### Google Gemini Models
-- Gemini 2.5 Pro `gemini-2.5-pro`
+- Gemini 2.5 Pro `gemini-2.5-pro` (`gemini-2.5-pro-preview-06-05`)
+- Gemini 2.5 Pro Preview 05-06 `gemini-2.5-pro-preview-05-06`
 - Gemini 2.5 Flash Preview 05-20 `gemini-2.5-flash-preview-05-20`
 - Gemini 2.5 Flash `gemini-2.5-flash`
 - Gemini 2.0 Flash `gemini-2.0-flash`

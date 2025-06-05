@@ -238,6 +238,11 @@ return {
     temperature = 0.6,
   },
   ["gemini-2.5-pro"] = {
+    name = "gemini/gemini-2.5-pro-preview-06-05",
+    max_tokens = 65536,
+    temperature = 0.6,
+  },
+  ["gemini-2.5-pro-preview-05-06"] = {
     name = "gemini/gemini-2.5-pro-preview-05-06",
     max_tokens = 65536,
     temperature = 0.6,
