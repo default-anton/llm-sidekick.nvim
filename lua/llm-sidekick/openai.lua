@@ -122,41 +122,45 @@ function openai:chat(opts, callback)
         end
 
         local tool_calls = decoded.choices[1].delta.tool_calls
-        if tool_calls and tool_calls[1] and tool_calls[1]["function"] then
-          local function_data = tool_calls[1]["function"]
-          if tool_calls[1].id then
-            if tool then
-              callback(
-                message_types.TOOL_STOP,
-                vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
-              )
+        if tool_calls then
+          for _, tool_call in ipairs(tool_calls) do
+            if tool_call["function"] then
+              local function_data = tool_call["function"]
+              if tool_call.id then
+                if tool then
+                  callback(
+                    message_types.TOOL_STOP,
+                    vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+                  )
+                end
+
+                tool = {
+                  id = tool_call.id,
+                  name = function_data.name,
+                  parameters = "",
+                  state = {},
+                }
+                callback(
+                  message_types.TOOL_START,
+                  vim.tbl_extend("force", {}, tool, { parameters = {} })
+                )
+
+                if function_data.arguments and function_data.arguments ~= "" then
+                  local params = sjson.decode(function_data.arguments)
+                  callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool, { parameters = params }))
+                  callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool, { parameters = params }))
+                  tool = nil
+                end
+              end
+
+              if tool and function_data.arguments and function_data.arguments ~= "" then
+                tool.parameters = tool.parameters .. function_data.arguments
+                callback(
+                  message_types.TOOL_DELTA,
+                  vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+                )
+              end
             end
-
-            tool = {
-              id = tool_calls[1].id,
-              name = function_data.name,
-              parameters = "",
-              state = {},
-            }
-            callback(
-              message_types.TOOL_START,
-              vim.tbl_extend("force", {}, tool, { parameters = {} })
-            )
-
-            if function_data.arguments and function_data.arguments ~= "" then
-              local params = sjson.decode(function_data.arguments)
-              callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool, { parameters = params }))
-              callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool, { parameters = params }))
-              tool = nil
-            end
-          end
-
-          if tool and function_data.arguments and function_data.arguments ~= "" then
-            tool.parameters = tool.parameters .. function_data.arguments
-            callback(
-              message_types.TOOL_DELTA,
-              vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
-            )
           end
         end
       end
