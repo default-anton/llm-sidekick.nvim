@@ -27,7 +27,7 @@ function openai:chat(opts, callback)
   }
 
   if opts.tools then
-    if settings.model:find("anthropic.claude-3-7-sonnet", 1, true) then
+    if settings.model:find("claude-3-7-sonnet", 1, true) then
       opts.tools = vim.tbl_filter(function(tool) return tool.spec.name ~= "str_replace_editor" end, opts.tools)
 
       data.additionalModelRequestFields = {
@@ -140,8 +140,15 @@ function openai:chat(opts, callback)
             }
             callback(
               message_types.TOOL_START,
-              vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
+              vim.tbl_extend("force", {}, tool, { parameters = {} })
             )
+
+            if function_data.arguments and function_data.arguments ~= "" then
+              local params = sjson.decode(function_data.arguments)
+              callback(message_types.TOOL_DELTA, vim.tbl_extend("force", {}, tool, { parameters = params }))
+              callback(message_types.TOOL_STOP, vim.tbl_extend("force", {}, tool, { parameters = params }))
+              tool = nil
+            end
           end
 
           if tool and function_data.arguments and function_data.arguments ~= "" then
@@ -154,7 +161,7 @@ function openai:chat(opts, callback)
         end
       end
 
-      if decoded.choices and decoded.choices and decoded.choices[1].finish_reason == "tool_calls" then
+      if tool and decoded.choices and decoded.choices and decoded.choices[1].finish_reason then
         callback(
           message_types.TOOL_STOP,
           vim.tbl_extend("force", {}, tool, { parameters = sjson.decode(tool.parameters) })
