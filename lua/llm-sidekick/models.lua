@@ -235,12 +235,12 @@ return {
   ["vertex_ai/gemini-2.5-pro"] = {
     name = "vertex_ai/gemini-2.5-pro-preview-06-05",
     max_tokens = 65536,
-    temperature = 0.6,
+    temperature = 0.7,
   },
   ["vertex_ai/gemini-2.5-flash"] = {
     name = "vertex_ai/gemini-2.5-flash-preview-05-20",
     max_tokens = 65536,
-    temperature = 0.6,
+    temperature = 0.7,
   },
   ["vertex_ai/gemini-2.0-flash"] = {
     name = "vertex_ai/gemini-2.0-flash",
@@ -255,12 +255,12 @@ return {
   ["gemini-2.5-pro"] = {
     name = "gemini/gemini-2.5-pro-preview-06-05",
     max_tokens = 65536,
-    temperature = 0.6,
+    temperature = 0.7,
   },
   ["gemini-2.5-flash"] = {
     name = "gemini/gemini-2.5-flash-preview-05-20",
     max_tokens = 65536,
-    temperature = 0.6,
+    temperature = 0.7,
   },
   ["gemini-2.0-flash"] = {
     name = "gemini/gemini-2.0-flash",
