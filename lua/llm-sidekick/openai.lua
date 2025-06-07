@@ -27,19 +27,6 @@ function openai:chat(opts, callback)
   }
 
   if opts.tools then
-    if settings.model:find("claude-3-7-sonnet", 1, true) then
-      opts.tools = vim.tbl_filter(function(tool) return tool.spec.name ~= "str_replace_editor" end, opts.tools)
-
-      data.additionalModelRequestFields = {
-        tools = {
-          {
-            type = "text_editor_20250124",
-            name = "str_replace_editor",
-          }
-        }
-      }
-    end
-
     local openai_converter = require("llm-sidekick.tools.openai")
     data.tools = vim.tbl_map(function(tool) return openai_converter.convert_spec(tool.spec) end, opts.tools)
 

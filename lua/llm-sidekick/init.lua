@@ -242,53 +242,7 @@ function M.ask(prompt_buffer)
   local model_settings = settings.get_model_settings(prompt.settings.model)
 
   if not model_settings.just_chatting then
-    local all_tools = require("llm-sidekick.tools")
-    local filtered_tools = {}
-    local model_name_str = model_settings.name or "" -- Ensure model_name_str is a string
-
-    -- Define tool names to check
-    local str_replace_editor_name = "str_replace_editor"
-    local str_replace_based_edit_tool_name = "str_replace_based_edit_tool"
-
-    -- Check for Claude 4 versions (including provider prefixes)
-    -- Examples: anthropic/claude-opus-4-20250514, bedrock/us.anthropic.claude-opus-4-20250514-v1:0
-    local is_claude_4 = model_name_str:match("claude%-opus%-4") or
-        model_name_str:match("claude%-sonnet%-4") or
-        model_name_str:match("claude%-4") -- General catch-all for claude-4
-
-    -- Check for Claude 3.7 and 3.5 versions
-    -- Examples: anthropic/claude-3-7-sonnet-latest, anthropic/claude-3.5-sonnet-latest
-    local is_claude_3_7 = model_name_str:match("claude%-3%-7") or
-        model_name_str:match("claude%-3%.7") -- Adjusted for potential dot notation
-    local is_claude_3_5 = model_name_str:match("claude%-3%-5") or
-        model_name_str:match("claude%-3%.5") -- Adjusted for potential dot notation
-
-
-    for _, tool in ipairs(all_tools) do
-      if tool.spec and tool.spec.name then
-        if is_claude_4 then
-          if tool.spec.name == str_replace_editor_name then
-            -- Exclude str_replace_editor for Claude 4
-            goto continue_tool_loop
-          end
-        elseif is_claude_3_7 or is_claude_3_5 then
-          if tool.spec.name == str_replace_based_edit_tool_name then
-            -- Exclude str_replace_based_edit_tool for Claude 3.7 / 3.5
-            goto continue_tool_loop
-          end
-        else
-          -- For non-Claude models, or if specific Claude version not detected,
-          -- exclude the new str_replace_based_edit_tool.
-          -- This ensures other models retain their existing behavior with str_replace_editor (if they had it).
-          if tool.spec.name == str_replace_based_edit_tool_name then
-            goto continue_tool_loop
-          end
-        end
-      end
-      table.insert(filtered_tools, tool)
-      ::continue_tool_loop::
-    end
-    prompt.tools = filtered_tools
+    prompt.tools = require("llm-sidekick.tools")
   end
 
   prompt.settings.model = model_settings.name
@@ -476,18 +430,15 @@ function M.ask(prompt_buffer)
             -- NOTE: The commit happens asynchronously
             if settings.auto_commit_changes() then
               local file_tool_names = {
-                "str_replace_editor",
+                "write_to_file", "replace_in_file",
               }
-              local str_replace_editor_commands = { "create", "insert", "str_replace" }
               local modified_files = {}
 
               for _, tool_call in ipairs(tool_utils.find_tool_calls({ buffer = prompt_buffer })) do
-                if vim.tbl_contains(file_tool_names, tool_call.name) and tool_call.result and tool_call.result.success then
-                  if tool_call.name ~= "str_replace_editor" or vim.tbl_contains(str_replace_editor_commands, tool_call.parameters.command) then
-                    local path = tool_call.parameters.path
-                    if path then
-                      modified_files[path] = true
-                    end
+                if tool_call.result and tool_call.result.success and vim.tbl_contains(file_tool_names, tool_call.name) then
+                  local path = tool_call.parameters.file_path
+                  if path then
+                    modified_files[path] = true
                   end
                 end
               end
