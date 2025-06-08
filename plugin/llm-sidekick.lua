@@ -270,16 +270,6 @@ local ask_command = function()
         model = model_settings.name,
       })
 
-      if vim.fn.filereadable("plan.md") == 1 then
-        local content = table.concat(vim.fn.readfile("plan.md"), "\n")
-        if content and content ~= "" then
-          system_prompt = system_prompt .. string.format("\n---\n\nPlan:\n````plan.md\n%s\n````", content)
-        end
-
-        system_prompt = system_prompt .. [[
-]]
-      end
-
       local guidelines = vim.trim(current_project_config.guidelines or "")
       local global_guidelines = settings.get_global_guidelines()
       if global_guidelines and global_guidelines ~= "" then
