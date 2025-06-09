@@ -15,7 +15,7 @@ local spec = {
         description = "One sentence explanation of why this command needs to be run and how it contributes to the goal"
       }
     },
-    required = { "command", "purpose" }
+    required = { "purpose", "command" }
   }
 }
 
@@ -117,45 +117,19 @@ return {
   -- Initialize the command execution display
   start = function(tool_call, opts)
     chat.paste_at_end(string.format("**%s**\n", vim.fn.fnamemodify(vim.o.shell or "bash", ":t")), opts.buffer)
-    tool_call.state.command_closed = false
   end,
   -- Handle incremental updates for streaming command and output
-  delta = function(tool_call, opts)
-    local command = vim.trim(tool_call.parameters.command or "")
-    local command_written = tool_call.state.command_written or 0
-    local purpose = vim.trim(tool_call.parameters.purpose or "")
-    local purpose_written = tool_call.state.purpose_written or 0
-
-    if command and command_written < #command then
-      if command_written == 0 and purpose_written > 0 then
-        chat.paste_at_end("\n", opts.buffer)
-      end
-      if command_written == 0 then
-        chat.paste_at_end("````sh\n", opts.buffer)
-      end
-      chat.paste_at_end(command:sub(command_written + 1), opts.buffer)
-      tool_call.state.command_written = #command
-    end
-
-    if purpose and purpose_written < #purpose then
-      if command_written > 0 and purpose_written == 0 then
-        chat.paste_at_end("\n````\n", opts.buffer)
-        tool_call.state.command_closed = true
-      end
-
-      if purpose_written == 0 then
-        chat.paste_at_end("> ", opts.buffer)
-      end
-
-      chat.paste_at_end(purpose:sub(purpose_written + 1), opts.buffer)
-      tool_call.state.purpose_written = #purpose
-    end
-  end,
   stop = function(tool_call, opts)
-    if not tool_call.state.command_closed then
-      chat.paste_at_end("\n````", opts.buffer)
-      tool_call.state.command_closed = true
-    end
+    local shell = vim.fn.fnamemodify(vim.o.shell or "bash", ":t")
+    chat.paste_at_end(
+      string.format(
+        "````%s\n%s\n````\n> %s",
+        shell,
+        tool_call.parameters.command,
+        tool_call.parameters.purpose
+      ),
+      opts.buffer
+    )
   end,
   -- Execute the command asynchronously
   run = function(tool_call, opts)
@@ -189,22 +163,9 @@ return {
         tool_call.state.result.success = exit_code == 0
         tool_call.state.result.result = string.format("Exit code: %d\n%s", exit_code, output)
 
-        -- Update the command text from "Execute" to "Executed"
         vim.schedule(function()
-          -- Handle multi-line commands by showing only the first line with "..." if needed
-          local display_command = command
-          if command:find("\n") then
-            display_command = command:match("^([^\n]+)") .. "..."
-          end
-
-          local final_lines = { string.format("✓ Executed: `%s`", display_command) }
-
-          -- Include purpose in final display if provided
-          if tool_call.parameters.purpose then
-            table.insert(final_lines, string.format("> %s", tool_call.parameters.purpose))
-          end
-
-          vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false, final_lines)
+          vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.lnum, false,
+            { string.format("✓ **%s**", vim.fn.fnamemodify(vim.o.shell or "bash", ":t")) })
         end)
       end,
     })
