@@ -18,10 +18,10 @@ local function system_prompt(opts)
 
   local project_instructions = {}
 
-  if not just_chatting then -- Only load CLAUDE.md files if not in "just_chatting" mode
-    local claude_files = fs.find_claude_md_files({ buf = opts.buf, start_dir = cwd })
+  if not just_chatting then
+    local project_files = fs.find_project_instruction_files({ buf = opts.buf, start_dir = cwd })
 
-    for _, filepath in ipairs(claude_files) do
+    for _, filepath in ipairs(project_files) do
       local content = fs.read_file(filepath)
       if content and content ~= "" then
         table.insert(project_instructions, "````" .. filepath .. "\n" .. content .. "\n````")

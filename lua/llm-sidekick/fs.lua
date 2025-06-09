@@ -36,23 +36,27 @@ local function get_parent_dir(path)
   return parent
 end
 
----Find CLAUDE.md files based on different strategies.
+---Find project instruction files based on different strategies.
 ---@param opts table Options table:
 ---  - buf (number): Buffer number
 ---  - start_dir (string): Directory to start search from (for "tool_operation")
 ---  - stop_at_dir (string): Directory path to stop ascending
----@return table A list of unique absolute paths to found CLAUDE.md files.
-function M.find_claude_md_files(opts)
+---@return table A list of unique absolute paths to found project instruction files.
+function M.find_project_instruction_files(opts)
+  local settings = require("llm-sidekick.settings")
+
   local found_files = {}
   local found_files_set = {}
-  for _, file in ipairs(vim.b[opts.buf].claude_md_files or {}) do
+  for _, file in ipairs(vim.b[opts.buf].project_instruction_files or {}) do
     found_files_set[file] = true
   end
 
   if not opts.start_dir then
-    vim.notify("find_claude_md_files: 'start_dir' is required", vim.log.levels.ERROR)
+    vim.notify("find_project_instruction_files: 'start_dir' is required", vim.log.levels.ERROR)
     return {}
   end
+
+  local instruction_filenames = settings.get_instruction_filenames()
 
   local function add_file(path)
     local abs_path = normalize_path(path)
@@ -81,10 +85,12 @@ function M.find_claude_md_files(opts)
         goto continue_while -- Skip if current_dir is not a directory (e.g. start_dir was a file)
       end
 
-      local claude_file_path = current_dir .. "/CLAUDE.md"
-      -- Check if the file exists and is a file (not a directory)
-      if vim.fn.filereadable(claude_file_path) == 1 and not is_dir(claude_file_path) then
-        add_file(claude_file_path)
+      for _, filename in ipairs(instruction_filenames) do
+        local instruction_file_path = current_dir .. "/" .. filename
+        -- Check if the file exists and is a file (not a directory)
+        if vim.fn.filereadable(instruction_file_path) == 1 and not is_dir(instruction_file_path) then
+          add_file(instruction_file_path)
+        end
       end
 
       if current_dir == stop_search_dir then
@@ -104,12 +110,17 @@ function M.find_claude_md_files(opts)
 
   search_upwards(opts.start_dir, stop_at)
 
-  local home_claude_path = normalize_path('~/.claude/CLAUDE.md')
-  if home_claude_path and vim.fn.filereadable(home_claude_path) == 1 and not is_dir(home_claude_path) then
-    add_file(home_claude_path)
+  for _, filename in ipairs(instruction_filenames) do
+    for _, home_config_dir in ipairs({ '~/.llm-sidekick/', '~/.claude/', '~/.config/llm-sidekick/' }) do
+      local home_instruction_path = normalize_path(home_config_dir .. filename)
+      if home_instruction_path and vim.fn.filereadable(home_instruction_path) == 1 and not is_dir(home_instruction_path) then
+        add_file(home_instruction_path)
+      end
+    end
   end
 
-  vim.b[opts.buf].claude_md_files = vim.list_extend(vim.b[opts.buf].claude_md_files or {}, found_files)
+  vim.b[opts.buf].project_instruction_files = vim.list_extend(vim.b[opts.buf].project_instruction_files or {},
+    found_files)
 
   return found_files
 end

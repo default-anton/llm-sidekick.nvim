@@ -75,17 +75,17 @@ return {
       end
 
       local file_dir = vim.fn.fnamemodify(file_path, ":p:h")
-      local claude_files = fs.find_claude_md_files({
+      local project_files = fs.find_project_instruction_files({
         buf = opts.buffer,
         start_dir = file_dir,
         stop_at_dir = cwd,
       })
 
-      for _, claude_path in ipairs(claude_files) do
-        local content = fs.read_file(claude_path)
+      for _, project_file_path in ipairs(project_files) do
+        local content = fs.read_file(project_file_path)
         if content and content ~= "" then
           table.insert(results, {
-            file_path = claude_path,
+            file_path = project_file_path,
             project_instructions = content,
           })
         end

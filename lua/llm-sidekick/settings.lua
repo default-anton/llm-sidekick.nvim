@@ -16,6 +16,7 @@ local settings = {
   auto_commit_model = nil,       -- Model to use for auto-commit messages (nil = use default model)
   guidelines = "",               -- Global guidelines
   safe_terminal_commands = {},
+  instruction_filenames = { "AGENTS.md" }, -- Filenames for project-specific instructions
 }
 
 function M.get_models()
@@ -48,6 +49,7 @@ function M.setup(opts)
       auto_commit_model = { opts.auto_commit_model, "string", true },
       guidelines = { opts.guidelines, "string", true },
       safe_terminal_commands = { opts.safe_terminal_commands, "table", true },
+      instruction_filenames = { opts.instruction_filenames, "table", true },
     })
 
     opts.models = vim.tbl_deep_extend("force", settings.models, opts.models or {})
@@ -55,6 +57,7 @@ function M.setup(opts)
     opts.guidelines = opts.guidelines or settings.guidelines
     opts.safe_terminal_commands = opts.safe_terminal_commands or settings.safe_terminal_commands
     opts.auto_commit_model = opts.auto_commit_model or settings.auto_commit_model
+    opts.instruction_filenames = opts.instruction_filenames or settings.instruction_filenames
 
     settings = opts
   end
@@ -149,6 +152,10 @@ function M.get_groq_api_key()
   end
 
   return api_key
+end
+
+function M.get_instruction_filenames()
+  return settings.instruction_filenames
 end
 
 return M
