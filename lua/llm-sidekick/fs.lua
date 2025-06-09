@@ -122,7 +122,17 @@ function M.find_project_instruction_files(opts)
   vim.b[opts.buf].project_instruction_files = vim.list_extend(vim.b[opts.buf].project_instruction_files or {},
     found_files)
 
-  return found_files
+  local relative_paths = {}
+  local cwd = vim.fn.getcwd()
+  for _, abs_path in ipairs(found_files) do
+    if vim.startswith(abs_path, cwd .. "/") then
+      table.insert(relative_paths, string.sub(abs_path, #cwd + 2))
+    else
+      table.insert(relative_paths, abs_path)
+    end
+  end
+
+  return relative_paths
 end
 
 return M
