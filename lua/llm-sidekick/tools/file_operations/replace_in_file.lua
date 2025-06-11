@@ -13,29 +13,35 @@ local spec = {
         type = "string",
         description = "The absolute or relative path to the file to be modified"
       },
-      old_block = {
-        type = "string",
-        description =
-        "A multi-line string representing the exact block of lines to be replaced. Do not include a trailing newline unless it is part of the final line to match"
-      },
-      new_block = {
-        type = "string",
-        description =
-        "The multi-line string that will replace every occurrence of 'old_block'. To delete the 'old_block', provide an empty string for 'new_block'"
-      },
+      replacements = {
+        type = "array",
+        description = "An array of replacement objects. Each object defines an old_block to find and a new_block to replace it with.",
+        items = {
+          type = "object",
+          properties = {
+            old_block = {
+              type = "string",
+              description = "A multi-line string representing the exact block of lines to be replaced. Do not include a trailing newline unless it is part of the final line to match"
+            },
+            new_block = {
+              type = "string",
+              description = "The multi-line string that will replace every occurrence of 'old_block'. To delete the 'old_block', provide an empty string for 'new_block'"
+            }
+          },
+          required = { "old_block", "new_block" }
+        }
+      }
     },
-    required = { "file_path", "old_block", "new_block" },
+    required = { "file_path", "replacements" },
   }
 }
 
 local json_props = string.format([[{
   "file_path": %s,
-  "old_block": %s,
-  "new_block": %s
+  "replacements": %s
 }]],
   vim.json.encode(spec.input_schema.properties.file_path),
-  vim.json.encode(spec.input_schema.properties.old_block),
-  vim.json.encode(spec.input_schema.properties.new_block)
+  vim.json.encode(spec.input_schema.properties.replacements)
 )
 
 local function find_min_indentation(lines)
@@ -228,38 +234,48 @@ return {
   end,
   stop = function(tool_call, opts)
     chat.paste_at_end(string.format("**Replace:** `%s`", tool_call.parameters.file_path), opts.buffer)
-
     local language = markdown.filename_to_language(tool_call.parameters.file_path, "txt")
-    chat.paste_at_end(string.format("\n````%s\n", language), opts.buffer)
-    local old_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-    if tool_call.parameters.old_block then
-      chat.paste_at_end(tool_call.parameters.old_block, opts.buffer)
+    if not tool_call.parameters.replacements or #tool_call.parameters.replacements == 0 then
+      chat.paste_at_end("\nNo replacements specified.", opts.buffer)
+      return
     end
-    local old_block_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n\n", opts.buffer)
-    local new_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
+    for i, replacement in ipairs(tool_call.parameters.replacements) do
+      chat.paste_at_end(string.format("\n\n**Replacement %d:**\n", i), opts.buffer)
+      chat.paste_at_end(string.format("````%s\n", language), opts.buffer)
+      local old_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end(tool_call.parameters.new_block, opts.buffer)
-    local new_block_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
+      if replacement.old_block then
+        chat.paste_at_end(replacement.old_block, opts.buffer)
+      end
+      local old_block_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-    chat.paste_at_end("\n````", opts.buffer)
+      chat.paste_at_end("\n```\n", opts.buffer) -- End old_block code block
+      chat.paste_at_end("with\n", opts.buffer)
+      chat.paste_at_end(string.format("````%s\n", language), opts.buffer) -- Start new_block code block
+      local new_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-    local sign_group = string.format("%s-replace_in_file-old_block", tool_call.id)
-    signs.place(opts.buffer, sign_group, old_block_lnum, old_block_end_lnum, "llm_sidekick_red")
+      if replacement.new_block then
+        chat.paste_at_end(replacement.new_block, opts.buffer)
+      end
+      local new_block_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
+      chat.paste_at_end("\n````", opts.buffer) -- End new_block code block
 
-    sign_group = string.format("%s-replace_in_file-new_block", tool_call.id)
-    signs.place(opts.buffer, sign_group, new_block_lnum, new_block_end_lnum, "llm_sidekick_green")
+      local old_sign_group = string.format("%s-replace_in_file-old_block-%d", tool_call.id, i)
+      signs.place(opts.buffer, old_sign_group, old_block_lnum, old_block_end_lnum, "llm_sidekick_red")
+
+      local new_sign_group = string.format("%s-replace_in_file-new_block-%d", tool_call.id, i)
+      signs.place(opts.buffer, new_sign_group, new_block_lnum, new_block_end_lnum, "llm_sidekick_green")
+    end
   end,
   run = function(tool_call, opts)
     local path = vim.trim(tool_call.parameters.file_path or "")
-    local search = tool_call.parameters.old_block
-    local replace = tool_call.parameters.new_block
+    local replacements = tool_call.parameters.replacements
 
-    -- Split search and replace into lines for line-by-line processing
-    local search_lines = vim.split(search, "\n")
-    local replace_lines = vim.split(replace, "\n")
+    if not replacements or #replacements == 0 then
+      error("Error: No replacements provided.")
+    end
 
     local content_lines = {}
     local buf = vim.fn.bufnr(path)
@@ -269,90 +285,104 @@ return {
     if is_buffer_loaded then
       content_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
     else
-      local ok, lines = pcall(vim.fn.readfile, path)
-      if not ok then
+      local ok_read, lines_or_err = pcall(vim.fn.readfile, path)
+      if not ok_read then
         vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.lnum, false,
           { string.format("✗ **Replace:** `%s`", path) })
-        error(string.format("Error: Failed to read file %s (%s)", path, vim.inspect(lines)))
+        error(string.format("Error: Failed to read file %s (%s)", path, vim.inspect(lines_or_err)))
       end
-      content_lines = lines
+      content_lines = lines_or_err
     end
 
-    -- Find the maximum indentation in the file for search pattern adjustments
-    local max_indent = find_max_indentation(content_lines)
+    local total_lines_removed = 0
+    local total_lines_added = 0
 
-    -- Find the match with possible indentation variations
-    local start_line, end_line, matched_search_lines = find_match_with_indentation_variations(
-      content_lines,
-      search_lines,
-      max_indent
-    )
+    for _, replacement_obj in ipairs(replacements) do
+      local search = replacement_obj.old_block
+      local replace = replacement_obj.new_block
 
-    if not start_line then
-      vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.lnum, false,
-        { string.format("✗ **Replace:** `%s`", path) })
-      error("Error: No match found for replacement. Please check your text and try again.")
-    end
+      -- Split search and replace into lines for line-by-line processing
+      local search_lines = vim.split(search, "\n")
+      local replace_lines = vim.split(replace, "\n")
 
-    -- Handle empty replacement case specially (line removal)
-    local adjusted_replace_lines = {}
-    local is_empty_replacement = #replace_lines == 1 and replace_lines[1] == ""
-    if #replace_lines > 0 and not is_empty_replacement then
-      -- Calculate the indentation to apply to the replacement text
-      local matched_search_min_indent = find_min_indentation(matched_search_lines)
-      local replace_min_indent = find_min_indentation(replace_lines)
+      -- Find the maximum indentation in the file for search pattern adjustments
+      local max_indent = find_max_indentation(content_lines)
 
-      -- Adjust the indentation of the replacement text to match the search text
-      adjusted_replace_lines = adjust_replace_indentation(
-        replace_lines,
-        replace_min_indent,
-        matched_search_min_indent
+      -- Find the match with possible indentation variations
+      local start_line, end_line, matched_search_lines = find_match_with_indentation_variations(
+        content_lines,
+        search_lines,
+        max_indent
       )
-    end
 
-    -- Create the modified content by replacing the matched lines
-    local modified_lines = {}
-
-    -- Copy lines before the match
-    for i = 1, start_line - 1 do
-      table.insert(modified_lines, content_lines[i])
-    end
-
-    -- Insert the replacement lines (if any)
-    if #adjusted_replace_lines > 0 then
-      for _, line in ipairs(adjusted_replace_lines) do
-        table.insert(modified_lines, line)
+      if not start_line then
+        vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.lnum, false,
+          { string.format("✗ **Replace:** `%s`", path) })
+        error("Error: No match found for replacement: " .. search .. ". Please check your text and try again.")
       end
-    end
 
-    -- Copy lines after the match
-    for i = end_line + 1, #content_lines do
-      table.insert(modified_lines, content_lines[i])
+      -- Handle empty replacement case specially (line removal)
+      local adjusted_replace_lines = {}
+      local is_empty_replacement = #replace_lines == 1 and replace_lines[1] == ""
+      if #replace_lines > 0 and not is_empty_replacement then
+        -- Calculate the indentation to apply to the replacement text
+        local matched_search_min_indent = find_min_indentation(matched_search_lines)
+        local replace_min_indent = find_min_indentation(replace_lines)
+
+        -- Adjust the indentation of the replacement text to match the search text
+        adjusted_replace_lines = adjust_replace_indentation(
+          replace_lines,
+          replace_min_indent,
+          matched_search_min_indent
+        )
+      end
+
+      -- Create the modified content by replacing the matched lines
+      local modified_lines_for_current_replacement = {}
+
+      -- Copy lines before the match
+      for i = 1, start_line - 1 do
+        table.insert(modified_lines_for_current_replacement, content_lines[i])
+      end
+
+      -- Insert the replacement lines (if any)
+      if #adjusted_replace_lines > 0 then
+        for _, line in ipairs(adjusted_replace_lines) do
+          table.insert(modified_lines_for_current_replacement, line)
+        end
+      end
+
+      -- Copy lines after the match
+      for i = end_line + 1, #content_lines do
+        table.insert(modified_lines_for_current_replacement, content_lines[i])
+      end
+
+      content_lines = modified_lines_for_current_replacement -- Update content_lines for the next iteration
+      total_lines_removed = total_lines_removed + #search_lines
+      total_lines_added = total_lines_added + #replace_lines
     end
 
     -- Write the modified content back
-    local err
-    local ok
+    local err_write
+    local ok_write
     if is_buffer_loaded then
-      vim.api.nvim_buf_set_lines(buf, 0, -1, false, modified_lines)
-      ok, err = pcall(vim.api.nvim_buf_call, buf, function()
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, content_lines)
+      ok_write, err_write = pcall(vim.api.nvim_buf_call, buf, function()
         vim.cmd('write')
       end)
     else
-      ok, err = pcall(vim.fn.writefile, modified_lines, path)
+      ok_write, err_write = pcall(vim.fn.writefile, content_lines, path)
     end
 
-    if not ok then
+    if not ok_write then
       vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.lnum, false,
         { string.format("✗ **Replace:** `%s`", path) })
-      error(string.format("Error: Failed to write file %s (%s)", path, vim.inspect(err)))
+      error(string.format("Error: Failed to write file %s (%s)", path, vim.inspect(err_write)))
     end
 
     -- Replace the tool call content with success message
-    local lines_removed = #search_lines
-    local lines_added = #replace_lines
     vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-      { string.format("✓ **Replace:** `%s` (-%d/+%d)", path, lines_removed, lines_added) })
+      { string.format("✓ **Replace:** `%s` (%d replacements, -%d/+%d lines)", path, #replacements, total_lines_removed, total_lines_added) })
 
     return true
   end,
