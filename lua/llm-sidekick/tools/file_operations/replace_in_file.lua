@@ -251,9 +251,7 @@ return {
       end
       local old_block_end_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
-      chat.paste_at_end("\n```\n", opts.buffer) -- End old_block code block
-      chat.paste_at_end("with\n", opts.buffer)
-      chat.paste_at_end(string.format("````%s\n", language), opts.buffer) -- Start new_block code block
+      chat.paste_at_end("\n\n", opts.buffer) -- End old_block code block
       local new_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
       if replacement.new_block then
