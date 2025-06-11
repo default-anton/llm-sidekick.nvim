@@ -30,6 +30,11 @@ return {
     max_tokens = 8192,
     temperature = 0.6,
   },
+  ["vertex_ai/claude-sonnet-4"] = {
+    name = "vertex_ai/claude-sonnet-4@20250514",
+    max_tokens = 32768,
+    temperature = 0.7,
+  },
   ["anthropic.claude-sonnet-4"] = {
     name = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
     max_tokens = 32768,
