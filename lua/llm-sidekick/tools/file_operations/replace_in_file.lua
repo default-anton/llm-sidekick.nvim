@@ -241,6 +241,10 @@ return {
       return
     end
 
+    if type(tool_call.parameters.replacements) ~= "table" then
+      return
+    end
+
     for i, replacement in ipairs(tool_call.parameters.replacements) do
       chat.paste_at_end(string.format("\n\n**Replacement %d:**\n", i), opts.buffer)
       chat.paste_at_end(string.format("````%s\n", language), opts.buffer)
