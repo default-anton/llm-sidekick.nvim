@@ -239,7 +239,7 @@ function M.start_web_server(port)
     args = {
       'run',
       '--python', '3.12',
-      '--with', 'litellm[proxy]@git+https://github.com/default-anton/litellm.git',
+      '--with', 'litellm[proxy]',
       '--with', 'boto3',
       '--with', 'google-generativeai',
       '--with', 'google-cloud-aiplatform',
