@@ -12,8 +12,8 @@ return {
   },
   ["claude-sonnet-4-20250514"] = {
     name = "anthropic/claude-sonnet-4-20250514",
-    max_tokens = 32768,
-    temperature = 0.6,
+    max_tokens = 64000,
+    temperature = 0.7,
   },
   ["claude-3-7-sonnet-latest"] = {
     name = "anthropic/claude-3-7-sonnet-latest",
@@ -32,13 +32,13 @@ return {
   },
   ["vertex_ai/claude-sonnet-4"] = {
     name = "vertex_ai/claude-sonnet-4@20250514",
-    max_tokens = 32768,
+    max_tokens = 64000,
     temperature = 0.7,
   },
   ["anthropic.claude-sonnet-4"] = {
     name = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
-    max_tokens = 32768,
-    temperature = 0.6,
+    max_tokens = 64000,
+    temperature = 0.7,
   },
   ["anthropic.claude-3-7-sonnet"] = {
     name = "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
