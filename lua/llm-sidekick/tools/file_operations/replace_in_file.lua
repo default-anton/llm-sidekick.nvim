@@ -242,7 +242,11 @@ return {
     end
 
     for i, replacement in ipairs(tool_call.parameters.replacements) do
-      chat.paste_at_end(string.format("\n\n**Replacement %d:**\n", i), opts.buffer)
+      if #tool_call.parameters.replacements > 1 then
+        chat.paste_at_end(string.format("\n\n**Replacement %d:**\n", i), opts.buffer)
+      else
+        chat.paste_at_end("\n\n", opts.buffer)
+      end
       chat.paste_at_end(string.format("````%s\n", language), opts.buffer)
       local old_block_lnum = vim.api.nvim_buf_line_count(opts.buffer)
 
