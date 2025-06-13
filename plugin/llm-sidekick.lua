@@ -268,34 +268,10 @@ local ask_command = function()
         cwd = vim.fn.getcwd(),
         just_chatting = model_settings.just_chatting,
         model = model_settings.name,
+        guidelines = current_project_config.guidelines,
+        technologies = current_project_config.technologies,
       })
 
-      local guidelines = vim.trim(current_project_config.guidelines or "")
-      local global_guidelines = settings.get_global_guidelines()
-      if global_guidelines and global_guidelines ~= "" then
-        guidelines = vim.trim(global_guidelines .. "\n" .. guidelines)
-      end
-
-      local technologies = vim.trim(current_project_config.technologies or "")
-
-      if guidelines ~= "" or technologies ~= "" then
-        system_prompt = system_prompt .. [[
-
----
-
-User's Custom Instructions:
-The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
-      end
-
-      if guidelines ~= "" then
-        system_prompt = system_prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
-      end
-
-      if technologies ~= "" then
-        system_prompt = system_prompt .. "\n\n" .. "Technologies:\n" .. technologies
-      end
-
-      system_prompt = vim.trim(system_prompt)
       prompt = prompt .. "SYSTEM: " .. system_prompt
       prompt = prompt .. "\nUSER: "
     end

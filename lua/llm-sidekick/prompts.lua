@@ -1,4 +1,5 @@
 local fs = require("llm-sidekick.fs")
+local settings = require("llm-sidekick.settings")
 
 --- Generates the system prompt for the LLM assistant
 --- @param opts table Configuration options for the system prompt
@@ -6,6 +7,8 @@ local fs = require("llm-sidekick.fs")
 --- @field os_name string? The operating system name (defaults to "macOS")
 --- @field shell string? The shell being used (defaults to "bash")
 --- @field cwd string The current working directory
+--- @field guidelines string? Additional user-defined guidelines for the assistant
+--- @field technologies string? Technologies the assistant should be aware of
 --- @field just_chatting boolean? Whether the assistant is in "just chatting" mode
 --- @field model string The model being used
 --- @return string The formatted system prompt
@@ -15,6 +18,8 @@ local function system_prompt(opts)
   local cwd = opts.cwd
   local just_chatting = opts.just_chatting
   local model = opts.model
+  local guidelines = opts.guidelines
+  local technologies = opts.technologies
 
   local project_instructions = {}
 
@@ -78,7 +83,32 @@ Current Working Directory: ]] .. cwd .. "\n"
     prompt = prompt .. "\n" .. project_instructions_str .. "\n"
   end
 
-  return prompt
+  guidelines = vim.trim(guidelines or "")
+  local global_guidelines = settings.get_global_guidelines()
+  if global_guidelines and global_guidelines ~= "" then
+    guidelines = vim.trim(global_guidelines .. "\n\n" .. guidelines)
+  end
+
+  technologies = vim.trim(technologies or "")
+
+  if guidelines ~= "" or technologies ~= "" then
+    prompt = prompt .. [[
+
+---
+
+User's Custom Instructions:
+The following additional instructions are provided by the user, and should be followed to the best of your ability.]]
+  end
+
+  if guidelines ~= "" then
+    prompt = prompt .. "\n\n" .. "Guidelines:\n" .. guidelines
+  end
+
+  if technologies ~= "" then
+    prompt = prompt .. "\n\n" .. "Technologies:\n" .. technologies
+  end
+
+  return vim.trim(prompt)
 end
 
 return {
