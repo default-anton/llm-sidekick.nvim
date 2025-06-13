@@ -9,6 +9,8 @@ vim.g.llm_sidekick_ns = vim.api.nvim_create_namespace('llm-sidekick')
 vim.g.llm_sidekick_last_chat_buffer = nil
 vim.g.llm_sidekick_tmp_dir = utils.get_temp_dir()
 vim.g.llm_sidekick_log_path = vim.g.llm_sidekick_tmp_dir .. "/llm_sidekick.log"
+vim.g.llm_sidekick_current_project_guidelines = ""
+vim.g.llm_sidekick_current_project_technologies = ""
 
 if os.getenv("LLM_SIDEKICK_DEBUG") == "true" then
   vim.print("Log file: " .. vim.g.llm_sidekick_log_path)
@@ -42,7 +44,6 @@ local prompts = require "llm-sidekick.prompts"
 local file_editor = require "llm-sidekick.file_editor"
 local llm_sidekick = require "llm-sidekick"
 local speech_to_text = require "llm-sidekick.speech_to_text"
-local current_project_config = {}
 
 local OPEN_MODES = { "tab", "vsplit", "split" }
 local MODE_SHORTCUTS = {
@@ -64,9 +65,11 @@ local function load_project_config()
       guidelines = { config.guidelines, "string", true },
       technologies = { config.technologies, "string", true },
     })
-    current_project_config = config
+    vim.g.llm_sidekick_current_project_guidelines = config.guidelines or ""
+    vim.g.llm_sidekick_current_project_technologies = config.technologies or ""
   else
-    current_project_config = {}
+    vim.g.llm_sidekick_current_project_guidelines = ""
+    vim.g.llm_sidekick_current_project_technologies = ""
   end
 end
 
@@ -268,8 +271,8 @@ local ask_command = function()
         cwd = vim.fn.getcwd(),
         just_chatting = model_settings.just_chatting,
         model = model_settings.name,
-        guidelines = current_project_config.guidelines,
-        technologies = current_project_config.technologies,
+        guidelines = vim.g.llm_sidekick_current_project_guidelines,
+        technologies = vim.g.llm_sidekick_current_project_technologies,
       })
 
       prompt = prompt .. "SYSTEM: " .. system_prompt
