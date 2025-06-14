@@ -17,7 +17,7 @@ local spec = {
       task_instructions = {
         type = "string",
         description =
-        "Detailed, self-contained instructions for the subagent. This should include all necessary context, data, code snippets, text excerpts, or file contents the subagent needs to perform the task. The subagent will operate solely based on these instructions."
+        "Detailed, self-contained instructions for the subagent. This should include all necessary context, data, and small code snippets or text excerpts when needed for immediate reference. Since the subagent has access to the same tools, reference file paths that need to be read rather than copying entire file contents. The subagent will operate solely based on these instructions."
       }
     },
     required = { "title", "task_instructions" }
