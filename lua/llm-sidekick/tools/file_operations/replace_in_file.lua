@@ -235,14 +235,19 @@ return {
   stop = function(tool_call, opts)
     chat.paste_at_end(string.format("**Replace:** `%s`", tool_call.parameters.file_path), opts.buffer)
     local language = markdown.filename_to_language(tool_call.parameters.file_path, "txt")
+    local replacements = tool_call.parameters.replacements
 
-    if not tool_call.parameters.replacements or #tool_call.parameters.replacements == 0 then
+    if type(replacements) == "string" then
+      replacements = {replacements}
+    end
+
+    if not replacements or #replacements == 0 then
       chat.paste_at_end("\nNo replacements specified.", opts.buffer)
       return
     end
 
-    for i, replacement in ipairs(tool_call.parameters.replacements) do
-      if #tool_call.parameters.replacements > 1 then
+    for i, replacement in ipairs(replacements) do
+      if #replacements > 1 then
         chat.paste_at_end(string.format("\n\n**Replacement %d:**\n", i), opts.buffer)
       else
         chat.paste_at_end("\n\n", opts.buffer)
@@ -274,6 +279,10 @@ return {
   run = function(tool_call, opts)
     local path = vim.trim(tool_call.parameters.file_path or "")
     local replacements = tool_call.parameters.replacements
+
+    if type(replacements) == "string" then
+      replacements = {replacements}
+    end
 
     if not replacements or #replacements == 0 then
       error("Error: No replacements provided.")
