@@ -17,12 +17,7 @@ local spec = {
       task_instructions = {
         type = "string",
         description =
-        "Detailed, self-contained instructions for the subagent. This should include all necessary context the subagent needs to perform the task."
-      },
-      input_data = {
-        type = "string",
-        description =
-        "Any specific data the subagent might need, such as code snippets, text excerpts, or names of files the main agent has already read and can provide content from. The subagent will operate based *only* on the `task_instructions` and this `input_data`."
+        "Detailed, self-contained instructions for the subagent. This should include all necessary context, data, code snippets, text excerpts, or file contents the subagent needs to perform the task. The subagent will operate solely based on these instructions."
       }
     },
     required = { "title", "task_instructions" }
@@ -30,10 +25,9 @@ local spec = {
 }
 
 local json_props = string.format(
-  [[{ "title": %s, "task_instructions": %s, "input_data": %s }]],
+  [[{ "title": %s, "task_instructions": %s }]],
   vim.json.encode(spec.input_schema.properties.title),
-  vim.json.encode(spec.input_schema.properties.task_instructions),
-  vim.json.encode(spec.input_schema.properties.input_data)
+  vim.json.encode(spec.input_schema.properties.task_instructions)
 )
 
 return {
@@ -47,10 +41,9 @@ return {
   stop = function(tool_call, opts)
     chat.paste_at_end(
       string.format(
-        "**Title:** %s\n**Task Instructions:**\n````markdown\n%s\n````\n**Input Data:**\n%s",
+        "**Title:** %s\n**Task Instructions:**\n````markdown\n%s\n````",
         tool_call.parameters.title,
-        tool_call.parameters.task_instructions,
-        tool_call.parameters.input_data or "N/A"
+        tool_call.parameters.task_instructions
       ),
       opts.buffer
     )
@@ -97,9 +90,8 @@ return {
 
     -- Create subagent prompt
     local subagent_prompt = string.format(
-      "USER: # Task\n%s\n\n# Input Data\n%s",
-      tool_call.parameters.task_instructions,
-      tool_call.parameters.input_data or "No additional input data provided."
+      "USER: %s",
+      tool_call.parameters.task_instructions
     )
 
     -- Set up the hidden buffer with the prompt
