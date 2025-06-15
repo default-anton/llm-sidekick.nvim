@@ -33,24 +33,49 @@ local json_props = string.format(
 
 function approve_tool_calls(bufnr, approve_callback, reject_callback)
   local tool_utils = require("llm-sidekick.tools.utils")
-  local width = 50
-  local height = 30
+
+  -- Calculate window dimensions (90% of editor size)
+  local function calculate_window_size()
+    local width = math.floor(vim.o.columns * 0.9)
+    local height = math.floor(vim.o.lines * 0.9)
+    local row = math.floor((vim.o.lines - height) / 2)
+    local col = math.floor((vim.o.columns - width) / 2)
+    return width, height, row, col
+  end
+
+  local width, height, row, col = calculate_window_size()
   local win_opts = {
     relative = "editor",
     width = width,
     height = height,
-    row = (vim.o.lines - height) / 2,
-    col = (vim.o.columns - width) / 2,
+    row = row,
+    col = col,
     style = "minimal",
     border = "rounded"
   }
   local winnr = vim.api.nvim_open_win(bufnr, false, win_opts)
   vim.api.nvim_set_current_win(winnr)
 
+  -- Create autocmd to handle window resizing
+  local resize_autocmd_id = vim.api.nvim_create_autocmd("VimResized", {
+    callback = function()
+      if vim.api.nvim_win_is_valid(winnr) then
+        local new_width, new_height, new_row, new_col = calculate_window_size()
+        vim.api.nvim_win_set_config(winnr, {
+          width = new_width,
+          height = new_height,
+          row = new_row,
+          col = new_col
+        })
+      end
+    end,
+  })
+
   -- Create autocmd to handle window close
   local win_close_autocmd_id = vim.api.nvim_create_autocmd("WinClosed", {
     buffer = bufnr,
     callback = function()
+      pcall(vim.api.nvim_del_autocmd, resize_autocmd_id)
       reject_callback()
     end,
     once = true,
@@ -59,6 +84,7 @@ function approve_tool_calls(bufnr, approve_callback, reject_callback)
   local reject = function()
     if vim.api.nvim_win_is_valid(winnr) then
       pcall(vim.api.nvim_del_autocmd, win_close_autocmd_id)
+      pcall(vim.api.nvim_del_autocmd, resize_autocmd_id)
       vim.api.nvim_win_close(winnr, true)
     end
     reject_callback()
@@ -70,6 +96,7 @@ function approve_tool_calls(bufnr, approve_callback, reject_callback)
       callback = vim.schedule_wrap(function()
         if vim.api.nvim_win_is_valid(winnr) then
           pcall(vim.api.nvim_del_autocmd, win_close_autocmd_id)
+          pcall(vim.api.nvim_del_autocmd, resize_autocmd_id)
           vim.api.nvim_win_close(winnr, true)
         end
         approve_callback()
