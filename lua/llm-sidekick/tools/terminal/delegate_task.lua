@@ -18,7 +18,7 @@ local spec = {
       prompt = {
         type = "string",
         description =
-        "Detailed, self-contained instructions for the subagent. Structure with: (1) Objective - clearly state what should be accomplished and the specific deliverable expected, (2) Output Format - specify exactly how the final response should be structured since this will be returned as the result, and (3) Task Boundaries - define what is in-scope and out-of-scope. Include all necessary context, data, and small code snippets or text excerpts when needed for immediate reference. Since the subagent has access to the same tools, reference file paths that need to be read rather than copying entire file contents. The subagent will operate solely based on these instructions."
+        "Detailed, self-contained instructions for the subagent. Structure with: (1) Objective - clearly state what should be accomplished and the specific deliverable expected, (2) Output Format - specify exactly how the final response should be structured since this will be returned as the result, and (3) Task Boundaries - define what is in-scope and out-of-scope. Include all necessary context, data, and small code snippets or text excerpts when needed for immediate reference. Since the subagent has access to the same tools, reference file paths that need to be read rather than copying entire file contents. The subagent will operate solely based on these instructions. Maintain extremely high information density while being concise - describe everything needed in the fewest words possible."
       }
     },
     required = { "title", "prompt" }
