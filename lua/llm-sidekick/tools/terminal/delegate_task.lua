@@ -1,6 +1,7 @@
 local chat = require("llm-sidekick.chat")
 local prompts = require("llm-sidekick.prompts")
 local utils = require("llm-sidekick.utils")
+local file_editor = require("llm-sidekick.file_editor")
 
 local spec = {
   name = "delegate_task_to_subagent",
@@ -29,6 +30,59 @@ local json_props = string.format(
   vim.json.encode(spec.input_schema.properties.title),
   vim.json.encode(spec.input_schema.properties.task_instructions)
 )
+
+function approve_tool_calls(bufnr, approve_callback, reject_callback)
+  local tool_utils = require("llm-sidekick.tools.utils")
+  local width = 50
+  local height = 30
+  local win_opts = {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = (vim.o.lines - height) / 2,
+    col = (vim.o.columns - width) / 2,
+    style = "minimal",
+    border = "rounded"
+  }
+  local winnr = vim.api.nvim_open_win(bufnr, false, win_opts)
+  vim.api.nvim_set_current_win(winnr)
+
+  -- Create autocmd to handle window close
+  local win_close_autocmd_id = vim.api.nvim_create_autocmd("WinClosed", {
+    buffer = bufnr,
+    callback = function()
+      reject_callback()
+    end,
+    once = true,
+  })
+
+  local reject = function()
+    if vim.api.nvim_win_is_valid(winnr) then
+      pcall(vim.api.nvim_del_autocmd, win_close_autocmd_id)
+      vim.api.nvim_win_close(winnr, true)
+    end
+    reject_callback()
+  end
+
+  local accept = function()
+    tool_utils.run_tool_calls_in_last_assistant_message({
+      buffer = bufnr,
+      callback = vim.schedule_wrap(function()
+        if vim.api.nvim_win_is_valid(winnr) then
+          pcall(vim.api.nvim_del_autocmd, win_close_autocmd_id)
+          vim.api.nvim_win_close(winnr, true)
+        end
+        approve_callback()
+      end)
+    })
+  end
+
+  vim.keymap.set('n', '<leader>A', accept,
+    { noremap = true, silent = true, buffer = bufnr, desc = "Accept and continue" })
+  vim.keymap.set('n', '<CR>', accept, { noremap = true, silent = true, buffer = bufnr, desc = "Accept and continue" })
+  vim.keymap.set('n', '<C-c>', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
+  vim.keymap.set('n', 'q', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
+end
 
 return {
   spec = spec,
@@ -65,8 +119,23 @@ return {
     -- Store initial state
     tool_call.state.result = { success = false, result = nil }
 
-    -- Create hidden buffer for subagent tools to write to
-    local hidden_buffer = vim.api.nvim_create_buf(false, true)
+    -- Create a buffer for subagent tools to write to
+    local subagent_buffer = vim.api.nvim_create_buf(false, true)
+
+    -- Handle buffer close/delete - set result and call callbacks
+    local buffer_close_autocmd_id = vim.api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
+      buffer = subagent_buffer,
+      callback = function()
+        if tool_call.state.result.success == false and tool_call.state.result.result == nil then
+          tool_call.state.result = { success = false, result = "User interrupted the subagent by closing the buffer." }
+          chat.paste_at_end("Subagent interrupted by user\n", opts.buffer)
+          for _, callback in ipairs(callbacks) do
+            pcall(callback)
+          end
+        end
+      end,
+      once = true,
+    })
     -- NOTE: Opens a window for debugging. Don't delete this commented code.
     -- local width = 50
     -- local height = 30
@@ -79,7 +148,7 @@ return {
     --   style = "minimal",
     --   border = "rounded"
     -- }
-    -- local winnr = vim.api.nvim_open_win(hidden_buffer, false, win_opts)
+    -- local winnr = vim.api.nvim_open_win(subagent_buffer, false, win_opts)
     -- vim.api.nvim_set_current_win(winnr)
 
     -- Get all tools except delegate_task_to_subagent to prevent recursion
@@ -94,9 +163,9 @@ return {
       tool_call.parameters.task_instructions
     )
 
-    -- Set up the hidden buffer with the prompt
+    -- Set up the subagent buffer with the prompt
     local prompt_lines = vim.split(subagent_prompt, "\n")
-    vim.api.nvim_buf_set_lines(hidden_buffer, 0, -1, false, prompt_lines)
+    vim.api.nvim_buf_set_lines(subagent_buffer, 0, -1, false, prompt_lines)
 
     -- Report subagent start to main buffer
     chat.paste_at_end(string.format("Starting subagent for task: %s\n", tool_call.parameters.title), opts.buffer)
@@ -109,15 +178,15 @@ return {
 
     -- Start the subagent loop
     local function run_subagent_loop()
+      local tool_utils = require("llm-sidekick.tools.utils")
       local main_agent = require("llm-sidekick.init")
-      local file_editor = require("llm-sidekick.file_editor")
-      local buf_lines = vim.api.nvim_buf_get_lines(hidden_buffer, 0, -1, false)
+      local buf_lines = vim.api.nvim_buf_get_lines(subagent_buffer, 0, -1, false)
       local full_prompt = table.concat(buf_lines, "\n")
-      local prompt = main_agent.parse_prompt(full_prompt, hidden_buffer)
+      local prompt = main_agent.parse_prompt(full_prompt, subagent_buffer)
       local last_assistant_lnum = file_editor.find_last_assistant_start_line(buf_lines)
       local last_user_lnum = file_editor.find_last_user_start_line(buf_lines)
       if last_assistant_lnum < last_user_lnum then
-        vim.api.nvim_buf_set_lines(hidden_buffer, -1, -1, false, { "", "ASSISTANT: " })
+        vim.api.nvim_buf_set_lines(subagent_buffer, -1, -1, false, { "", "ASSISTANT: " })
       end
 
       -- Override tools with filtered set
@@ -131,14 +200,14 @@ return {
       end
 
       local client = require "llm-sidekick.openai".new({ url = "http://localhost:1993/v1/chat/completions" })
-      local tool_utils = require("llm-sidekick.tools.utils")
       local message_types = require "llm-sidekick.message_types"
 
       local tool_calls = {}
       local in_reasoning_tag = false
 
-      local job = client:chat(prompt, function(state, chars)
-        if not vim.api.nvim_buf_is_loaded(hidden_buffer) then
+      local job
+      job = client:chat(prompt, function(state, chars)
+        if not vim.api.nvim_buf_is_loaded(subagent_buffer) then
           return
         end
 
@@ -153,7 +222,7 @@ return {
 
           if state == message_types.TOOL_START or state == message_types.TOOL_DELTA or state == message_types.TOOL_STOP then
             local tool_call_data = chars
-            local tc = tool_utils.find_tool_call_by_id(tool_call_data.id, { buffer = hidden_buffer })
+            local tc = tool_utils.find_tool_call_by_id(tool_call_data.id, { buffer = subagent_buffer })
             if tc then
               tool_call_data.state.lnum = tc.state.lnum
               tool_call_data.state.end_lnum = tc.state.end_lnum
@@ -169,44 +238,44 @@ return {
               -- Report tool start to main buffer (just the name)
               chat.paste_at_end(string.format("  → %s\n", tool_call_data.name), opts.buffer)
 
-              local last_two_lines = vim.api.nvim_buf_get_lines(hidden_buffer, -3, -1, false)
+              local last_two_lines = vim.api.nvim_buf_get_lines(subagent_buffer, -3, -1, false)
               if last_two_lines[#last_two_lines] == "" then
                 if last_two_lines[1] ~= "" then
-                  chat.paste_at_end("\n", hidden_buffer)
+                  chat.paste_at_end("\n", subagent_buffer)
                 end
               else
-                chat.paste_at_end("\n\n", hidden_buffer)
+                chat.paste_at_end("\n\n", subagent_buffer)
               end
 
-              tool_call_data.state.lnum = vim.api.nvim_buf_line_count(hidden_buffer)
-              tool_utils.add_tool_call_to_buffer({ buffer = hidden_buffer, tool_call = tool_call_data })
+              tool_call_data.state.lnum = vim.api.nvim_buf_line_count(subagent_buffer)
+              tool_utils.add_tool_call_to_buffer({ buffer = subagent_buffer, tool_call = tool_call_data })
 
               if tool.start then
-                tool.start(tool_call_data, { buffer = hidden_buffer })
+                tool.start(tool_call_data, { buffer = subagent_buffer })
               end
             elseif state == message_types.TOOL_DELTA then
               if tool.delta then
-                tool.delta(tool_call_data, { buffer = hidden_buffer })
+                tool.delta(tool_call_data, { buffer = subagent_buffer })
               end
             elseif state == message_types.TOOL_STOP then
               if tool.stop then
-                tool.stop(tool_call_data, { buffer = hidden_buffer })
+                tool.stop(tool_call_data, { buffer = subagent_buffer })
               end
 
-              tool_call_data.state.end_lnum = math.max(vim.api.nvim_buf_line_count(hidden_buffer),
+              tool_call_data.state.end_lnum = math.max(vim.api.nvim_buf_line_count(subagent_buffer),
                 tool_call_data.state.lnum)
 
-              chat.paste_at_end("\n\n", hidden_buffer)
+              chat.paste_at_end("\n\n", subagent_buffer)
 
               tool_call_data.state.extmark_id = vim.api.nvim_buf_set_extmark(
-                hidden_buffer,
+                subagent_buffer,
                 vim.g.llm_sidekick_ns,
                 tool_call_data.state.lnum - 1,
                 0,
                 { invalidate = true }
               )
               table.insert(tool_calls, tool_call_data)
-              tool_utils.update_tool_call_in_buffer({ buffer = hidden_buffer, tool_call = tool_call_data })
+              tool_utils.update_tool_call_in_buffer({ buffer = subagent_buffer, tool_call = tool_call_data })
               tool_call_data.tool = tool
             end
 
@@ -214,40 +283,51 @@ return {
           end
 
           if state == message_types.REASONING and not in_reasoning_tag then
-            chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", hidden_buffer)
+            chat.paste_at_end("\n\n<llm_sidekick_thinking>\n", subagent_buffer)
             in_reasoning_tag = true
           end
 
           if state == message_types.DATA and in_reasoning_tag then
-            chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", hidden_buffer)
+            chat.paste_at_end("\n</llm_sidekick_thinking>\n\n", subagent_buffer)
             in_reasoning_tag = false
           end
 
-          chat.paste_at_end(chars, hidden_buffer)
+          chat.paste_at_end(chars, subagent_buffer)
         end)
 
         if not success then
           tool_call.state.result = { success = false, result = "Subagent error: " .. tostring(err) }
           chat.paste_at_end("Subagent completed with error\n", opts.buffer)
+          if job and not job.is_shutdown then
+            vim.loop.kill(job.pid, vim.loop.constants.SIGKILL)
+          end
+          -- Clean up buffer and autocmd on error
+          if vim.api.nvim_buf_is_loaded(subagent_buffer) then
+            pcall(vim.api.nvim_del_autocmd, buffer_close_autocmd_id)
+            vim.api.nvim_buf_delete(subagent_buffer, { force = true })
+          end
+          for _, callback in ipairs(callbacks) do
+            pcall(callback)
+          end
           return
         end
 
         if message_types.DONE == state then
-          if not vim.api.nvim_buf_is_loaded(hidden_buffer) then
+          if not vim.api.nvim_buf_is_loaded(subagent_buffer) then
             return
           end
 
           -- Run auto-acceptable tools and continue loop or finish
-          tool_utils.run_auto_acceptable_tools_with_callback(tool_calls, { buffer = hidden_buffer },
+          tool_utils.run_auto_acceptable_tools_with_callback(tool_calls, { buffer = subagent_buffer },
             function()
-              if not vim.api.nvim_buf_is_loaded(hidden_buffer) then
+              if not vim.api.nvim_buf_is_loaded(subagent_buffer) then
                 return
               end
 
               local tool_call_ids = vim.tbl_values(vim.tbl_map(function(tc) return tc.id end, tool_calls))
               local last_assistant_tool_calls = tool_utils.get_tool_calls_in_last_assistant_message({
                 buffer =
-                    hidden_buffer
+                    subagent_buffer
               })
               last_assistant_tool_calls = vim.tbl_filter(
                 function(tc) return vim.tbl_contains(tool_call_ids, tc.id) end,
@@ -260,18 +340,36 @@ return {
               )
               local no_tool_calls = vim.tbl_isempty(last_assistant_tool_calls)
 
-              if no_tool_calls or has_pending_tools then
-                -- Subagent is done, collect results
-                local buffer_content = table.concat(vim.api.nvim_buf_get_lines(hidden_buffer, 0, -1, false), "\n")
-                -- TODO: The result of the tool call should be the text of the last assistant message in the hidden buffer
-                tool_call.state.result = { success = true, result = buffer_content }
-
-                -- Clean up hidden buffer
-                vim.api.nvim_buf_delete(hidden_buffer, { force = true })
-                -- Call all callbacks
+              if no_tool_calls then
+                -- Subagent is done, return the last assistant message as the result
+                local prompt = main_agent.parse_prompt(
+                  table.concat(vim.api.nvim_buf_get_lines(subagent_buffer, 0, -1, false), "\n"), subagent_buffer)
+                tool_call.state.result = { success = true, result = prompt.messages[#prompt.messages].content }
+                -- Clean up subagent buffer
+                if vim.api.nvim_buf_is_loaded(subagent_buffer) then
+                  -- Clean up the buffer close autocmd before deleting buffer
+                  pcall(vim.api.nvim_del_autocmd, buffer_close_autocmd_id)
+                  vim.api.nvim_buf_delete(subagent_buffer, { force = true })
+                end
                 for _, callback in ipairs(callbacks) do
                   pcall(callback)
                 end
+              elseif has_pending_tools then
+                -- prompt the user to approve tool calls
+                approve_tool_calls(subagent_buffer, run_subagent_loop, function()
+                  tool_call.state.result = {
+                    success = false,
+                    result = "User rejected tool calls suggested by subagent.",
+                  }
+                  if vim.api.nvim_buf_is_loaded(subagent_buffer) then
+                    -- Clean up the buffer close autocmd before deleting buffer
+                    pcall(vim.api.nvim_del_autocmd, buffer_close_autocmd_id)
+                    vim.api.nvim_buf_delete(subagent_buffer, { force = true })
+                  end
+                  for _, callback in ipairs(callbacks) do
+                    pcall(callback)
+                  end
+                end)
               else
                 -- Continue the loop
                 vim.schedule(run_subagent_loop)
