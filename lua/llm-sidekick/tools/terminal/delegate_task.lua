@@ -15,20 +15,20 @@ local spec = {
         description =
         "A short, descriptive title for the task. This should be concise and clearly indicate the nature of the task."
       },
-      task_instructions = {
+      prompt = {
         type = "string",
         description =
         "Detailed, self-contained instructions for the subagent. This should include all necessary context, data, and small code snippets or text excerpts when needed for immediate reference. Since the subagent has access to the same tools, reference file paths that need to be read rather than copying entire file contents. The subagent will operate solely based on these instructions."
       }
     },
-    required = { "title", "task_instructions" }
+    required = { "title", "prompt" }
   }
 }
 
 local json_props = string.format(
-  [[{ "title": %s, "task_instructions": %s }]],
+  [[{ "title": %s, "prompt": %s }]],
   vim.json.encode(spec.input_schema.properties.title),
-  vim.json.encode(spec.input_schema.properties.task_instructions)
+  vim.json.encode(spec.input_schema.properties.prompt)
 )
 
 function approve_tool_calls(bufnr, approve_callback, reject_callback)
@@ -124,7 +124,7 @@ return {
       string.format(
         "**Title:** %s\n**Task Instructions:**\n````markdown\n%s\n````",
         tool_call.parameters.title,
-        tool_call.parameters.task_instructions
+        tool_call.parameters.prompt
       ),
       opts.buffer
     )
@@ -187,7 +187,7 @@ return {
     -- Create subagent prompt
     local subagent_prompt = string.format(
       "USER: %s",
-      tool_call.parameters.task_instructions
+      tool_call.parameters.prompt
     )
 
     -- Set up the subagent buffer with the prompt
