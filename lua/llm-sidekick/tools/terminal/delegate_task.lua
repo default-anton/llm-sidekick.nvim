@@ -138,6 +138,7 @@ return {
       shell = vim.o.shell or "bash",
       cwd = vim.fn.getcwd(),
       just_chatting = false,
+      is_subagent = true,
       model = model_settings.model,
       guidelines = vim.g.llm_sidekick_current_project_guidelines,
       technologies = vim.g.llm_sidekick_current_project_technologies,
