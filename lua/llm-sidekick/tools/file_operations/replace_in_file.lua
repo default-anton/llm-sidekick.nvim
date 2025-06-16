@@ -13,35 +13,57 @@ local spec = {
         type = "string",
         description = "The absolute or relative path to the file to be modified"
       },
-      replacements = {
-        type = "array",
-        description = "An array of replacement objects. Each object defines an old_block to find and a new_block to replace it with.",
-        items = {
-          type = "object",
-          properties = {
-            old_block = {
-              type = "string",
-              description = "A multi-line string representing the exact block of lines to be replaced. Do not include a trailing newline unless it is part of the final line to match"
-            },
-            new_block = {
-              type = "string",
-              description = "The multi-line string that will replace every occurrence of 'old_block'. To delete the 'old_block', provide an empty string for 'new_block'"
-            }
-          },
-          required = { "old_block", "new_block" }
-        }
-      }
+      old_block = {
+        type = "string",
+        description =
+        "A multi-line string representing the exact block of lines to be replaced. Do not include a trailing newline unless it is part of the final line to match"
+      },
+      new_block = {
+        type = "string",
+        description =
+        "The multi-line string that will replace every occurrence of 'old_block'. To delete the 'old_block', provide an empty string for 'new_block'"
+      },
+      old_block2 = {
+        type = "string",
+        description =
+        "An optional second block of lines to be replaced. This is useful for performing multiple replacements in a single tool call. If provided, 'new_block2' must also be specified"
+      },
+      new_block2 = {
+        type = "string",
+        description =
+        "The multi-line string that will replace every occurrence of 'old_block2'. If 'old_block2' is provided, this must also be specified. To delete 'old_block2', provide an empty string for 'new_block2'"
+      },
+      old_block3 = {
+        type = "string",
+        description =
+        "An optional third block of lines to be replaced. This is useful for performing multiple replacements in a single tool call. If provided, 'new_block3' must also be specified"
+      },
+      new_block3 = {
+        type = "string",
+        description =
+        "The multi-line string that will replace every occurrence of 'old_block3'. If 'old_block3' is provided, this must also be specified. To delete 'old_block3', provide an empty string for 'new_block3'"
+      },
     },
-    required = { "file_path", "replacements" },
+    required = { "file_path", "old_block", "new_block" },
   }
 }
 
 local json_props = string.format([[{
   "file_path": %s,
-  "replacements": %s
+  "old_block": %s,
+  "new_block": %s,
+  "old_block2": %s,
+  "new_block2": %s,
+  "old_block3": %s,
+  "new_block3": %s
 }]],
   vim.json.encode(spec.input_schema.properties.file_path),
-  vim.json.encode(spec.input_schema.properties.replacements)
+  vim.json.encode(spec.input_schema.properties.old_block),
+  vim.json.encode(spec.input_schema.properties.new_block),
+  vim.json.encode(spec.input_schema.properties.old_block2),
+  vim.json.encode(spec.input_schema.properties.new_block2),
+  vim.json.encode(spec.input_schema.properties.old_block3),
+  vim.json.encode(spec.input_schema.properties.new_block3)
 )
 
 local function find_min_indentation(lines)
@@ -235,15 +257,23 @@ return {
   stop = function(tool_call, opts)
     chat.paste_at_end(string.format("**Replace:** `%s`", tool_call.parameters.file_path), opts.buffer)
     local language = markdown.filename_to_language(tool_call.parameters.file_path, "txt")
-    local replacements = tool_call.parameters.replacements
-
-    if type(replacements) == "string" then
-      replacements = {replacements}
+    local replacements = {
+      {
+        old_block = tool_call.parameters.old_block,
+        new_block = tool_call.parameters.new_block
+      }
+    }
+    if tool_call.parameters.old_block2 and tool_call.parameters.new_block2 then
+      table.insert(replacements, {
+        old_block = tool_call.parameters.old_block2,
+        new_block = tool_call.parameters.new_block2
+      })
     end
-
-    if not replacements or #replacements == 0 then
-      chat.paste_at_end("\nNo replacements specified.", opts.buffer)
-      return
+    if tool_call.parameters.old_block3 and tool_call.parameters.new_block3 then
+      table.insert(replacements, {
+        old_block = tool_call.parameters.old_block3,
+        new_block = tool_call.parameters.new_block3
+      })
     end
 
     for i, replacement in ipairs(replacements) do
@@ -278,14 +308,23 @@ return {
   end,
   run = function(tool_call, opts)
     local path = vim.trim(tool_call.parameters.file_path or "")
-    local replacements = tool_call.parameters.replacements
-
-    if type(replacements) == "string" then
-      replacements = {replacements}
+    local replacements = {
+      {
+        old_block = tool_call.parameters.old_block,
+        new_block = tool_call.parameters.new_block
+      }
+    }
+    if tool_call.parameters.old_block2 and tool_call.parameters.new_block2 then
+      table.insert(replacements, {
+        old_block = tool_call.parameters.old_block2,
+        new_block = tool_call.parameters.new_block2
+      })
     end
-
-    if not replacements or #replacements == 0 then
-      error("Error: No replacements provided.")
+    if tool_call.parameters.old_block3 and tool_call.parameters.new_block3 then
+      table.insert(replacements, {
+        old_block = tool_call.parameters.old_block3,
+        new_block = tool_call.parameters.new_block3
+      })
     end
 
     local content_lines = {}
@@ -392,8 +431,15 @@ return {
     end
 
     -- Replace the tool call content with success message
+    local success_message = string.format(
+      "✓ **Replace:** `%s` (%d replacements, -%d/+%d lines)",
+      path,
+      #replacements,
+      total_lines_removed,
+      total_lines_added
+    )
     vim.api.nvim_buf_set_lines(opts.buffer, tool_call.state.lnum - 1, tool_call.state.end_lnum, false,
-      { string.format("✓ **Replace:** `%s` (%d replacements, -%d/+%d lines)", path, #replacements, total_lines_removed, total_lines_added) })
+      { success_message })
 
     return true
   end,

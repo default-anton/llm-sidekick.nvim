@@ -270,6 +270,7 @@ local ask_command = function()
         shell = vim.o.shell or "bash",
         cwd = vim.fn.getcwd(),
         just_chatting = model_settings.just_chatting,
+        is_subagent = false,
         model = model_settings.name,
         guidelines = vim.g.llm_sidekick_current_project_guidelines,
         technologies = vim.g.llm_sidekick_current_project_technologies,

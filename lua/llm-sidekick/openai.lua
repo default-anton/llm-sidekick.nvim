@@ -213,8 +213,6 @@ function openai:chat(opts, callback)
     end,
   })
 
-  job:start()
-
   return job
 end
 
