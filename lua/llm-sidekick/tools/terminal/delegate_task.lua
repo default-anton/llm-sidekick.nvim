@@ -31,7 +31,7 @@ local json_props = string.format(
   vim.json.encode(spec.input_schema.properties.prompt)
 )
 
-function approve_tool_calls(bufnr, approve_callback, reject_callback)
+function approve_tool_calls(lead_buffer, bufnr, approve_callback, reject_callback)
   local tool_utils = require("llm-sidekick.tools.utils")
 
   -- Calculate window dimensions (90% of editor size)
@@ -109,6 +109,21 @@ function approve_tool_calls(bufnr, approve_callback, reject_callback)
   vim.keymap.set('n', '<CR>', accept, { noremap = true, silent = true, buffer = bufnr, desc = "Accept and continue" })
   vim.keymap.set('n', '<C-c>', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
   vim.keymap.set('n', 'q', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
+  vim.keymap.set(
+    'n',
+    '<leader>at',
+    function()
+      tool_utils.toggle_auto_accept_edits(lead_buffer)
+      vim.b[bufnr].llm_sidekick_auto_accept_edits = vim.b[lead_buffer].llm_sidekick_auto_accept_edits
+      if tool_utils.is_auto_accept_edits(lead_buffer) then
+        accept()
+      end
+    end,
+    { buffer = bufnr, desc = "Toggle auto-accept edits and accept" }
+  )
+
+  local tool_utils = require 'llm-sidekick.tools.utils'
+  tool_utils.toggle_auto_accept_edits(buffer)
 end
 
 return {
@@ -345,6 +360,7 @@ return {
             return
           end
 
+          vim.b[subagent_buffer].llm_sidekick_auto_accept_edits = vim.b[opts.buffer].llm_sidekick_auto_accept_edits
           -- Run auto-acceptable tools and continue loop or finish
           tool_utils.run_auto_acceptable_tools_with_callback(tool_calls, { buffer = subagent_buffer },
             function()
@@ -384,7 +400,7 @@ return {
                 end
               elseif has_pending_tools then
                 -- prompt the user to approve tool calls
-                approve_tool_calls(subagent_buffer, run_subagent_loop, function()
+                approve_tool_calls(opts.buffer, subagent_buffer, run_subagent_loop, function()
                   tool_call.state.result = {
                     success = false,
                     result = "User rejected tool calls suggested by subagent.",

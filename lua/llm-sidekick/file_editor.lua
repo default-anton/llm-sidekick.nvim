@@ -576,7 +576,9 @@ local function create_apply_modifications_command(buffer)
     function()
       local tool_utils = require 'llm-sidekick.tools.utils'
       tool_utils.toggle_auto_accept_edits(buffer)
-      run_tool_calls_in_last_assistant_message()
+      if tool_utils.is_auto_accept_edits(buffer) then
+        run_tool_calls_in_last_assistant_message()
+      end
     end,
     { desc = "Toggle auto-accept edits in the current buffer" }
   )
@@ -599,7 +601,9 @@ local function create_apply_modifications_command(buffer)
     function()
       local tool_utils = require 'llm-sidekick.tools.utils'
       tool_utils.toggle_auto_accept_edits(buffer)
-      run_tool_calls_in_last_assistant_message()
+      if tool_utils.is_auto_accept_edits(buffer) then
+        run_tool_calls_in_last_assistant_message()
+      end
     end,
     { buffer = buffer, desc = "Toggle auto-accept edits in the current buffer" }
   )
