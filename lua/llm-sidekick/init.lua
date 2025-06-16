@@ -258,6 +258,8 @@ function M.ask(prompt_buffer)
 
   prompt.settings.parallel_tool_calls = not model_settings.disable_parallel_tool_calls
 
+  vim.b[prompt_buffer].llm_sidekick_model_settings = prompt.settings
+
   if model_settings.no_system_prompt then
     -- prepend the system prompt to the first message
     local system_prompt = vim.tbl_filter(function(m) return m.role == "system" end, prompt.messages)[1]
@@ -460,6 +462,8 @@ function M.ask(prompt_buffer)
         end)
     end
   end)
+
+  job:start()
 
   vim.b[prompt_buffer].llm_sidekick_job_pid = job.pid
 end

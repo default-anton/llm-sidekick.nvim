@@ -5,7 +5,7 @@ local signs = require("llm-sidekick.signs")
 local spec = {
   name = "replace_in_file",
   description =
-  "Finds and replaces a block of one or more full, consecutive lines with a new block of lines. This function operates on whole lines, including all indentation, comments, and characters. It will search for an exact, case-sensitive match of the 'old_block' of lines. All occurrences will be replaced",
+  "Performs multiple find-and-replace operations on a file, where each operation replaces a block of one or more full, consecutive lines with a new block of lines. Each replacement in the array is processed sequentially. This function operates on whole lines, including all indentation, comments, and characters. It will search for an exact, case-sensitive match of each 'old_block' of lines. IMPORTANT: The 'replacements' parameter must be an array of objects (not a JSON string), where each object has 'old_block' and 'new_block' string properties.",
   input_schema = {
     type = "object",
     properties = {
