@@ -578,6 +578,8 @@ local function create_apply_modifications_command(buffer)
       tool_utils.toggle_auto_accept_edits(buffer)
       if tool_utils.is_auto_accept_edits(buffer) then
         run_tool_calls_in_last_assistant_message()
+      else
+        vim.notify("Auto-accept edits disabled", vim.log.levels.INFO)
       end
     end,
     { desc = "Toggle auto-accept edits in the current buffer" }
@@ -603,6 +605,8 @@ local function create_apply_modifications_command(buffer)
       tool_utils.toggle_auto_accept_edits(buffer)
       if tool_utils.is_auto_accept_edits(buffer) then
         run_tool_calls_in_last_assistant_message()
+      else
+        vim.notify("Auto-accept edits disabled", vim.log.levels.INFO)
       end
     end,
     { buffer = buffer, desc = "Toggle auto-accept edits in the current buffer" }

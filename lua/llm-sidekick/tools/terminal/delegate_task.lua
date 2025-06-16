@@ -105,8 +105,9 @@ function approve_tool_calls(lead_buffer, bufnr, approve_callback, reject_callbac
   end
 
   vim.keymap.set('n', '<leader>A', accept,
-    { noremap = true, silent = true, buffer = bufnr, desc = "Accept and continue" })
-  vim.keymap.set('n', '<CR>', accept, { noremap = true, silent = true, buffer = bufnr, desc = "Accept and continue" })
+    { noremap = true, silent = true, buffer = bufnr, desc = "Accept all tool calls and continue" })
+  vim.keymap.set('n', '<CR>', accept,
+    { noremap = true, silent = true, buffer = bufnr, desc = "Accept all tool calls and continue" })
   vim.keymap.set('n', '<C-c>', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
   vim.keymap.set('n', 'q', reject, { noremap = true, silent = true, buffer = bufnr, desc = "Reject and close" })
   vim.keymap.set(
@@ -117,9 +118,27 @@ function approve_tool_calls(lead_buffer, bufnr, approve_callback, reject_callbac
       vim.b[bufnr].llm_sidekick_auto_accept_edits = vim.b[lead_buffer].llm_sidekick_auto_accept_edits
       if tool_utils.is_auto_accept_edits(lead_buffer) then
         accept()
+      else
+        vim.notify("Auto-accept edits disabled", vim.log.levels.INFO)
       end
     end,
-    { buffer = bufnr, desc = "Toggle auto-accept edits and accept" }
+    { buffer = bufnr, desc = "Toggle auto-accept edits" }
+  )
+
+  vim.api.nvim_buf_create_user_command(bufnr, "AcceptAll", accept, { desc = "Accept all tool calls and continue" })
+  vim.api.nvim_buf_create_user_command(
+    bufnr,
+    "ToggleAcceptEdits",
+    function()
+      tool_utils.toggle_auto_accept_edits(lead_buffer)
+      vim.b[bufnr].llm_sidekick_auto_accept_edits = vim.b[lead_buffer].llm_sidekick_auto_accept_edits
+      if tool_utils.is_auto_accept_edits(lead_buffer) then
+        accept()
+      else
+        vim.notify("Auto-accept edits disabled", vim.log.levels.INFO)
+      end
+    end,
+    { desc = "Toggle auto-accept edits" }
   )
 
   local tool_utils = require 'llm-sidekick.tools.utils'
