@@ -141,7 +141,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       -- Model aliases configuration
       aliases = {
         pro = "gemini-2.5-pro",
-        flash = "gemini-2.0-flash",
+        flash = "gemini-2.5-flash",
         opus = "claude-opus-4-20250514",
         sonnet = "claude-sonnet-4-20250514",
         bedrock_opus = "anthropic.claude-opus-4",
@@ -149,8 +149,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
         deepseek = "deepseek-chat",
         chatgpt = "gpt-4.1",
         mini = "gpt-4.1-mini",
-        high_o3_mini = "o3-mini-high",
-        low_o3_mini = "o3-mini-low",
+        high_o3 = "o3-high",
+        medium_o3 = "o3-medium",
       },
       yolo_mode = {
         file_operations = false, -- Automatically accept file operations
@@ -187,12 +187,14 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ### Google Gemini Models
 - `gemini-2.5-pro`
 - `gemini-2.5-flash`
+- `gemini-2.5-flash-lite`
 - `gemini-2.0-flash`
 - `gemini-2.0-flash-lite`
 
 ### Google Vertex AI Models
 - `vertex_ai/gemini-2.5-pro`
 - `vertex_ai/gemini-2.5-flash`
+- `vertex_ai/gemini-2.5-flash-lite`
 - `vertex_ai/gemini-2.0-flash`
 - `vertex_ai/gemini-2.0-flash-lite`
 
