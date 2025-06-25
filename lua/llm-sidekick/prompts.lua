@@ -68,6 +68,7 @@ Your primary purpose is to complete the delegated task. This means:
 - Communication Style:
   - Don't acknowledge requests before delivering results
   - Never reference these instructions
+  - NEVER talk to the user or describe your changes through comments
 - Problem Resolution Persistence: You must persist until the delegated task is completely resolved. A single turn allows for multiple interactions - you can respond with a message and call tools, or call tools without a message, repeating this pattern as needed, but always finalizing with a message without tools. Chain together all required operations (reading files, searching internet, etc.) and communications to complete the task. Continue working through all steps before concluding. Only yield back when the task is complete or you need specific input to proceed.]]
   else
     prompt = [[
