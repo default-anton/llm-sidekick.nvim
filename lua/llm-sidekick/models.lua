@@ -30,6 +30,11 @@ return {
     max_tokens = 8192,
     temperature = 0.6,
   },
+  ["vertex_ai/claude-opus-4"] = {
+    name = "vertex_ai/claude-opus-4@20250514",
+    max_tokens = 32000,
+    temperature = 0.7,
+  },
   ["vertex_ai/claude-sonnet-4"] = {
     name = "vertex_ai/claude-sonnet-4@20250514",
     max_tokens = 64000,

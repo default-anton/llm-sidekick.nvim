@@ -192,6 +192,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 - `gemini-2.0-flash-lite`
 
 ### Google Vertex AI Models
+- `vertex_ai/claude-opus-4`
+- `vertex_ai/claude-sonnet-4`
 - `vertex_ai/gemini-2.5-pro`
 - `vertex_ai/gemini-2.5-flash`
 - `vertex_ai/gemini-2.5-flash-lite`
