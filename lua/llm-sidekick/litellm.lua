@@ -240,6 +240,7 @@ function M.start_web_server(port)
       'run',
       '--python', '3.12',
       '--with', 'litellm[proxy]',
+      '--with', 'openai==1.99.9',
       '--with', 'boto3',
       '--with', 'google-generativeai',
       '--with', 'google-cloud-aiplatform',
